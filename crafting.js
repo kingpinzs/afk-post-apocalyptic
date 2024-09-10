@@ -5,19 +5,30 @@ import { updateAutomationControls } from './automation.js';
 const craftingQueue = [];
 
 export function updateCraftableItems() {
+    if (!gameState.unlockedFeatures.includes('crafting')) {
+        document.getElementById('crafting').style.display = 'none';
+        return;
+    }
+
+    document.getElementById('crafting').style.display = 'block';
     const config = getConfig();
     const craftableItemsContainer = document.getElementById('craftable-items');
     craftableItemsContainer.innerHTML = '';
+    
     config.items.forEach(item => {
-        if (!gameState.craftedItems[item.id]) {
+        if (!gameState.craftedItems[item.id] && gameState.unlockedFeatures.includes(item.id) && areDependenciesMet(item)) {
             const canCraft = Object.entries(item.requirements).every(([resource, amount]) => gameState[resource] >= amount);
             const button = document.createElement('button');
             button.textContent = `Craft ${item.name} (${Object.entries(item.requirements).map(([resource, amount]) => `${amount} ${resource}`).join(', ')})`;
             button.disabled = !canCraft || gameState.availableWorkers === 0;
-            button.addEventListener('click', () => showPuzzle(item));
+            button.addEventListener('click', () => startCrafting(item));
             craftableItemsContainer.appendChild(button);
         }
     });
+}
+
+function areDependenciesMet(item) {
+    return item.dependencies.every(depId => gameState.craftedItems[depId]);
 }
 
 function startCrafting(item) {
@@ -44,48 +55,43 @@ function startCrafting(item) {
 }
 
 export function processQueue() {
-    if (craftingQueue.length === 0) return;
+    if (gameState.craftingQueue.length === 0) return;
 
-    const queueContainer = document.getElementById('crafting-queue');
-    queueContainer.innerHTML = '';
+    const currentCraft = gameState.craftingQueue[0];
+    gameState.currentWork = { type: 'crafting', item: currentCraft.item };
+    updateWorkingSection();
 
-    craftingQueue.forEach((craftingItem, index) => {
-        const itemElement = document.createElement('div');
-        itemElement.className = 'crafting-item';
-        itemElement.innerHTML = `
-            <span>${craftingItem.item.name}</span>
-            <div class="progress-bar-container">
-                <div class="progress-bar"></div>
-            </div>
-        `;
-        queueContainer.appendChild(itemElement);
+    const progressInterval = setInterval(() => {
+        currentCraft.progress += 100;
+        updateWorkingSection(currentCraft.progress / currentCraft.duration);
 
-        const progressBar = itemElement.querySelector('.progress-bar');
-        const updateProgress = () => {
-            craftingItem.progress += 100;
-            const percentage = (craftingItem.progress / craftingItem.duration) * 100;
-            progressBar.style.width = `${percentage}%`;
-
-            if (craftingItem.progress >= craftingItem.duration) {
-                completeCrafting(craftingItem, index);
-            } else {
-                setTimeout(updateProgress, 100);
-            }
-        };
-
-        setTimeout(updateProgress, 100);
-    });
+        if (currentCraft.progress >= currentCraft.duration) {
+            clearInterval(progressInterval);
+            completeCrafting(currentCraft.item);
+        }
+    }, 100);
 }
 
-function completeCrafting(craftingItem, index) {
-    gameState.craftedItems[craftingItem.item.id] = craftingItem.item;
-    logEvent(`Crafted ${craftingItem.item.name}!`);
-    craftingQueue.splice(index, 1);
+function completeCrafting(item) {
+    gameState.craftedItems[item.id] = true;
+    logEvent(`Crafted ${item.name}!`);
+    
+    gameState.availableWorkers++;
+    gameState.currentWork = null;
+    gameState.craftingQueue.shift();
+    
     updateCraftableItems();
-    updateCraftingQueue();
     updateDisplay();
+    updateWorkingSection();
     updateAutomationControls();
+
+    if (gameState.craftingQueue.length > 0) {
+        processQueue();
+    }
 }
+
+
+
 
 function updateCraftingQueue() {
     const queueContainer = document.getElementById('crafting-queue');
@@ -103,17 +109,7 @@ function updateCraftingQueue() {
     });
 }
 
-export function submitPuzzleAnswer() {
-    const puzzlePopup = document.getElementById('puzzle-popup');
-    const itemId = puzzlePopup.dataset.itemId;
-    const item = knowledgeData.items.find(i => i.id === itemId);
-    if (document.getElementById('puzzle-answer').value.toLowerCase() === item.puzzleAnswer.toLowerCase()) {
-        startCrafting(item);
-        puzzlePopup.style.display = 'none';
-    } else {
-        alert('Incorrect answer. Try again!');
-    }
-}
+
 
 function craftItem(item) {
     Object.entries(item.requirements).forEach(([resource, amount]) => {

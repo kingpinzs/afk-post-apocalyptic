@@ -1,4 +1,5 @@
 import { gameState, getConfig } from './gameState.js';
+import { updateCraftableItems } from './crafting.js';
 
 export function updateDisplay() {
     document.getElementById('food').textContent = Math.floor(gameState.food);
@@ -56,5 +57,31 @@ export function logEvent(message) {
     eventLog.prepend(li);
     if (eventLog.children.length > 5) {
         eventLog.removeChild(eventLog.lastChild);
+    }
+}
+
+export function showUnlockPuzzle(puzzle) {
+    const puzzlePopup = document.getElementById('puzzle-popup');
+    document.getElementById('puzzle-title').textContent = 'Unlock New Feature';
+    document.getElementById('puzzle-description').textContent = puzzle.puzzle;
+    document.getElementById('puzzle-answer').value = '';
+    puzzlePopup.style.display = 'block';
+    puzzlePopup.dataset.puzzleId = puzzle.id;
+}
+
+export function submitUnlockPuzzleAnswer() {
+    const config = getConfig();
+    const puzzlePopup = document.getElementById('puzzle-popup');
+    const puzzleId = puzzlePopup.dataset.puzzleId;
+    const puzzle = config.unlockPuzzles.find(p => p.id === puzzleId);
+    const answer = document.getElementById('puzzle-answer').value.toLowerCase();
+
+    if (answer === puzzle.answer.toLowerCase()) {
+        gameState.unlockedFeatures.push(puzzle.unlocks);
+        logEvent(`Unlocked: ${puzzle.unlocks}!`);
+        puzzlePopup.style.display = 'none';
+        updateCraftableItems();
+    } else {
+        alert('Incorrect answer. Try again!');
     }
 }

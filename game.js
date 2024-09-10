@@ -1,9 +1,7 @@
-// game.js
-
 import { gameState, loadGameConfig, getConfig } from './gameState.js';
-import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent } from './ui.js';
+import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer } from './ui.js';
 import { gatherResource, consumeResources, produceResources, checkPopulationGrowth, study } from './resources.js';
-import { updateCraftableItems, submitPuzzleAnswer, processQueue } from './crafting.js';
+import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
 
 async function initializeGame() {
@@ -12,17 +10,46 @@ async function initializeGame() {
 
     updateCraftableItems();
     updateAutomationControls();
+    createGatheringActions(config.resources);
 
     // Event listeners
-    config.resources.forEach(resource => {
-        document.getElementById(`gather-${resource}`).addEventListener('click', () => gatherResource(resource));
-    });
+    // config.resources.forEach(resource => {
+    //     document.getElementById(`gather-${resource}`).addEventListener('click', () => gatherResource(resource));
+    // });
     document.getElementById('study').addEventListener('click', study);
-    document.getElementById('submit-puzzle').addEventListener('click', submitPuzzleAnswer);
+    document.getElementById('submit-puzzle').addEventListener('click', submitUnlockPuzzleAnswer);
 
     // Start game loop
     setInterval(gameLoop, 1000); // Update every second
 }
+
+function createGatheringActions(resources) {
+    const actionsContainer = document.getElementById('actions');
+    //actionsContainer.innerHTML = ''; // Clear existing content
+
+    resources.forEach(resource => {
+        const gatherAction = document.createElement('div');
+        gatherAction.className = 'gather-action';
+
+        const button = document.createElement('button');
+        button.id = `gather-${resource}`;
+        button.textContent = `Gather ${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
+        button.addEventListener('click', () => gatherResource(resource));
+
+        const progressBarContainer = document.createElement('div');
+        progressBarContainer.className = 'progress-bar-container';
+
+        const progressBar = document.createElement('div');
+        progressBar.id = `${resource}-progress-bar`;
+        progressBar.className = 'progress-bar';
+
+        progressBarContainer.appendChild(progressBar);
+        gatherAction.appendChild(button);
+        gatherAction.appendChild(progressBarContainer);
+        actionsContainer.appendChild(gatherAction);
+    });
+}
+
 
 function gameLoop() {
     updateTime();

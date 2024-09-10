@@ -1,5 +1,15 @@
 {
-  "resources": ["food", "water", "wood", "stone", "clay", "fiber", "ore", "herbs", "fruit"],
+  "resources": [
+    "food",
+    "water",
+    "wood",
+    "stone",
+    "clay",
+    "fiber",
+    "ore",
+    "herbs",
+    "fruit"
+  ],
   "initialState": {
     "food": 100,
     "water": 100,
@@ -31,7 +41,44 @@
     "herbs": 5000,
     "fruit": 4000
   },
+  "unlockPuzzles": [
+    {
+      "id": "unlock_crafting",
+      "puzzle": "I am the art of making, combining elements anew. What am I?",
+      "answer": "crafting",
+      "unlocks": "crafting"
+    },
+    {
+      "id": "unlock_axe",
+      "puzzle": "I have a head and a handle that fits, to chop and split I'm hard to beat. What am I?",
+      "answer": "axe",
+      "unlocks": "axe"
+    },
+    {
+      "id": "unlock_shelter",
+      "puzzle": "I protect you from the elements, a haven from the storm. What am I?",
+      "answer": "shelter",
+      "unlocks": "shelter"
+    }
+  ],
   "items": [
+    {
+      "id": "knife",
+      "name": "Knife",
+      "description": "A basic tool for various tasks",
+      "requirements": {
+        "stone": 5,
+        "wood": 3,
+        "knowledge": 3
+      },
+      "craftingTime": 20000,
+      "puzzle": "I'm sharp and handy, cut and slice, in survival I'm worth my price.",
+      "puzzleAnswer": "knife",
+      "effect": {
+        "craftingEfficiencyMultiplier": 1.2
+      },
+      "dependencies": []
+    },
     {
       "id": "axe",
       "name": "Axe",
@@ -46,7 +93,8 @@
       "puzzleAnswer": "axe",
       "effect": {
         "woodGatheringMultiplier": 2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "shelter",
@@ -62,7 +110,28 @@
       "puzzleAnswer": "shelter",
       "effect": {
         "resourceConsumptionMultiplier": 0.5
-      }
+      },
+      "dependencies": []
+    },
+    {
+      "id": "pickaxe",
+      "name": "Pickaxe",
+      "description": "Allows efficient stone and ore gathering",
+      "requirements": {
+        "wood": 8,
+        "stone": 15,
+        "knowledge": 3
+      },
+      "craftingTime": 40000,
+      "puzzle": "I have a point and a rocky mission, breaking through stone is my ambition.",
+      "puzzleAnswer": "pickaxe",
+      "effect": {
+        "stoneGatheringMultiplier": 2,
+        "oreGatheringMultiplier": 1.5
+      },
+      "dependencies": [
+        "axe"
+      ]
     },
     {
       "id": "farm",
@@ -78,7 +147,8 @@
       "puzzleAnswer": "farm",
       "effect": {
         "foodProductionRate": 0.1
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "well",
@@ -94,7 +164,8 @@
       "puzzleAnswer": "well",
       "effect": {
         "waterProductionRate": 0.2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "fishing_rod",
@@ -109,7 +180,8 @@
       "puzzleAnswer": "fishing rod",
       "effect": {
         "foodGatheringMultiplier": 1.5
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "kiln",
@@ -124,7 +196,8 @@
       "puzzleAnswer": "kiln",
       "effect": {
         "clayProcessingRate": 0.2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "loom",
@@ -139,7 +212,8 @@
       "puzzleAnswer": "loom",
       "effect": {
         "fiberProcessingRate": 0.2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "forge",
@@ -155,7 +229,8 @@
       "puzzleAnswer": "forge",
       "effect": {
         "oreProcessingRate": 0.2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "herbalist_hut",
@@ -171,7 +246,8 @@
       "puzzleAnswer": "herbalist's hut",
       "effect": {
         "medicineProductionRate": 0.1
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "watchtower",
@@ -186,7 +262,8 @@
       "puzzleAnswer": "watchtower",
       "effect": {
         "resourceDiscoveryMultiplier": 1.5
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "storehouse",
@@ -201,7 +278,8 @@
       "puzzleAnswer": "storehouse",
       "effect": {
         "storageCapacityMultiplier": 2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "orchard",
@@ -217,7 +295,8 @@
       "puzzleAnswer": "orchard",
       "effect": {
         "fruitProductionRate": 0.2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "tannery",
@@ -233,7 +312,8 @@
       "puzzleAnswer": "tannery",
       "effect": {
         "leatherProductionRate": 0.1
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "library",
@@ -249,7 +329,8 @@
       "puzzleAnswer": "library",
       "effect": {
         "knowledgeGenerationMultiplier": 2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "pottery_workshop",
@@ -266,7 +347,8 @@
       "effect": {
         "waterStorageMultiplier": 1.5,
         "tradeGoodsProductionRate": 0.1
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "hunting_lodge",
@@ -282,7 +364,8 @@
       "puzzleAnswer": "hunting lodge",
       "effect": {
         "meatGatheringMultiplier": 2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "quarry",
@@ -299,7 +382,8 @@
       "effect": {
         "stoneProductionRate": 0.3,
         "oreProductionRate": 0.2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "weaving_mill",
@@ -315,7 +399,8 @@
       "puzzleAnswer": "weaving mill",
       "effect": {
         "clothProductionRate": 0.4
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "apothecary",
@@ -332,7 +417,8 @@
       "effect": {
         "medicineEffectivenessMultiplier": 2,
         "populationHealthMultiplier": 1.5
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "marketplace",
@@ -349,7 +435,8 @@
       "effect": {
         "tradeEfficiencyMultiplier": 1.5,
         "resourceExchangeRate": 0.2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "sawmill",
@@ -365,7 +452,8 @@
       "puzzleAnswer": "sawmill",
       "effect": {
         "woodProductionMultiplier": 3
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "school",
@@ -382,7 +470,8 @@
       "effect": {
         "knowledgeGenerationMultiplier": 2.5,
         "populationSkillMultiplier": 1.5
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "windmill",
@@ -399,7 +488,8 @@
       "effect": {
         "foodProductionMultiplier": 2,
         "flourProductionRate": 0.3
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "observatory",
@@ -416,7 +506,8 @@
       "effect": {
         "knowledgeGenerationMultiplier": 3,
         "advancedTechUnlockRate": 0.1
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "glassworks",
@@ -433,7 +524,8 @@
       "effect": {
         "glassProductionRate": 0.2,
         "advancedConstructionEfficiency": 1.3
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "brewery",
@@ -450,7 +542,8 @@
       "effect": {
         "workerMoraleBoost": 1.2,
         "productivityMultiplier": 1.1
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "blacksmith",
@@ -467,7 +560,8 @@
       "effect": {
         "toolEfficiencyMultiplier": 1.5,
         "weaponCraftingRate": 0.1
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "granary",
@@ -484,7 +578,8 @@
       "effect": {
         "foodStorageMultiplier": 2,
         "foodSpoilageReduction": 0.5
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "textile_mill",
@@ -501,7 +596,8 @@
       "effect": {
         "textileProductionRate": 0.5,
         "clothingQualityMultiplier": 1.5
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "scriptorium",
@@ -518,7 +614,8 @@
       "effect": {
         "knowledgePreservationRate": 0.3,
         "researchSpeedMultiplier": 1.4
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "alchemist_lab",
@@ -535,7 +632,8 @@
       "effect": {
         "resourceDiscoveryRate": 0.1,
         "technologyAdvancementMultiplier": 1.3
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "shipyard",
@@ -552,7 +650,8 @@
       "effect": {
         "fishingEfficiencyMultiplier": 2,
         "tradeRouteCapacity": 3
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "university",
@@ -569,7 +668,8 @@
       "effect": {
         "researchSpeedMultiplier": 3,
         "advancedTechUnlockRate": 0.2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "monument",
@@ -586,7 +686,8 @@
       "effect": {
         "populationHappinessMultiplier": 1.5,
         "immigrationRate": 0.1
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "irrigation_system",
@@ -603,7 +704,8 @@
       "effect": {
         "farmYieldMultiplier": 1.5,
         "waterEfficiencyMultiplier": 1.3
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "lighthouse",
@@ -620,7 +722,8 @@
       "effect": {
         "fishingSuccessRate": 1.4,
         "tradeShipSafetyMultiplier": 1.5
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "paper_mill",
@@ -637,7 +740,8 @@
       "effect": {
         "paperProductionRate": 0.4,
         "knowledgeEfficiencyMultiplier": 1.2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "mint",
@@ -654,7 +758,8 @@
       "effect": {
         "currencyProductionRate": 0.2,
         "tradeEfficiencyMultiplier": 1.5
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "aqueduct",
@@ -671,7 +776,8 @@
       "effect": {
         "waterDistributionMultiplier": 2,
         "populationHealthMultiplier": 1.3
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "theater",
@@ -688,7 +794,8 @@
       "effect": {
         "populationHappinessMultiplier": 1.4,
         "culturalDevelopmentRate": 0.3
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "telescope",
@@ -705,7 +812,8 @@
       "effect": {
         "astronomicalResearchRate": 0.5,
         "navigationEfficiencyMultiplier": 1.3
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "printing_press",
@@ -722,7 +830,8 @@
       "effect": {
         "bookProductionRate": 1,
         "knowledgeSpreadMultiplier": 2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "music_hall",
@@ -739,7 +848,8 @@
       "effect": {
         "culturalDevelopmentRate": 0.4,
         "populationHappinessMultiplier": 1.3
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "bank",
@@ -756,7 +866,8 @@
       "effect": {
         "currencyManagementEfficiency": 1.5,
         "loanAvailabilityRate": 0.2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "courthouse",
@@ -773,7 +884,8 @@
       "effect": {
         "crimeReductionRate": 0.3,
         "populationStabilityMultiplier": 1.4
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "factory",
@@ -790,7 +902,8 @@
       "effect": {
         "goodsProductionMultiplier": 3,
         "resourceConsumptionRate": 1.5
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "hospital",
@@ -807,7 +920,8 @@
       "effect": {
         "populationHealthMultiplier": 2,
         "lifespanIncreaseYears": 10
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "power_plant",
@@ -824,7 +938,8 @@
       "effect": {
         "energyProductionRate": 1,
         "advancedTechEfficiencyMultiplier": 1.5
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "railway",
@@ -841,7 +956,8 @@
       "effect": {
         "resourceDistributionMultiplier": 2,
         "tradeEfficiencyMultiplier": 1.6
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "stock_exchange",
@@ -858,7 +974,8 @@
       "effect": {
         "economicGrowthRate": 0.5,
         "investmentReturnMultiplier": 1.4
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "assembly_line",
@@ -875,7 +992,8 @@
       "effect": {
         "productionSpeedMultiplier": 3,
         "resourceEfficiencyMultiplier": 1.3
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "research_lab",
@@ -892,7 +1010,8 @@
       "effect": {
         "researchSpeedMultiplier": 2.5,
         "breakthroughDiscoveryChance": 0.1
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "metropolis",
@@ -910,7 +1029,8 @@
         "populationCapacityMultiplier": 5,
         "economicOutputMultiplier": 3,
         "culturalInfluenceMultiplier": 2
-      }
+      },
+      "dependencies": []
     },
     {
       "id": "space_program",

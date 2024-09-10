@@ -1,6 +1,7 @@
 let gameConfig;
 
 export const gameState = {
+    unlockedFeatures: [],
     craftedItems: {},
     automationAssignments: {},
     currentWork: null,

@@ -1,21 +1,8 @@
-import { gameState} from './gameState.js';
-import { logEvent, updateDisplay, updateWorkingSection } from './ui.js';
+import { gameState, getConfig } from './gameState.js';
+import { logEvent, updateDisplay, updateWorkingSection, showUnlockPuzzle } from './ui.js';
 import { updateAutomationControls } from './automation.js';
 import { updateCraftableItems } from './crafting.js';
 
-const gatheringTimes = {
-    wood: 5000,  // 5 seconds
-    stone: 7000, // 7 seconds
-    food: 3000,  // 3 seconds
-    water: 2000  // 2 seconds
-};
-
-const gatheringProgresses = {
-    wood: 0,
-    stone: 0,
-    food: 0,
-    water: 0
-};
 
 export function gatherResource(resource) {
     if (gameState.availableWorkers === 0) {
@@ -132,7 +119,12 @@ export function study() {
         gameState.availableWorkers++;
         gameState.currentWork = null;
         updateDisplay();
-        updateCraftableItems();
-        updateWorkingSection();
+        
+        // Check if we should show an unlock puzzle
+        const config = getConfig();
+        const nextUnlock = config.unlockPuzzles.find(puzzle => !gameState.unlockedFeatures.includes(puzzle.unlocks));
+        if (nextUnlock) {
+            showUnlockPuzzle(nextUnlock);
+        }
     }, 5000); // 5 seconds to study
 }
