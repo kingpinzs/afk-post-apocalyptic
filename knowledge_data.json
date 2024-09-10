@@ -61,6 +61,56 @@
       "unlocks": "shelter"
     }
   ],
+  "events": [
+    {
+      "id": "bountiful_harvest",
+      "name": "Bountiful Harvest",
+      "description": "An unexpectedly good harvest provides extra food.",
+      "effect": {
+        "food": 50
+      },
+      "probability": 0.1
+    },
+    {
+      "id": "stone_discovery",
+      "name": "Stone Discovery",
+      "description": "A new stone deposit is found nearby.",
+      "effect": {
+        "stone": 30
+      },
+      "probability": 0.08
+    },
+    {
+      "id": "wandering_herbalist",
+      "name": "Wandering Herbalist",
+      "description": "A traveling herbalist shares some knowledge.",
+      "effect": {
+        "knowledge": 5
+      },
+      "probability": 0.05
+    },
+    {
+      "id": "heavy_rain",
+      "name": "Heavy Rain",
+      "description": "Heavy rain makes gathering more difficult but provides extra water.",
+      "effect": {
+        "water": 40,
+        "gatheringEfficiency": 0.8
+      },
+      "duration": 2,
+      "probability": 0.07
+    },
+    {
+      "id": "tool_breakthrough",
+      "name": "Tool Breakthrough",
+      "description": "Your people develop better tools, improving gathering efficiency.",
+      "effect": {
+        "gatheringEfficiency": 1.2
+      },
+      "duration": 3,
+      "probability": 0.06
+    }
+  ],
   "items": [
     {
       "id": "knife",

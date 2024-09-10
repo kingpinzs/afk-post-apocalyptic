@@ -3,6 +3,7 @@ import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlo
 import { gatherResource, consumeResources, produceResources, checkPopulationGrowth, study } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
+import { checkForEvents, updateActiveEvents } from './events.js';
 
 async function initializeGame() {
     await loadGameConfig();
@@ -50,14 +51,15 @@ function createGatheringActions(resources) {
     });
 }
 
-
 function gameLoop() {
     updateTime();
     if (gameState.time === 0) { // Start of a new day
         consumeResources();
         produceResources();
         checkPopulationGrowth();
+        checkForEvents();
     }
+    updateActiveEvents();
     checkSurvival();
     updateDisplay();
     processQueue();

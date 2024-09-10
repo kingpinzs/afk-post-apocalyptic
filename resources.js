@@ -5,6 +5,7 @@ import { updateCraftableItems } from './crafting.js';
 
 
 export function gatherResource(resource) {
+    const config = getConfig();
     if (gameState.availableWorkers === 0) {
         logEvent("No available workers to gather resources.");
         return;
@@ -38,12 +39,14 @@ export function gatherResource(resource) {
     }, interval);
 }
 
-
 function getGatheringTime(resource) {
-    let time = gatheringTimes[resource];
+    const config = getConfig();
+    let time = config.gatheringTimes[resource];
     if (resource === 'wood' && gameState.craftedItems.axe) {
         time /= gameState.craftedItems.axe.effect.woodGatheringMultiplier;
     }
+    // Apply gathering efficiency modifier from events
+    time /= (gameState.gatheringEfficiency || 1);
     // You can add more modifiers here based on other upgrades or skills
     return time;
 }
@@ -53,6 +56,13 @@ function completeGathering(resource) {
     if (resource === 'wood' && gameState.craftedItems.axe) {
         amount = gameState.craftedItems.axe.effect.woodGatheringMultiplier;
     }
+    
+    // Apply gathering efficiency modifier
+    amount *= (gameState.gatheringEfficiency || 1);
+    
+    // Round the amount to avoid fractional resources
+    amount = Math.round(amount);
+
     gameState[resource] += amount;
     logEvent(`Gathered ${amount} ${resource}.`);
     
