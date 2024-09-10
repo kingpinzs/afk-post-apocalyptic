@@ -1,0 +1,592 @@
+{
+  "resources": ["food", "water", "wood", "stone", "clay", "fiber", "ore", "herbs", "fruit"],
+  "initialState": {
+    "food": 100,
+    "water": 100,
+    "wood": 0,
+    "stone": 0,
+    "clay": 0,
+    "fiber": 0,
+    "ore": 0,
+    "herbs": 0,
+    "fruit": 0,
+    "knowledge": 0,
+    "population": 1,
+    "day": 1,
+    "time": 0
+  },
+  "constants": {
+    "DAY_LENGTH": 600,
+    "DAY_PHASE": 300,
+    "POPULATION_THRESHOLD": 50
+  },
+  "gatheringTimes": {
+    "wood": 5000,
+    "stone": 7000,
+    "food": 3000,
+    "water": 2000,
+    "clay": 6000,
+    "fiber": 4000,
+    "ore": 8000,
+    "herbs": 5000,
+    "fruit": 4000
+  },
+  "items": [
+    {
+      "id": "axe",
+      "name": "Axe",
+      "description": "Improves wood gathering efficiency",
+      "requirements": {
+        "wood": 5,
+        "stone": 5,
+        "knowledge": 5
+      },
+      "craftingTime": 30000,
+      "puzzle": "What has a handle and a head, but no arms or legs?",
+      "puzzleAnswer": "axe",
+      "effect": {
+        "woodGatheringMultiplier": 2
+      }
+    },
+    {
+      "id": "shelter",
+      "name": "Shelter",
+      "description": "Reduces resource consumption",
+      "requirements": {
+        "wood": 10,
+        "stone": 5,
+        "knowledge": 3
+      },
+      "craftingTime": 60000,
+      "puzzle": "I keep you safe, I keep you dry, I'm built with care, up toward the sky. What am I?",
+      "puzzleAnswer": "shelter",
+      "effect": {
+        "resourceConsumptionMultiplier": 0.5
+      }
+    },
+    {
+      "id": "farm",
+      "name": "Farm",
+      "description": "Produces food over time",
+      "requirements": {
+        "wood": 15,
+        "stone": 10,
+        "knowledge": 10
+      },
+      "craftingTime": 120000,
+      "puzzle": "With seeds and soil, sun and rain, I help your food to grow again. What am I?",
+      "puzzleAnswer": "farm",
+      "effect": {
+        "foodProductionRate": 0.1
+      }
+    },
+    {
+      "id": "well",
+      "name": "Well",
+      "description": "Produces water over time",
+      "requirements": {
+        "wood": 5,
+        "stone": 20,
+        "knowledge": 15
+      },
+      "craftingTime": 90000,
+      "puzzle": "Deep in the earth, I'm built with care, to bring up something vital and rare. What am I?",
+      "puzzleAnswer": "well",
+      "effect": {
+        "waterProductionRate": 0.2
+      }
+    },
+    {
+      "id": "fishing_rod",
+      "name": "Fishing Rod",
+      "description": "Allows fishing, providing a new food source",
+      "requirements": {
+        "wood": 5,
+        "fiber": 3
+      },
+      "craftingTime": 45000,
+      "puzzle": "I'm long and thin, with a hook at the end, I help you catch dinner, I'm your aquatic friend.",
+      "puzzleAnswer": "fishing rod",
+      "effect": {
+        "foodGatheringMultiplier": 1.5
+      }
+    },
+    {
+      "id": "kiln",
+      "name": "Kiln",
+      "description": "Allows creation of bricks and pottery",
+      "requirements": {
+        "stone": 20,
+        "clay": 10
+      },
+      "craftingTime": 90000,
+      "puzzle": "I'm hot inside, turning soft to hard, with me you can shape clay, I'm a crafter's card.",
+      "puzzleAnswer": "kiln",
+      "effect": {
+        "clayProcessingRate": 0.2
+      }
+    },
+    {
+      "id": "loom",
+      "name": "Loom",
+      "description": "Allows creation of cloth for advanced crafting",
+      "requirements": {
+        "wood": 15,
+        "fiber": 10
+      },
+      "craftingTime": 75000,
+      "puzzle": "Threads intertwine, as I work back and forth, creating fabric fine, I prove my worth.",
+      "puzzleAnswer": "loom",
+      "effect": {
+        "fiberProcessingRate": 0.2
+      }
+    },
+    {
+      "id": "forge",
+      "name": "Forge",
+      "description": "Allows metal working for advanced tools",
+      "requirements": {
+        "stone": 30,
+        "ore": 20,
+        "knowledge": 5
+      },
+      "craftingTime": 150000,
+      "puzzle": "Fire burns hot, metal bends to will, I shape the future, with hammer and skill.",
+      "puzzleAnswer": "forge",
+      "effect": {
+        "oreProcessingRate": 0.2
+      }
+    },
+    {
+      "id": "herbalist_hut",
+      "name": "Herbalist's Hut",
+      "description": "Produces medicine, improving population health",
+      "requirements": {
+        "wood": 20,
+        "herbs": 15,
+        "knowledge": 10
+      },
+      "craftingTime": 100000,
+      "puzzle": "Leaves and roots, I know their use, to heal the sick, my knowledge I produce.",
+      "puzzleAnswer": "herbalist's hut",
+      "effect": {
+        "medicineProductionRate": 0.1
+      }
+    },
+    {
+      "id": "watchtower",
+      "name": "Watchtower",
+      "description": "Improves resource discovery rate",
+      "requirements": {
+        "wood": 25,
+        "stone": 15
+      },
+      "craftingTime": 120000,
+      "puzzle": "I stand tall and see far, guarding day and night, from my peak, everything's in sight.",
+      "puzzleAnswer": "watchtower",
+      "effect": {
+        "resourceDiscoveryMultiplier": 1.5
+      }
+    },
+    {
+      "id": "storehouse",
+      "name": "Storehouse",
+      "description": "Increases resource storage capacity",
+      "requirements": {
+        "wood": 30,
+        "stone": 20
+      },
+      "craftingTime": 180000,
+      "puzzle": "Walls and roof, I keep things dry, your goods within, safe and spry.",
+      "puzzleAnswer": "storehouse",
+      "effect": {
+        "storageCapacityMultiplier": 2
+      }
+    },
+    {
+      "id": "orchard",
+      "name": "Orchard",
+      "description": "Produces fruit over time",
+      "requirements": {
+        "wood": 25,
+        "water": 20,
+        "fruit": 10
+      },
+      "craftingTime": 200000,
+      "puzzle": "Trees in rows, bearing sweet delight, I grow your food, from dawn to night.",
+      "puzzleAnswer": "orchard",
+      "effect": {
+        "fruitProductionRate": 0.2
+      }
+    },
+    {
+      "id": "tannery",
+      "name": "Tannery",
+      "description": "Allows creation of leather for advanced crafting",
+      "requirements": {
+        "wood": 20,
+        "stone": 15,
+        "water": 10
+      },
+      "craftingTime": 150000,
+      "puzzle": "Hides I treat, with skill and care, turning skin to leather, strong and fair.",
+      "puzzleAnswer": "tannery",
+      "effect": {
+        "leatherProductionRate": 0.1
+      }
+    },
+    {
+      "id": "library",
+      "name": "Library",
+      "description": "Increases knowledge generation",
+      "requirements": {
+        "wood": 30,
+        "stone": 20,
+        "knowledge": 15
+      },
+      "craftingTime": 240000,
+      "puzzle": "Words on pages, knowledge stored, in my halls, wisdom is explored.",
+      "puzzleAnswer": "library",
+      "effect": {
+        "knowledgeGenerationMultiplier": 2
+      }
+    },
+    {
+      "id": "pottery_workshop",
+      "name": "Pottery Workshop",
+      "description": "Creates pottery for water storage and trading",
+      "requirements": {
+        "wood": 15,
+        "clay": 30,
+        "knowledge": 10
+      },
+      "craftingTime": 120000,
+      "puzzle": "With wheel and hand, I shape the clay, creating vessels for use each day.",
+      "puzzleAnswer": "pottery workshop",
+      "effect": {
+        "waterStorageMultiplier": 1.5,
+        "tradeGoodsProductionRate": 0.1
+      }
+    },
+    {
+      "id": "hunting_lodge",
+      "name": "Hunting Lodge",
+      "description": "Improves food gathering from animals",
+      "requirements": {
+        "wood": 25,
+        "stone": 15,
+        "fiber": 10
+      },
+      "craftingTime": 150000,
+      "puzzle": "In forest deep, I track and stalk, to bring back meat, on which we'll not balk.",
+      "puzzleAnswer": "hunting lodge",
+      "effect": {
+        "meatGatheringMultiplier": 2
+      }
+    },
+    {
+      "id": "quarry",
+      "name": "Quarry",
+      "description": "Increases stone and ore production",
+      "requirements": {
+        "wood": 20,
+        "stone": 30,
+        "knowledge": 15
+      },
+      "craftingTime": 180000,
+      "puzzle": "I dig deep into the mountain's heart, to bring forth riches, stone and ore to impart.",
+      "puzzleAnswer": "quarry",
+      "effect": {
+        "stoneProductionRate": 0.3,
+        "oreProductionRate": 0.2
+      }
+    },
+    {
+      "id": "weaving_mill",
+      "name": "Weaving Mill",
+      "description": "Produces cloth more efficiently",
+      "requirements": {
+        "wood": 30,
+        "fiber": 40,
+        "knowledge": 20
+      },
+      "craftingTime": 210000,
+      "puzzle": "Shuttles fly, threads entwine, creating fabric, line by line.",
+      "puzzleAnswer": "weaving mill",
+      "effect": {
+        "clothProductionRate": 0.4
+      }
+    },
+    {
+      "id": "apothecary",
+      "name": "Apothecary",
+      "description": "Creates advanced medicines and increases population health",
+      "requirements": {
+        "wood": 25,
+        "herbs": 35,
+        "knowledge": 30
+      },
+      "craftingTime": 240000,
+      "puzzle": "Potions and tinctures, I brew with care, to cure the sick and health repair.",
+      "puzzleAnswer": "apothecary",
+      "effect": {
+        "medicineEffectivenessMultiplier": 2,
+        "populationHealthMultiplier": 1.5
+      }
+    },
+    {
+      "id": "marketplace",
+      "name": "Marketplace",
+      "description": "Allows trading and increases resource exchange efficiency",
+      "requirements": {
+        "wood": 40,
+        "stone": 30,
+        "knowledge": 25
+      },
+      "craftingTime": 300000,
+      "puzzle": "Goods are bought and sold with glee, in this place of commerce and trade you'll see.",
+      "puzzleAnswer": "marketplace",
+      "effect": {
+        "tradeEfficiencyMultiplier": 1.5,
+        "resourceExchangeRate": 0.2
+      }
+    },
+    {
+      "id": "sawmill",
+      "name": "Sawmill",
+      "description": "Dramatically increases wood production",
+      "requirements": {
+        "wood": 50,
+        "stone": 30,
+        "ore": 20
+      },
+      "craftingTime": 270000,
+      "puzzle": "Blades whir and timber falls, transforming trees to planks for walls.",
+      "puzzleAnswer": "sawmill",
+      "effect": {
+        "woodProductionMultiplier": 3
+      }
+    },
+    {
+      "id": "school",
+      "name": "School",
+      "description": "Increases knowledge generation and population skill",
+      "requirements": {
+        "wood": 40,
+        "stone": 40,
+        "knowledge": 50
+      },
+      "craftingTime": 360000,
+      "puzzle": "Young minds gather, to learn and grow, in this place of learning, knowledge to sow.",
+      "puzzleAnswer": "school",
+      "effect": {
+        "knowledgeGenerationMultiplier": 2.5,
+        "populationSkillMultiplier": 1.5
+      }
+    },
+    {
+      "id": "windmill",
+      "name": "Windmill",
+      "description": "Improves food production and introduces flour making",
+      "requirements": {
+        "wood": 45,
+        "stone": 35,
+        "fiber": 25
+      },
+      "craftingTime": 330000,
+      "puzzle": "My arms reach high, catching the breeze, grinding the grain with the greatest of ease.",
+      "puzzleAnswer": "windmill",
+      "effect": {
+        "foodProductionMultiplier": 2,
+        "flourProductionRate": 0.3
+      }
+    },
+    {
+      "id": "observatory",
+      "name": "Observatory",
+      "description": "Greatly enhances knowledge generation and unlocks advanced technologies",
+      "requirements": {
+        "stone": 60,
+        "ore": 40,
+        "knowledge": 75
+      },
+      "craftingTime": 480000,
+      "puzzle": "Gazing at stars, secrets unfold, in this tower of science, discoveries bold.",
+      "puzzleAnswer": "observatory",
+      "effect": {
+        "knowledgeGenerationMultiplier": 3,
+        "advancedTechUnlockRate": 0.1
+      }
+    },
+    {
+      "id": "glassworks",
+      "name": "Glassworks",
+      "description": "Produces glass for advanced construction and tools",
+      "requirements": {
+        "stone": 50,
+        "wood": 30,
+        "sand": 100
+      },
+      "craftingTime": 360000,
+      "puzzle": "From sand to liquid, then cooled with care, I create clear panes beyond compare.",
+      "puzzleAnswer": "glassworks",
+      "effect": {
+        "glassProductionRate": 0.2,
+        "advancedConstructionEfficiency": 1.3
+      }
+    },
+    {
+      "id": "brewery",
+      "name": "Brewery",
+      "description": "Produces beverages that boost worker morale and productivity",
+      "requirements": {
+        "wood": 40,
+        "water": 100,
+        "fruit": 50
+      },
+      "craftingTime": 300000,
+      "puzzle": "Bubbling vats and aging casks, I create drinks for all tasks.",
+      "puzzleAnswer": "brewery",
+      "effect": {
+        "workerMoraleBoost": 1.2,
+        "productivityMultiplier": 1.1
+      }
+    },
+    {
+      "id": "blacksmith",
+      "name": "Blacksmith",
+      "description": "Crafts metal tools and weapons, improving various gathering and crafting activities",
+      "requirements": {
+        "stone": 60,
+        "ore": 80,
+        "wood": 40
+      },
+      "craftingTime": 420000,
+      "puzzle": "With hammer and anvil, I shape the ore, creating tools not seen before.",
+      "puzzleAnswer": "blacksmith",
+      "effect": {
+        "toolEfficiencyMultiplier": 1.5,
+        "weaponCraftingRate": 0.1
+      }
+    },
+    {
+      "id": "granary",
+      "name": "Granary",
+      "description": "Increases food storage capacity and reduces spoilage",
+      "requirements": {
+        "wood": 70,
+        "stone": 50,
+        "knowledge": 30
+      },
+      "craftingTime": 390000,
+      "puzzle": "Tall and round, I stand with pride, keeping the harvest safe inside.",
+      "puzzleAnswer": "granary",
+      "effect": {
+        "foodStorageMultiplier": 2,
+        "foodSpoilageReduction": 0.5
+      }
+    },
+    {
+      "id": "textile_mill",
+      "name": "Textile Mill",
+      "description": "Mass-produces textiles for clothing and trade",
+      "requirements": {
+        "wood": 60,
+        "stone": 40,
+        "fiber": 100
+      },
+      "craftingTime": 450000,
+      "puzzle": "Spinning wheels and clattering looms, I weave fine cloth in many rooms.",
+      "puzzleAnswer": "textile mill",
+      "effect": {
+        "textileProductionRate": 0.5,
+        "clothingQualityMultiplier": 1.5
+      }
+    },
+    {
+      "id": "scriptorium",
+      "name": "Scriptorium",
+      "description": "Produces books, increasing knowledge generation and preservation",
+      "requirements": {
+        "wood": 50,
+        "leather": 30,
+        "knowledge": 80
+      },
+      "craftingTime": 480000,
+      "puzzle": "Quills scratch and pages turn, preserving knowledge for all to learn.",
+      "puzzleAnswer": "scriptorium",
+      "effect": {
+        "knowledgePreservationRate": 0.3,
+        "researchSpeedMultiplier": 1.4
+      }
+    },
+    {
+      "id": "alchemist_lab",
+      "name": "Alchemist's Laboratory",
+      "description": "Conducts experiments, unlocking new resources and technologies",
+      "requirements": {
+        "stone": 70,
+        "glass": 40,
+        "knowledge": 100
+      },
+      "craftingTime": 540000,
+      "puzzle": "Bubbling flasks and smoky air, I seek truths both dark and fair.",
+      "puzzleAnswer": "alchemist's laboratory",
+      "effect": {
+        "resourceDiscoveryRate": 0.1,
+        "technologyAdvancementMultiplier": 1.3
+      }
+    },
+    {
+      "id": "shipyard",
+      "name": "Shipyard",
+      "description": "Builds ships for fishing and trade, opening up new opportunities",
+      "requirements": {
+        "wood": 100,
+        "fiber": 60,
+        "ore": 40
+      },
+      "craftingTime": 600000,
+      "puzzle": "By river or sea, my creations sail free, bringing wealth from lands across the sea.",
+      "puzzleAnswer": "shipyard",
+      "effect": {
+        "fishingEfficiencyMultiplier": 2,
+        "tradeRouteCapacity": 3
+      }
+    },
+    {
+      "id": "university",
+      "name": "University",
+      "description": "Greatly accelerates research and unlocks advanced technologies",
+      "requirements": {
+        "stone": 120,
+        "wood": 80,
+        "knowledge": 150
+      },
+      "craftingTime": 720000,
+      "puzzle": "Halls of learning, minds alight, I push the boundaries of wrong and right.",
+      "puzzleAnswer": "university",
+      "effect": {
+        "researchSpeedMultiplier": 3,
+        "advancedTechUnlockRate": 0.2
+      }
+    },
+    {
+      "id": "monument",
+      "name": "Monument",
+      "description": "Increases population happiness and attracts new settlers",
+      "requirements": {
+        "stone": 200,
+        "ore": 100,
+        "knowledge": 120
+      },
+      "craftingTime": 900000,
+      "puzzle": "Towering high for all to see, I mark achievements of our society.",
+      "puzzleAnswer": "monument",
+      "effect": {
+        "populationHappinessMultiplier": 1.5,
+        "immigrationRate": 0.1
+      }
+    }
+  ]
+}

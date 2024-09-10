@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Survival and Civilization Rebuilder</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <h1>Advanced Survival and Civilization Rebuilder</h1>
+        <div id="day-night-cycle">
+            Day: <span id="day-count">1</span> | Time: <span id="time-emoji">🌅</span> <span id="time-display">00:00</span>
+        </div>
+        <div id="resources">
+            <p>Food: <span id="food">100</span> / 100</p>
+            <progress id="food-bar" value="100" max="100"></progress>
+            <p>Water: <span id="water">100</span> / 100</p>
+            <progress id="water-bar" value="100" max="100"></progress>
+            <p>Wood: <span id="wood">0</span></p>
+            <p>Stone: <span id="stone">0</span></p>
+            <p>Knowledge: <span id="knowledge">0</span></p>
+        </div>
+        <div id="population">
+            <p>Population: <span id="population-count">1</span></p>
+            <p>Unassigned: <span id="unassigned-population">0</span></p>
+        </div>
+        <div id="actions">
+            <div class="gather-action">
+                <button id="gather-wood">Gather Wood</button>
+                <div class="progress-bar-container">
+                    <div id="wood-progress-bar" class="progress-bar"></div>
+                </div>
+            </div>
+            <div class="gather-action">
+                <button id="gather-stone">Gather Stone</button>
+                <div class="progress-bar-container">
+                    <div id="stone-progress-bar" class="progress-bar"></div>
+                </div>
+            </div>
+            <div class="gather-action">
+                <button id="gather-food">Gather Food</button>
+                <div class="progress-bar-container">
+                    <div id="food-progress-bar" class="progress-bar"></div>
+                </div>
+            </div>
+            <div class="gather-action">
+                <button id="gather-water">Gather Water</button>
+                <div class="progress-bar-container">
+                    <div id="water-progress-bar" class="progress-bar"></div>
+                </div>
+            </div>
+            <button id="study">Study the Book</button>
+        </div>
+        <div id="crafting">
+            <h2>Crafting</h2>
+            <div id="craftable-items"></div>
+            <h3>Crafting Queue</h3>
+            <div id="crafting-queue"></div>
+        </div>
+        <div id="automation">
+            <h2>Automation</h2>
+            <div id="automation-controls"></div>
+        </div>
+        <div id="log">
+            <h2>Event Log</h2>
+            <ul id="event-log"></ul>
+        </div>
+    </div>
+
+    <div id="puzzle-popup" class="popup">
+        <h2 id="puzzle-title"></h2>
+        <p id="puzzle-description"></p>
+        <input type="text" id="puzzle-answer" placeholder="Enter your answer">
+        <button id="submit-puzzle">Submit Answer</button>
+    </div>
+
+    <script type="module" src="game.js"></script>
+</body>
+</html>
