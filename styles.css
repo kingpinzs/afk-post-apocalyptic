@@ -311,3 +311,54 @@ progress::-moz-progress-bar {
     border-top: 1px solid #7f8c8d;
     margin: 20px 0;
 }
+#actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two columns for better organization */
+    gap: 15px;
+    padding: 15px;
+    background-color: #34495e;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.action-card {
+    display: flex;
+    align-items: center;
+    background-color: #e74c3c;
+    border-radius: 8px;
+    padding: 10px;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, background-color 0.3s;
+}
+
+.action-card:hover {
+    background-color: #d35400;
+    transform: translateY(-5px);
+}
+
+.action-card:active {
+    transform: translateY(0);
+}
+
+.action-text {
+    margin: 0;
+    font-size: 1.1em;
+    flex-grow: 1;
+}
+
+.progress-bar-container {
+    flex-grow: 1;
+    height: 15px;
+    background-color: #2c3e50;
+    margin-left: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: #27ae60;
+    width: 0%;
+    transition: width 0.3s linear;
+}
