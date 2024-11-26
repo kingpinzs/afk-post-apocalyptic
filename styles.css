@@ -253,4 +253,54 @@ progress::-moz-progress-bar {
     font-size: 1.2em;
     color: #ecf0f1;
 }
+.population-info {
+    position: relative;
+    cursor: pointer;
+}
+
+.population-info:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #34495e;
+    color: #ecf0f1;
+    padding: 5px;
+    border-radius: 5px;
+    white-space: nowrap;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.population-info:hover::after {
+    opacity: 1;
+}
+#working-section {
+    background-color: #3b4a5a;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+#work-progress-container {
+    margin-top: 15px;
+    background-color: #2c3e50;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+#work-progress-bar {
+    height: 20px;
+    width: 0; /* Progress will start from 0 */
+    background-color: #27ae60; /* Green for visibility */
+    transition: width 1s ease-in-out; /* Smooth transition */
+}
+
+#current-work {
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 10px;
+}
 
