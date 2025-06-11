@@ -59,6 +59,7 @@ function gameLoop() {
         checkPopulationGrowth();
         checkForEvents();
     }
+    runAutomation();
     updateActiveEvents();
     checkSurvival();
     updateDisplay();
@@ -90,7 +91,6 @@ function resetGame() {
         stone: 0,
         knowledge: 0,
         population: 1,
-        unassignedPopulation: 0,
         day: 1,
         time: 0,
         craftedItems: {},
