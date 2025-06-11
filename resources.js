@@ -103,11 +103,13 @@ export function produceResources() {
 }
 
 export function checkPopulationGrowth() {
-    if (gameState.food >= CONSTANTS.POPULATION_THRESHOLD && gameState.water >= CONSTANTS.POPULATION_THRESHOLD) {
+    const config = getConfig();
+    const threshold = config.constants.POPULATION_THRESHOLD;
+    if (gameState.food >= threshold && gameState.water >= threshold) {
         gameState.population += 1;
         gameState.availableWorkers += 1;
-        gameState.food -= CONSTANTS.POPULATION_THRESHOLD;
-        gameState.water -= CONSTANTS.POPULATION_THRESHOLD;
+        gameState.food -= threshold;
+        gameState.water -= threshold;
         logEvent("The population has grown! You have a new available worker.");
         updateAutomationControls();
     }
