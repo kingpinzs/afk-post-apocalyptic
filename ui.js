@@ -73,15 +73,33 @@ export function submitUnlockPuzzleAnswer() {
     const config = getConfig();
     const puzzlePopup = document.getElementById('puzzle-popup');
     const puzzleId = puzzlePopup.dataset.puzzleId;
-    const puzzle = config.unlockPuzzles.find(p => p.id === puzzleId);
+    let unlock = null;
+    let correctAnswer = '';
+    let puzzle = config.unlockPuzzles.find(p => p.id === puzzleId);
+    if (puzzle) {
+        unlock = puzzle.unlocks;
+        correctAnswer = puzzle.answer.toLowerCase();
+    } else {
+        const itemId = puzzleId.replace('item_', '');
+        const item = config.items.find(i => i.id === itemId);
+        if (item) {
+            unlock = item.id;
+            correctAnswer = item.puzzleAnswer.toLowerCase();
+        }
+    }
+
     const answer = document.getElementById('puzzle-answer').value.toLowerCase();
 
-    if (answer === puzzle.answer.toLowerCase()) {
-        gameState.unlockedFeatures.push(puzzle.unlocks);
-        logEvent(`Unlocked: ${puzzle.unlocks}!`);
+    if (unlock && answer === correctAnswer) {
+        gameState.unlockedFeatures.push(unlock);
+        logEvent(`Unlocked: ${unlock}!`);
         puzzlePopup.style.display = 'none';
         updateCraftableItems();
     } else {
         alert('Incorrect answer. Try again!');
     }
+}
+
+export function closePuzzlePopup() {
+    document.getElementById('puzzle-popup').style.display = 'none';
 }

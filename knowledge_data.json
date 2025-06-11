@@ -59,6 +59,330 @@
       "puzzle": "I protect you from the elements, a haven from the storm. What am I?",
       "answer": "shelter",
       "unlocks": "shelter"
+    },
+    {
+      "id": "unlock_knife",
+      "puzzle": "I'm sharp and handy, cut and slice, in survival I'm worth my price.",
+      "answer": "knife",
+      "unlocks": "knife"
+    },
+    {
+      "id": "unlock_pickaxe",
+      "puzzle": "I have a point and a rocky mission, breaking through stone is my ambition.",
+      "answer": "pickaxe",
+      "unlocks": "pickaxe"
+    },
+    {
+      "id": "unlock_farm",
+      "puzzle": "With seeds and soil, sun and rain, I help your food to grow again. What am I?",
+      "answer": "farm",
+      "unlocks": "farm"
+    },
+    {
+      "id": "unlock_well",
+      "puzzle": "Deep in the earth, I'm built with care, to bring up something vital and rare. What am I?",
+      "answer": "well",
+      "unlocks": "well"
+    },
+    {
+      "id": "unlock_fishing_rod",
+      "puzzle": "I'm long and thin, with a hook at the end, I help you catch dinner, I'm your aquatic friend.",
+      "answer": "fishing rod",
+      "unlocks": "fishing_rod"
+    },
+    {
+      "id": "unlock_kiln",
+      "puzzle": "I'm hot inside, turning soft to hard, with me you can shape clay, I'm a crafter's card.",
+      "answer": "kiln",
+      "unlocks": "kiln"
+    },
+    {
+      "id": "unlock_loom",
+      "puzzle": "Threads intertwine, as I work back and forth, creating fabric fine, I prove my worth.",
+      "answer": "loom",
+      "unlocks": "loom"
+    },
+    {
+      "id": "unlock_forge",
+      "puzzle": "Fire burns hot, metal bends to will, I shape the future, with hammer and skill.",
+      "answer": "forge",
+      "unlocks": "forge"
+    },
+    {
+      "id": "unlock_herbalist_hut",
+      "puzzle": "Leaves and roots, I know their use, to heal the sick, my knowledge I produce.",
+      "answer": "herbalist's hut",
+      "unlocks": "herbalist_hut"
+    },
+    {
+      "id": "unlock_watchtower",
+      "puzzle": "I stand tall and see far, guarding day and night, from my peak, everything's in sight.",
+      "answer": "watchtower",
+      "unlocks": "watchtower"
+    },
+    {
+      "id": "unlock_storehouse",
+      "puzzle": "Walls and roof, I keep things dry, your goods within, safe and spry.",
+      "answer": "storehouse",
+      "unlocks": "storehouse"
+    },
+    {
+      "id": "unlock_orchard",
+      "puzzle": "Trees in rows, bearing sweet delight, I grow your food, from dawn to night.",
+      "answer": "orchard",
+      "unlocks": "orchard"
+    },
+    {
+      "id": "unlock_tannery",
+      "puzzle": "Hides I treat, with skill and care, turning skin to leather, strong and fair.",
+      "answer": "tannery",
+      "unlocks": "tannery"
+    },
+    {
+      "id": "unlock_library",
+      "puzzle": "Words on pages, knowledge stored, in my halls, wisdom is explored.",
+      "answer": "library",
+      "unlocks": "library"
+    },
+    {
+      "id": "unlock_pottery_workshop",
+      "puzzle": "With wheel and hand, I shape the clay, creating vessels for use each day.",
+      "answer": "pottery workshop",
+      "unlocks": "pottery_workshop"
+    },
+    {
+      "id": "unlock_hunting_lodge",
+      "puzzle": "In forest deep, I track and stalk, to bring back meat, on which we'll not balk.",
+      "answer": "hunting lodge",
+      "unlocks": "hunting_lodge"
+    },
+    {
+      "id": "unlock_quarry",
+      "puzzle": "I dig deep into the mountain's heart, to bring forth riches, stone and ore to impart.",
+      "answer": "quarry",
+      "unlocks": "quarry"
+    },
+    {
+      "id": "unlock_weaving_mill",
+      "puzzle": "Shuttles fly, threads entwine, creating fabric, line by line.",
+      "answer": "weaving mill",
+      "unlocks": "weaving_mill"
+    },
+    {
+      "id": "unlock_apothecary",
+      "puzzle": "Potions and tinctures, I brew with care, to cure the sick and health repair.",
+      "answer": "apothecary",
+      "unlocks": "apothecary"
+    },
+    {
+      "id": "unlock_marketplace",
+      "puzzle": "Goods are bought and sold with glee, in this place of commerce and trade you'll see.",
+      "answer": "marketplace",
+      "unlocks": "marketplace"
+    },
+    {
+      "id": "unlock_sawmill",
+      "puzzle": "Blades whir and timber falls, transforming trees to planks for walls.",
+      "answer": "sawmill",
+      "unlocks": "sawmill"
+    },
+    {
+      "id": "unlock_school",
+      "puzzle": "Young minds gather, to learn and grow, in this place of learning, knowledge to sow.",
+      "answer": "school",
+      "unlocks": "school"
+    },
+    {
+      "id": "unlock_windmill",
+      "puzzle": "My arms reach high, catching the breeze, grinding the grain with the greatest of ease.",
+      "answer": "windmill",
+      "unlocks": "windmill"
+    },
+    {
+      "id": "unlock_observatory",
+      "puzzle": "Gazing at stars, secrets unfold, in this tower of science, discoveries bold.",
+      "answer": "observatory",
+      "unlocks": "observatory"
+    },
+    {
+      "id": "unlock_glassworks",
+      "puzzle": "From sand to liquid, then cooled with care, I create clear panes beyond compare.",
+      "answer": "glassworks",
+      "unlocks": "glassworks"
+    },
+    {
+      "id": "unlock_brewery",
+      "puzzle": "Bubbling vats and aging casks, I create drinks for all tasks.",
+      "answer": "brewery",
+      "unlocks": "brewery"
+    },
+    {
+      "id": "unlock_blacksmith",
+      "puzzle": "With hammer and anvil, I shape the ore, creating tools not seen before.",
+      "answer": "blacksmith",
+      "unlocks": "blacksmith"
+    },
+    {
+      "id": "unlock_granary",
+      "puzzle": "Tall and round, I stand with pride, keeping the harvest safe inside.",
+      "answer": "granary",
+      "unlocks": "granary"
+    },
+    {
+      "id": "unlock_textile_mill",
+      "puzzle": "Spinning wheels and clattering looms, I weave fine cloth in many rooms.",
+      "answer": "textile mill",
+      "unlocks": "textile_mill"
+    },
+    {
+      "id": "unlock_scriptorium",
+      "puzzle": "Quills scratch and pages turn, preserving knowledge for all to learn.",
+      "answer": "scriptorium",
+      "unlocks": "scriptorium"
+    },
+    {
+      "id": "unlock_alchemist_lab",
+      "puzzle": "Bubbling flasks and smoky air, I seek truths both dark and fair.",
+      "answer": "alchemist's laboratory",
+      "unlocks": "alchemist_lab"
+    },
+    {
+      "id": "unlock_shipyard",
+      "puzzle": "By river or sea, my creations sail free, bringing wealth from lands across the sea.",
+      "answer": "shipyard",
+      "unlocks": "shipyard"
+    },
+    {
+      "id": "unlock_university",
+      "puzzle": "Halls of learning, minds alight, I push the boundaries of wrong and right.",
+      "answer": "university",
+      "unlocks": "university"
+    },
+    {
+      "id": "unlock_monument",
+      "puzzle": "Towering high for all to see, I mark achievements of our society.",
+      "answer": "monument",
+      "unlocks": "monument"
+    },
+    {
+      "id": "unlock_irrigation_system",
+      "puzzle": "Channels and pipes, I guide the flow, helping crops to thrive and grow.",
+      "answer": "irrigation system",
+      "unlocks": "irrigation_system"
+    },
+    {
+      "id": "unlock_lighthouse",
+      "puzzle": "Tall I stand by waters deep, guiding ships while others sleep.",
+      "answer": "lighthouse",
+      "unlocks": "lighthouse"
+    },
+    {
+      "id": "unlock_paper_mill",
+      "puzzle": "Pulp and press, sheets so fine, on me your words will soon align.",
+      "answer": "paper mill",
+      "unlocks": "paper_mill"
+    },
+    {
+      "id": "unlock_mint",
+      "puzzle": "Metal discs I stamp with care, creating wealth beyond compare.",
+      "answer": "mint",
+      "unlocks": "mint"
+    },
+    {
+      "id": "unlock_aqueduct",
+      "puzzle": "Arches high, water flows, bringing life where'er it goes.",
+      "answer": "aqueduct",
+      "unlocks": "aqueduct"
+    },
+    {
+      "id": "unlock_theater",
+      "puzzle": "On my stage, stories unfold, entertaining young and old.",
+      "answer": "theater",
+      "unlocks": "theater"
+    },
+    {
+      "id": "unlock_telescope",
+      "puzzle": "Through me gaze at stars so far, unlocking secrets of what they are.",
+      "answer": "telescope",
+      "unlocks": "telescope"
+    },
+    {
+      "id": "unlock_printing_press",
+      "puzzle": "Letters arranged in lines so neat, I make copies quick and fleet.",
+      "answer": "printing press",
+      "unlocks": "printing_press"
+    },
+    {
+      "id": "unlock_music_hall",
+      "puzzle": "Melodies and harmonies resound, bringing joy to all around.",
+      "answer": "music hall",
+      "unlocks": "music_hall"
+    },
+    {
+      "id": "unlock_bank",
+      "puzzle": "Gold and silver, notes and coins, I guard them well in secure loins.",
+      "answer": "bank",
+      "unlocks": "bank"
+    },
+    {
+      "id": "unlock_courthouse",
+      "puzzle": "Justice served with balanced scales, here the law never fails.",
+      "answer": "courthouse",
+      "unlocks": "courthouse"
+    },
+    {
+      "id": "unlock_factory",
+      "puzzle": "Wheels turn and belts convey, producing goods day by day.",
+      "answer": "factory",
+      "unlocks": "factory"
+    },
+    {
+      "id": "unlock_hospital",
+      "puzzle": "In my wards, the sick find care, healing hands and knowledge rare.",
+      "answer": "hospital",
+      "unlocks": "hospital"
+    },
+    {
+      "id": "unlock_power_plant",
+      "puzzle": "Turbines spin with mighty force, providing power from nature's source.",
+      "answer": "power plant",
+      "unlocks": "power_plant"
+    },
+    {
+      "id": "unlock_railway",
+      "puzzle": "On iron rails I swiftly glide, carrying goods from side to side.",
+      "answer": "railway",
+      "unlocks": "railway"
+    },
+    {
+      "id": "unlock_stock_exchange",
+      "puzzle": "Bulls and bears, they come and go, as numbers rise and fall in show.",
+      "answer": "stock exchange",
+      "unlocks": "stock_exchange"
+    },
+    {
+      "id": "unlock_assembly_line",
+      "puzzle": "Step by step, piece by piece, production speed I will increase.",
+      "answer": "assembly line",
+      "unlocks": "assembly_line"
+    },
+    {
+      "id": "unlock_research_lab",
+      "puzzle": "In test tubes and under microscope, I seek answers and foster hope.",
+      "answer": "research laboratory",
+      "unlocks": "research_lab"
+    },
+    {
+      "id": "unlock_metropolis",
+      "puzzle": "Towers high and streets so wide, a bustling hub where millions reside.",
+      "answer": "metropolis",
+      "unlocks": "metropolis"
+    },
+    {
+      "id": "unlock_space_program",
+      "puzzle": "Beyond the sky, to stars we fly, in metal birds that pierce the sky.",
+      "answer": "space program",
+      "unlocks": "space_program"
     }
   ],
   "events": [

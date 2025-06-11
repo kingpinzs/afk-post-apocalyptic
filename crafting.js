@@ -27,7 +27,7 @@ export function updateCraftableItems() {
     });
 }
 
-function areDependenciesMet(item) {
+export function areDependenciesMet(item) {
     return item.dependencies.every(depId => gameState.craftedItems[depId]);
 }
 
@@ -73,7 +73,8 @@ export function processQueue() {
 }
 
 function completeCrafting(item) {
-    gameState.craftedItems[item.id] = true;
+    // Store the full item data so other systems can access its effects
+    gameState.craftedItems[item.id] = item;
     logEvent(`Crafted ${item.name}!`);
     
     gameState.availableWorkers++;
