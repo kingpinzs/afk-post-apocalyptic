@@ -37,9 +37,11 @@ function startCrafting(item) {
         return;
     }
 
-    // Deduct resources
+    // Deduct resources except knowledge, which is not consumed
     Object.entries(item.requirements).forEach(([resource, amount]) => {
-        gameState[resource] -= amount;
+        if (resource !== 'knowledge') {
+            gameState[resource] -= amount;
+        }
     });
 
     gameState.availableWorkers--;
@@ -113,8 +115,12 @@ function updateCraftingQueue() {
 
 
 function craftItem(item) {
+    // Only deduct expendable resources. Knowledge acts as a threshold
+    // and should never decrease.
     Object.entries(item.requirements).forEach(([resource, amount]) => {
-        gameState[resource] -= amount;
+        if (resource !== 'knowledge') {
+            gameState[resource] -= amount;
+        }
     });
     gameState.craftedItems[item.id] = item;
     logEvent(`Crafted ${item.name}!`);
