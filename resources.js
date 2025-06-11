@@ -1,7 +1,7 @@
 import { gameState, getConfig } from './gameState.js';
 import { logEvent, updateDisplay, updateWorkingSection, showUnlockPuzzle } from './ui.js';
 import { updateAutomationControls } from './automation.js';
-import { updateCraftableItems } from './crafting.js';
+import { updateCraftableItems, areDependenciesMet } from './crafting.js';
 
 
 export function gatherResource(resource) {
@@ -115,6 +115,42 @@ export function checkPopulationGrowth() {
     }
 }
 
+function getKnowledgeGainMultiplier() {
+    return Object.values(gameState.craftedItems).reduce((mult, item) => {
+        if (item.effect && item.effect.knowledgeGenerationMultiplier) {
+            mult *= item.effect.knowledgeGenerationMultiplier;
+        }
+        return mult;
+    }, 1);
+}
+
+function getResearchSpeedMultiplier() {
+    return Object.values(gameState.craftedItems).reduce((mult, item) => {
+        if (item.effect && item.effect.researchSpeedMultiplier) {
+            mult *= item.effect.researchSpeedMultiplier;
+        }
+        return mult;
+    }, 1);
+}
+
+function getNextUnlockPuzzle() {
+    const config = getConfig();
+    const puzzle = config.unlockPuzzles.find(p => !gameState.unlockedFeatures.includes(p.unlocks));
+    if (puzzle) {
+        return puzzle;
+    }
+    const nextItem = config.items.find(item => !gameState.unlockedFeatures.includes(item.id) && areDependenciesMet(item));
+    if (nextItem) {
+        return {
+            id: `item_${nextItem.id}`,
+            puzzle: nextItem.puzzle,
+            answer: nextItem.puzzleAnswer,
+            unlocks: nextItem.id
+        };
+    }
+    return null;
+}
+
 export function study() {
     if (gameState.availableWorkers === 0) {
         logEvent("No available workers to study.");
@@ -125,18 +161,20 @@ export function study() {
     gameState.currentWork = { type: 'studying' };
     updateWorkingSection();
 
+    const duration = 5000 / getResearchSpeedMultiplier();
+
     setTimeout(() => {
-        gameState.knowledge += 1;
-        logEvent('Studied the book. Gained 1 knowledge point.');
+        const knowledgeGain = 1 * getKnowledgeGainMultiplier();
+        gameState.knowledge += knowledgeGain;
+        logEvent(`Studied the book. Gained ${knowledgeGain.toFixed(1)} knowledge point${knowledgeGain !== 1 ? 's' : ''}.`);
         gameState.availableWorkers++;
         gameState.currentWork = null;
         updateDisplay();
-        
+
         // Check if we should show an unlock puzzle
-        const config = getConfig();
-        const nextUnlock = config.unlockPuzzles.find(puzzle => !gameState.unlockedFeatures.includes(puzzle.unlocks));
+        const nextUnlock = getNextUnlockPuzzle();
         if (nextUnlock) {
             showUnlockPuzzle(nextUnlock);
         }
-    }, 5000); // 5 seconds to study
+    }, duration); // Study time affected by research speed
 }

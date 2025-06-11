@@ -1,5 +1,5 @@
 import { gameState, loadGameConfig, getConfig } from './gameState.js';
-import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer } from './ui.js';
+import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup } from './ui.js';
 import { gatherResource, consumeResources, produceResources, checkPopulationGrowth, study } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
@@ -19,6 +19,7 @@ async function initializeGame() {
     // });
     document.getElementById('study').addEventListener('click', study);
     document.getElementById('submit-puzzle').addEventListener('click', submitUnlockPuzzleAnswer);
+    document.getElementById('close-puzzle').addEventListener('click', closePuzzlePopup);
 
     // Start game loop
     setInterval(gameLoop, 1000); // Update every second
