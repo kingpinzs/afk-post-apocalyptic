@@ -49,6 +49,12 @@
       "unlocks": "crafting"
     },
     {
+      "id": "unlock_fire",
+      "puzzle": "I dance and glow, bringing warmth and light through the night. What am I?",
+      "answer": "fire",
+      "unlocks": "fire"
+    },
+    {
       "id": "unlock_axe",
       "puzzle": "I have a head and a handle that fits, to chop and split I'm hard to beat. What am I?",
       "answer": "axe",
@@ -437,6 +443,24 @@
   ],
   "items": [
     {
+      "id": "fire",
+      "name": "Fire",
+      "description": "Provides heat and light, enabling cooking and survival",
+      "history": "Controlled fire marked a key turning point, allowing early humans warmth, protection and cooked food.",
+      "craftingInfo": "Gather dry tinder and wood, then create a spark with flint stones or friction to ignite a lasting flame.",
+      "requirements": {
+        "wood": 2,
+        "knowledge": 1
+      },
+      "craftingTime": 15000,
+      "puzzle": "I dance and glow, giving warmth in the night. What am I?",
+      "puzzleAnswer": "fire",
+      "effect": {
+        "cookingUnlocked": true
+      },
+      "dependencies": []
+    },
+    {
       "id": "knife",
       "name": "Knife",
       "description": "A basic tool for various tasks",
@@ -519,6 +543,8 @@
       "id": "farm",
       "name": "Farm",
       "description": "Produces food over time",
+      "history": "Early agriculture let humans settle and cultivate crops instead of roaming as hunter-gatherers.",
+      "craftingInfo": "Clear fertile land, till the soil and plant seeds in rows. Water and tend regularly for growth.",
       "requirements": {
         "wood": 15,
         "stone": 10,
@@ -536,6 +562,8 @@
       "id": "well",
       "name": "Well",
       "description": "Produces water over time",
+      "history": "Wells have been dug since ancient times to reach groundwater and provide reliable supplies.",
+      "craftingInfo": "Dig deep and line the shaft with stone or wood to prevent collapse. Use a bucket or pulley to draw water.",
       "requirements": {
         "wood": 5,
         "stone": 20,
@@ -553,6 +581,8 @@
       "id": "fishing_rod",
       "name": "Fishing Rod",
       "description": "Allows fishing, providing a new food source",
+      "history": "Simple rods with line and hook have helped humans harvest fish from rivers and seas for millennia.",
+      "craftingInfo": "Tie strong fiber to a flexible branch and attach a small bone or metal hook at the end to catch fish.",
       "requirements": {
         "wood": 5,
         "fiber": 3
@@ -569,6 +599,8 @@
       "id": "kiln",
       "name": "Kiln",
       "description": "Allows creation of bricks and pottery",
+      "history": "Early potters used simple kilns to harden clay vessels, paving the way for durable storage and art.",
+      "craftingInfo": "Build an insulated chamber of stone or clay and maintain a hot fire inside to bake items placed within.",
       "requirements": {
         "stone": 20,
         "clay": 10
@@ -585,6 +617,8 @@
       "id": "loom",
       "name": "Loom",
       "description": "Allows creation of cloth for advanced crafting",
+      "history": "Looms revolutionized textile production in ancient civilizations by speeding up weaving.",
+      "craftingInfo": "Create a frame that holds warp threads under tension and pass a shuttle carrying weft threads over and under them.",
       "requirements": {
         "wood": 15,
         "fiber": 10
@@ -601,6 +635,8 @@
       "id": "forge",
       "name": "Forge",
       "description": "Allows metal working for advanced tools",
+      "history": "The development of forges enabled smiths to work iron and ushered in stronger tools and weapons.",
+      "craftingInfo": "Construct a hearth with bellows to intensify heat. Place metal inside until it glows and hammer it into shape.",
       "requirements": {
         "stone": 30,
         "ore": 20,
@@ -618,6 +654,8 @@
       "id": "herbalist_hut",
       "name": "Herbalist's Hut",
       "description": "Produces medicine, improving population health",
+      "history": "Traditional healers gathered plants in simple huts where remedies were prepared for the sick.",
+      "craftingInfo": "Build a small shelter with drying racks for herbs and a sturdy table to mix concoctions.",
       "requirements": {
         "wood": 20,
         "herbs": 15,
@@ -635,6 +673,8 @@
       "id": "watchtower",
       "name": "Watchtower",
       "description": "Improves resource discovery rate",
+      "history": "From ancient walls to medieval forts, watchtowers helped communities spot danger approaching from afar.",
+      "craftingInfo": "Erect a tall framework of wood or stone with a sheltered platform at the top for lookouts.",
       "requirements": {
         "wood": 25,
         "stone": 15
@@ -651,6 +691,8 @@
       "id": "storehouse",
       "name": "Storehouse",
       "description": "Increases resource storage capacity",
+      "history": "Communities built storehouses to keep food and goods dry and safe from animals and weather.",
+      "craftingInfo": "Construct sturdy walls and a solid roof, then add shelves or bins inside for organized storage.",
       "requirements": {
         "wood": 30,
         "stone": 20
@@ -667,6 +709,8 @@
       "id": "orchard",
       "name": "Orchard",
       "description": "Produces fruit over time",
+      "history": "Cultivated orchards allowed communities to harvest sweet produce season after season.",
+      "craftingInfo": "Plant young fruit trees in rows with space to grow and provide regular water and pruning.",
       "requirements": {
         "wood": 25,
         "water": 20,
@@ -684,6 +728,8 @@
       "id": "tannery",
       "name": "Tannery",
       "description": "Allows creation of leather for advanced crafting",
+      "history": "The process of tanning hides provided durable leather for clothing and equipment throughout history.",
+      "craftingInfo": "Soak animal hides, scrape them clean and treat with tannins from bark before stretching to dry.",
       "requirements": {
         "wood": 20,
         "stone": 15,
@@ -701,6 +747,8 @@
       "id": "library",
       "name": "Library",
       "description": "Increases knowledge generation",
+      "history": "Libraries preserved writings and allowed scholars to share ideas from ancient times onward.",
+      "craftingInfo": "Construct shelves to house scrolls and books and provide a quiet space for study and copying texts.",
       "requirements": {
         "wood": 30,
         "stone": 20,
