@@ -10,19 +10,19 @@ export function initBook() {
     renderPage();
 }
 
-function getItems() {
+function getPuzzles() {
     const config = getConfig();
-    return config.items;
+    return config.unlockPuzzles;
 }
 
-function getCurrentItem() {
-    const items = getItems();
-    return items[gameState.currentBookIndex] || null;
+function getCurrentPuzzle() {
+    const puzzles = getPuzzles();
+    return puzzles[gameState.currentBookIndex] || null;
 }
 
 export function renderPage() {
-    const items = getItems();
-    const item = getCurrentItem();
+    const puzzles = getPuzzles();
+    const puzzle = getCurrentPuzzle();
     const questionDiv = document.getElementById('book-question');
     const infoDiv = document.getElementById('book-item-info');
     const prevBtn = document.getElementById('book-prev');
@@ -30,45 +30,52 @@ export function renderPage() {
 
     prevBtn.disabled = gameState.currentBookIndex === 0;
 
-    if (!item) {
+    if (!puzzle) {
         questionDiv.style.display = 'none';
         infoDiv.style.display = 'block';
         infoDiv.innerHTML = '<p>All pages unlocked!</p>';
         nextBtn.disabled = true;
         return;
     }
-    if (gameState.unlockedFeatures.includes(item.id)) {
+    if (gameState.unlockedFeatures.includes(puzzle.unlocks)) {
         questionDiv.style.display = 'none';
         infoDiv.style.display = 'block';
-        infoDiv.innerHTML = `<h3>${item.name}</h3><p>${item.description}</p>`;
-        if (item.history) {
-            infoDiv.innerHTML += `<p><strong>History:</strong> ${item.history}</p>`;
+        const item = getConfig().items.find(i => i.id === puzzle.unlocks);
+        if (item) {
+            infoDiv.innerHTML = `<h3>${item.name}</h3><p>${item.description}</p>`;
+            if (item.history) {
+                infoDiv.innerHTML += `<p><strong>History:</strong> ${item.history}</p>`;
+            }
+            if (item.craftingInfo) {
+                infoDiv.innerHTML += `<p><strong>Real World Crafting:</strong> ${item.craftingInfo}</p>`;
+            }
+            if (item.effect) {
+                const list = Object.entries(item.effect)
+                    .map(([k,v]) => `<div>${k}: ${v}</div>`)
+                    .join('');
+                if (list) infoDiv.innerHTML += list;
+            }
+        } else {
+            infoDiv.innerHTML = `<p>Unlocked feature: ${puzzle.unlocks}</p>`;
         }
-        if (item.craftingInfo) {
-            infoDiv.innerHTML += `<p><strong>Real World Crafting:</strong> ${item.craftingInfo}</p>`;
-        }
-        if (item.effect) {
-            const list = Object.entries(item.effect)
-                .map(([k,v]) => `<div>${k}: ${v}</div>`)
-                .join('');
-            if (list) infoDiv.innerHTML += list;
-        }
-        nextBtn.disabled = gameState.currentBookIndex >= items.length - 1;
+        nextBtn.disabled = gameState.currentBookIndex >= puzzles.length - 1;
     } else {
         infoDiv.style.display = 'none';
         questionDiv.style.display = 'block';
-        document.getElementById('book-puzzle-text').textContent = item.puzzle;
+        document.getElementById('book-puzzle-text').textContent = puzzle.puzzle;
         document.getElementById('book-answer').value = '';
         nextBtn.disabled = true;
     }
 }
 
 function submitAnswer() {
-    const item = getCurrentItem();
-    if (!item) return;
+    const puzzle = getCurrentPuzzle();
+    if (!puzzle) return;
     const answer = document.getElementById('book-answer').value.toLowerCase().trim();
-    if (answer === item.puzzleAnswer.toLowerCase()) {
-        gameState.unlockedFeatures.push(item.id);
+    if (answer === puzzle.answer.toLowerCase()) {
+        if (!gameState.unlockedFeatures.includes(puzzle.unlocks)) {
+            gameState.unlockedFeatures.push(puzzle.unlocks);
+        }
         gameState.knowledge += 1;
         updateDisplay();
         updateCraftableItems();
@@ -79,8 +86,8 @@ function submitAnswer() {
 }
 
 function nextPage() {
-    const items = getItems();
-    if (gameState.currentBookIndex < items.length - 1) {
+    const puzzles = getPuzzles();
+    if (gameState.currentBookIndex < puzzles.length - 1) {
         gameState.currentBookIndex++;
         renderPage();
     }
