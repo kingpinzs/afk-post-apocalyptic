@@ -13,15 +13,26 @@
 <body>
     <div id="game-container">
         <h1>Advanced Survival and Civilization Rebuilder</h1>
-        <div id="day-night-cycle">
-            Day: <span id="day-count">1</span> | Time: <span id="time-emoji">🌅</span> <span id="time-display">00:00</span>
-        </div>
-        <div id="resources">
-            <div class="resource-item">
-                <i class="fas fa-utensils"></i>
-                <span id="food">100</span>
-                <progress id="food-bar" value="100" max="100"></progress>
+        <div id="top-section">
+            <div id="day-night-cycle">
+                <span>Day: <span id="day-count">1</span> | Time: <span id="time-emoji">🌅</span> <span id="time-display">00:00</span></span>
+                <div id="population">
+                    <div class="population-info">
+                        <i class="fas fa-users"></i>
+                        <p>Population: <span id="population-count">1</span></p>
+                    </div>
+                    <div class="population-info">
+                        <i class="fas fa-user-tie"></i>
+                        <p>Available Workers: <span id="available-workers">1</span></p>
+                    </div>
+                </div>
             </div>
+            <div id="resources">
+                <div class="resource-item">
+                    <i class="fas fa-utensils"></i>
+                    <span id="food">100</span>
+                    <progress id="food-bar" value="100" max="100"></progress>
+                </div>
             <div class="resource-item">
                 <i class="fas fa-water"></i>
                 <span id="water">100</span>
@@ -40,24 +51,8 @@
                 <span id="knowledge">2</span>
             </div>
         </div>
-        <div id="population">
-            <div class="population-info">
-                <i class="fas fa-users"></i>
-                <p>Population: <span id="population-count">1</span></p>
-            </div>
-            <div class="population-info">
-                <i class="fas fa-user-tie"></i>
-                <p>Available Workers: <span id="available-workers">1</span></p>
-            </div>
         </div>
         <div class="divider"></div>
-        <div id="working-section">
-            <h3>Current Work</h3>
-            <p id="current-work">Not working</p>
-            <div id="work-progress-container" class="progress-bar-container">
-                <div id="work-progress-bar" class="progress-bar"></div>
-            </div>
-        </div>
         <div id="actions" class="game-section game-section-active">
              <!-- Gathering buttons will be dynamically inserted here -->
             <button id="study">Study the Book</button>
