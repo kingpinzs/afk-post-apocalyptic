@@ -79,6 +79,7 @@ function completeGathering(resource) {
     updateDisplay();
     updateCraftableItems();
     updateWorkingSection();
+    checkPopulationGrowth();
 }
 
 
@@ -107,6 +108,8 @@ export function produceResources() {
     }
     gameState.food = Math.min(gameState.food, 100);
     gameState.water = Math.min(gameState.water, 100);
+    checkPopulationGrowth();
+    updateDisplay();
 }
 
 export function checkPopulationGrowth() {
@@ -118,6 +121,7 @@ export function checkPopulationGrowth() {
         gameState.water -= threshold;
         logEvent("Your settlement has grown! Train newcomers to put them to work.");
         updateAutomationControls();
+        updateDisplay();
     }
 }
 
