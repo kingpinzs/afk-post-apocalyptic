@@ -440,6 +440,8 @@
       "id": "knife",
       "name": "Knife",
       "description": "A basic tool for various tasks",
+      "history": "Knives are among humanity's oldest tools, first fashioned from flint or obsidian in the Stone Age.",
+      "craftingInfo": "Shape a sharp stone or metal blade and secure it to a sturdy handle using fiber or sinew.",
       "requirements": {
         "stone": 5,
         "wood": 3,
@@ -457,6 +459,8 @@
       "id": "axe",
       "name": "Axe",
       "description": "Improves wood gathering efficiency",
+      "history": "Axes evolved from simple stone tools into metal-headed implements during the Bronze Age.",
+      "craftingInfo": "Bind a sharpened stone or metal head to a wooden handle, ensuring the head is secure for repeated swings.",
       "requirements": {
         "wood": 5,
         "stone": 5,
@@ -474,6 +478,8 @@
       "id": "shelter",
       "name": "Shelter",
       "description": "Reduces resource consumption",
+      "history": "From simple caves to wooden huts, shelters have protected humans from the elements since prehistory.",
+      "craftingInfo": "Construct a basic frame from branches or wood and cover it with thatch, hide, or cloth to keep out the weather.",
       "requirements": {
         "wood": 10,
         "stone": 5,
@@ -491,6 +497,8 @@
       "id": "pickaxe",
       "name": "Pickaxe",
       "description": "Allows efficient stone and ore gathering",
+      "history": "Metal pickaxes enabled miners to extract valuable minerals from rock, a cornerstone of ancient industry.",
+      "craftingInfo": "Forge a pointed metal head and attach it firmly to a wooden handle to concentrate force on a small area.",
       "requirements": {
         "wood": 8,
         "stone": 15,

@@ -3,6 +3,7 @@ import { updateDisplay } from './ui.js';
 import { updateCraftableItems } from './crafting.js';
 
 export function initBook() {
+    gameState.currentBookIndex = 0;
     document.getElementById('book-submit').addEventListener('click', submitAnswer);
     document.getElementById('book-next').addEventListener('click', nextPage);
     document.getElementById('book-prev').addEventListener('click', prevPage);
@@ -40,6 +41,12 @@ export function renderPage() {
         questionDiv.style.display = 'none';
         infoDiv.style.display = 'block';
         infoDiv.innerHTML = `<h3>${item.name}</h3><p>${item.description}</p>`;
+        if (item.history) {
+            infoDiv.innerHTML += `<p><strong>History:</strong> ${item.history}</p>`;
+        }
+        if (item.craftingInfo) {
+            infoDiv.innerHTML += `<p><strong>Real World Crafting:</strong> ${item.craftingInfo}</p>`;
+        }
         if (item.effect) {
             const list = Object.entries(item.effect)
                 .map(([k,v]) => `<div>${k}: ${v}</div>`)
