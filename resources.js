@@ -1,4 +1,4 @@
-import { gameState, getConfig } from './gameState.js';
+import { gameState, getConfig, adjustAvailableWorkers } from './gameState.js';
 import { logEvent, updateDisplay, updateWorkingSection, showUnlockPuzzle } from './ui.js';
 import { updateAutomationControls } from './automation.js';
 import { updateCraftableItems, areDependenciesMet } from './crafting.js';
@@ -29,7 +29,7 @@ export function gatherResource(resource) {
     if (button.disabled) return;  // If already gathering, do nothing
     
     button.disabled = true;
-    gameState.availableWorkers--;
+    adjustAvailableWorkers(-1);
     gameState.currentWork = { type: 'gathering', resource: resource };
     updateWorkingSection();
 
@@ -51,7 +51,7 @@ export function gatherResource(resource) {
     }, interval);
 }
 
-function getGatheringTime(resource) {
+export function getGatheringTime(resource) {
     const config = getConfig();
     let time = config.gatheringTimes[resource];
     time /= getGatheringMultiplier(resource);
@@ -59,6 +59,10 @@ function getGatheringTime(resource) {
     time /= (gameState.gatheringEfficiency || 1);
     // You can add more modifiers here based on other upgrades or skills
     return time;
+}
+
+export function getGatheringRate(resource) {
+    return getGatheringMultiplier(resource) / (getGatheringTime(resource) / 1000);
 }
 
 function completeGathering(resource) {
@@ -72,8 +76,8 @@ function completeGathering(resource) {
 
     gameState[resource] += amount;
     logEvent(`Gathered ${amount} ${resource}.`);
-    
-    gameState.availableWorkers++;
+
+    adjustAvailableWorkers(1);
     gameState.currentWork = null;
     
     updateDisplay();
@@ -136,7 +140,7 @@ export function trainWorker() {
     }
     gameState.knowledge -= 1;
     gameState.workers += 1;
-    gameState.availableWorkers += 1;
+    adjustAvailableWorkers(1);
     logEvent("Trained a new worker.");
     updateAutomationControls();
     updateDisplay();
@@ -184,7 +188,7 @@ export function study() {
         return;
     }
 
-    gameState.availableWorkers--;
+    adjustAvailableWorkers(-1);
     gameState.currentWork = { type: 'studying' };
     updateWorkingSection();
 
@@ -201,7 +205,7 @@ export function study() {
             const knowledgeGain = 1 * getKnowledgeGainMultiplier();
             gameState.knowledge += knowledgeGain;
             logEvent(`Studied the book. Gained ${knowledgeGain.toFixed(1)} knowledge point${knowledgeGain !== 1 ? 's' : ''}.`);
-            gameState.availableWorkers++;
+            adjustAvailableWorkers(1);
             gameState.currentWork = null;
             updateDisplay();
 

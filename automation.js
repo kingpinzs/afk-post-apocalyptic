@@ -1,11 +1,12 @@
-import { gameState, getConfig } from './gameState.js';
+import { gameState, getConfig, adjustAvailableWorkers } from './gameState.js';
 import { updateDisplay, logEvent } from './ui.js';
+import { getGatheringRate } from './resources.js';
 
 export function updateAutomationControls() {
     const config = getConfig();
     const automationControlsContainer = document.getElementById('automation-controls');
     automationControlsContainer.innerHTML = '';
-    
+
     config.items.forEach(item => {
         if (gameState.craftedItems[item.id] && (item.effect.foodProductionRate || item.effect.waterProductionRate)) {
             const div = document.createElement('div');
@@ -20,12 +21,32 @@ export function updateAutomationControls() {
             document.getElementById(`${item.id}-unassign`).addEventListener('click', () => unassignWorker(item.id));
         }
     });
+
+    // Auto-gather wood when axe is crafted
+    if (gameState.craftedItems.axe) {
+        addResourceControl('wood', 'Chop Wood');
+    }
+}
+
+function addResourceControl(resource, label) {
+    const container = document.getElementById('automation-controls');
+    const id = `gather_${resource}`;
+    const div = document.createElement('div');
+    div.className = 'automation-control';
+    div.innerHTML = `
+        <p>${label}: <span id="${id}-assigned">${gameState.automationAssignments[id] || 0}</span> assigned</p>
+        <button id="${id}-assign">+</button>
+        <button id="${id}-unassign">-</button>
+    `;
+    container.appendChild(div);
+    document.getElementById(`${id}-assign`).addEventListener('click', () => assignWorker(id));
+    document.getElementById(`${id}-unassign`).addEventListener('click', () => unassignWorker(id));
 }
 
 function assignWorker(itemId) {
     if (gameState.availableWorkers > 0) {
         gameState.automationAssignments[itemId] = (gameState.automationAssignments[itemId] || 0) + 1;
-        gameState.availableWorkers--;
+        adjustAvailableWorkers(-1);
         updateAutomationDisplay();
         updateDisplay();
     }
@@ -34,7 +55,7 @@ function assignWorker(itemId) {
 function unassignWorker(itemId) {
     if (gameState.automationAssignments[itemId] > 0) {
         gameState.automationAssignments[itemId] -= 1;
-        gameState.availableWorkers += 1;
+        adjustAvailableWorkers(1);
         updateAutomationDisplay();
         updateDisplay();
     }
@@ -64,6 +85,11 @@ export function runAutomation() {
                 gameState.water = Math.min(100, gameState.water + waterProduced);
                 logEvent(`${item.name} produced ${waterProduced.toFixed(1)} water.`);
             }
+        } else if (itemId.startsWith('gather_') && count > 0) {
+            const resource = itemId.replace('gather_', '');
+            const amount = getGatheringRate(resource) * count;
+            gameState[resource] += amount;
+            logEvent(`Workers gathered ${amount.toFixed(1)} ${resource}.`);
         }
     });
     updateDisplay();

@@ -32,3 +32,10 @@ export function getConfig() {
     }
     return gameConfig;
 }
+
+export function adjustAvailableWorkers(delta) {
+    gameState.availableWorkers = Math.max(
+        0,
+        Math.min(gameState.availableWorkers + delta, gameState.workers)
+    );
+}

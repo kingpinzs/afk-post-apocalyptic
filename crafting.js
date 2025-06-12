@@ -1,4 +1,4 @@
-import { gameState, getConfig } from './gameState.js';
+import { gameState, getConfig, adjustAvailableWorkers } from './gameState.js';
 import { logEvent, updateDisplay, updateWorkingSection } from './ui.js';
 import { updateAutomationControls } from './automation.js';
 
@@ -44,7 +44,7 @@ function startCrafting(item) {
         }
     });
 
-    gameState.availableWorkers--;
+    adjustAvailableWorkers(-1);
     gameState.craftingQueue.push({
         item: item,
         progress: 0,
@@ -79,7 +79,7 @@ function completeCrafting(item) {
     gameState.craftedItems[item.id] = item;
     logEvent(`Crafted ${item.name}!`);
     
-    gameState.availableWorkers++;
+    adjustAvailableWorkers(1);
     gameState.currentWork = null;
     gameState.craftingQueue.shift();
     
