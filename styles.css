@@ -492,7 +492,6 @@ progress::-moz-progress-bar {
 
 @media (max-width: 600px) {
   #day-night-cycle {
-    flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
   }
