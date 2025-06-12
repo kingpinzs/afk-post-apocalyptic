@@ -83,7 +83,7 @@ function completeGathering(resource) {
     updateDisplay();
     updateCraftableItems();
     updateWorkingSection();
-    checkPopulationGrowth();
+    gameState.gatherCount += 1;
 }
 
 
@@ -112,18 +112,29 @@ export function produceResources() {
     }
     gameState.food = Math.min(gameState.food, 100);
     gameState.water = Math.min(gameState.water, 100);
-    checkPopulationGrowth();
     updateDisplay();
 }
 
 export function checkPopulationGrowth() {
     const config = getConfig();
     const threshold = config.constants.POPULATION_THRESHOLD;
-    if (gameState.food >= threshold && gameState.water >= threshold) {
+    if (
+        gameState.food >= threshold &&
+        gameState.water >= threshold &&
+        gameState.daysSinceGrowth >= config.constants.POPULATION_GROWTH_DAYS &&
+        gameState.gatherCount >= config.constants.POPULATION_GATHER_REQUIRED &&
+        gameState.studyCount >= config.constants.POPULATION_STUDY_REQUIRED &&
+        gameState.craftCount >= config.constants.POPULATION_CRAFT_REQUIRED
+    ) {
         gameState.population += 1;
-        gameState.food -= threshold;
-        gameState.water -= threshold;
+        const cost = config.constants.POPULATION_GROWTH_COST;
+        gameState.food = Math.max(0, gameState.food - cost);
+        gameState.water = Math.max(0, gameState.water - cost);
         logEvent("Your settlement has grown! Train newcomers to put them to work.");
+        gameState.gatherCount = 0;
+        gameState.studyCount = 0;
+        gameState.craftCount = 0;
+        gameState.daysSinceGrowth = 0;
         updateAutomationControls();
         updateDisplay();
     }
@@ -215,6 +226,7 @@ export function study() {
                 showUnlockPuzzle(nextUnlock);
             }
             updateWorkingSection();
+            gameState.studyCount += 1;
         }
     }, interval); // Study time affected by research speed
 }

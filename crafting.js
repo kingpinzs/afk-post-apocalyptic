@@ -87,6 +87,7 @@ function completeCrafting(item) {
     updateDisplay();
     updateWorkingSection();
     updateAutomationControls();
+    gameState.craftCount += 1;
 
     if (gameState.craftingQueue.length > 0) {
         processQueue();
