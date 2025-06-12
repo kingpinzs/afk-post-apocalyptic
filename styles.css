@@ -28,9 +28,8 @@ p, li {
 #top-section {
     position: sticky;
     top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100vw;
+    left: 0;
+    width: 100%;
     z-index: 50;
     background-color: #1e1e2f;
     padding: 10px;
