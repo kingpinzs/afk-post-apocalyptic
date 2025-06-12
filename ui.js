@@ -14,24 +14,8 @@ export function updateDisplay() {
     document.getElementById('day-count').textContent = gameState.day;
 }
 
-export function updateWorkingSection(progress = 0) {
-    const currentWorkElement = document.getElementById('current-work');
-    const workProgressContainer = document.getElementById('work-progress-container');
-    const workProgressBar = document.getElementById('work-progress-bar');
-
-    if (gameState.currentWork) {
-        if (gameState.currentWork.type === 'gathering') {
-            currentWorkElement.textContent = `Gathering ${gameState.currentWork.resource}`;
-        } else if (gameState.currentWork.type === 'crafting') {
-            currentWorkElement.textContent = `Crafting ${gameState.currentWork.item.name}`;
-        }
-        workProgressContainer.style.display = 'block';
-        workProgressBar.style.width = `${progress * 100}%`;
-    } else {
-        currentWorkElement.textContent = 'Not working';
-        workProgressContainer.style.display = 'none';
-    }
-}
+// Previously displayed current work progress. Section removed, so keep stub.
+export function updateWorkingSection() {}
 
 export function updateTimeDisplay() {
     const config = getConfig();
