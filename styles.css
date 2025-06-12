@@ -32,7 +32,6 @@ p, li {
     width: 100%;
     z-index: 50;
     background-color: #1e1e2f;
-    padding: 10px;
     margin-bottom: 10px;
 }
 
@@ -371,9 +370,6 @@ progress::-moz-progress-bar {
 
 .population-info:hover::after {
     opacity: 1;
-}
-#game-container > div {
-    margin-bottom: 25px;
 }
 
 .divider {
