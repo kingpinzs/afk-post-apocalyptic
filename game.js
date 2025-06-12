@@ -1,6 +1,6 @@
 import { gameState, loadGameConfig, getConfig } from './gameState.js';
 import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu } from './ui.js';
-import { gatherResource, consumeResources, produceResources, checkPopulationGrowth } from './resources.js';
+import { gatherResource, consumeResources, produceResources, checkPopulationGrowth, trainWorker } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
 import { checkForEvents, updateActiveEvents } from './events.js';
@@ -23,6 +23,10 @@ async function initializeGame() {
     document.getElementById('close-puzzle').addEventListener('click', closePuzzlePopup);
     document.getElementById('settings-btn').addEventListener('click', openSettingsMenu);
     document.getElementById('close-settings').addEventListener('click', closeSettingsMenu);
+    const trainBtn = document.getElementById('train-worker-btn');
+    if (trainBtn) {
+        trainBtn.addEventListener('click', trainWorker);
+    }
 
     // Bottom navigation
     document.querySelectorAll('#bottom-nav .nav-btn').forEach(btn => {
@@ -106,10 +110,12 @@ function resetGame() {
         stone: 0,
         knowledge: 0,
         population: 1,
+        workers: 0,
         day: 1,
         time: 0,
         craftedItems: {},
-        automationAssignments: {}
+        automationAssignments: {},
+        availableWorkers: 0
     });
     updateDisplay();
     updateCraftableItems();

@@ -11,6 +11,7 @@ export function updateDisplay() {
     document.getElementById('water-bar').value = gameState.water;
     document.getElementById('population-count').textContent = gameState.population;
     document.getElementById('available-workers').textContent = gameState.availableWorkers;
+    document.getElementById('total-workers').textContent = gameState.workers;
     document.getElementById('day-count').textContent = gameState.day;
 }
 

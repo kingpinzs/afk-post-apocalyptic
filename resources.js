@@ -107,12 +107,28 @@ export function checkPopulationGrowth() {
     const threshold = config.constants.POPULATION_THRESHOLD;
     if (gameState.food >= threshold && gameState.water >= threshold) {
         gameState.population += 1;
-        gameState.availableWorkers += 1;
         gameState.food -= threshold;
         gameState.water -= threshold;
-        logEvent("The population has grown! You have a new available worker.");
+        logEvent("Your settlement has grown! Train newcomers to put them to work.");
         updateAutomationControls();
     }
+}
+
+export function trainWorker() {
+    if (gameState.population <= gameState.workers) {
+        logEvent("No untrained population available.");
+        return;
+    }
+    if (gameState.knowledge < 1) {
+        logEvent("Not enough knowledge to train a worker.");
+        return;
+    }
+    gameState.knowledge -= 1;
+    gameState.workers += 1;
+    gameState.availableWorkers += 1;
+    logEvent("Trained a new worker.");
+    updateAutomationControls();
+    updateDisplay();
 }
 
 function getKnowledgeGainMultiplier() {
