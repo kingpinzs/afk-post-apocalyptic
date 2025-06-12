@@ -344,7 +344,7 @@ progress::-moz-progress-bar {
     border-top: 1px solid #7f8c8d;
     margin: 20px 0;
 }
-#actions {
+#actions.game-section-active {
     display: grid;
     grid-template-columns: 1fr 1fr; /* Two columns for better organization */
     gap: 15px;
@@ -452,7 +452,7 @@ progress::-moz-progress-bar {
         gap: 5px;
     }
 
-    #actions {
+    #actions.game-section-active {
         grid-template-columns: 1fr;
         gap: 10px;
     }
