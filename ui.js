@@ -8,6 +8,11 @@ export function updateDisplay() {
     document.getElementById('wood').textContent = Math.floor(gameState.wood);
     document.getElementById('stone').textContent = Math.floor(gameState.stone);
     document.getElementById('knowledge').textContent = Math.floor(gameState.knowledge);
+    document.getElementById('clay').textContent = Math.floor(gameState.clay);
+    document.getElementById('fiber').textContent = Math.floor(gameState.fiber);
+    document.getElementById('ore').textContent = Math.floor(gameState.ore);
+    document.getElementById('herbs').textContent = Math.floor(gameState.herbs);
+    document.getElementById('fruit').textContent = Math.floor(gameState.fruit);
     document.getElementById('food-bar').value = gameState.food;
     document.getElementById('water-bar').value = gameState.water;
     document.getElementById('population-count').textContent = gameState.population;
