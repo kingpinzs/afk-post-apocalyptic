@@ -19,7 +19,7 @@ p, li {
 #game-container {
     max-width: 800px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 0 20px;
     width: 100%;
     padding-bottom: 70px; /* space for bottom nav */
     box-sizing: border-box; /* Include padding in width */
@@ -28,6 +28,9 @@ p, li {
 #top-section {
     position: sticky;
     top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100vw;
     z-index: 50;
     background-color: #1e1e2f;
     padding: 10px;
@@ -449,7 +452,7 @@ progress::-moz-progress-bar {
     }
 
     #game-container {
-        padding: 10px;
+        padding: 0 10px;
         padding-bottom: 70px;
     }
 
