@@ -5,7 +5,8 @@ export const gameState = {
     craftedItems: {},
     automationAssignments: {},
     currentWork: null,
-    craftingQueue: []
+    craftingQueue: [],
+    currentBookIndex: 0
 };
 
 export async function loadGameConfig() {

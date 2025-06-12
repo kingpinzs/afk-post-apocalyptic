@@ -175,6 +175,21 @@ progress {
     transition: width 0.1s ease-in-out;
 }
 
+#book {
+    background-color: #34495e;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+#book-page {
+    min-height: 120px;
+}
+
+.book-nav {
+    margin-top: 10px;
+}
+
 /* Progress bar overlay inside buttons */
 .progress-button {
     position: relative;

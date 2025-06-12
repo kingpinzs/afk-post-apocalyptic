@@ -1,9 +1,10 @@
 import { gameState, loadGameConfig, getConfig } from './gameState.js';
 import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu } from './ui.js';
-import { gatherResource, consumeResources, produceResources, checkPopulationGrowth, study } from './resources.js';
+import { gatherResource, consumeResources, produceResources, checkPopulationGrowth } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
 import { checkForEvents, updateActiveEvents } from './events.js';
+import { initBook } from './book.js';
 
 async function initializeGame() {
     await loadGameConfig();
@@ -12,12 +13,12 @@ async function initializeGame() {
     updateCraftableItems();
     updateAutomationControls();
     createGatheringActions(config.resources);
+    initBook();
 
     // Event listeners
     // config.resources.forEach(resource => {
     //     document.getElementById(`gather-${resource}`).addEventListener('click', () => gatherResource(resource));
     // });
-    document.getElementById('study').addEventListener('click', study);
     document.getElementById('submit-puzzle').addEventListener('click', submitUnlockPuzzleAnswer);
     document.getElementById('close-puzzle').addEventListener('click', closePuzzlePopup);
     document.getElementById('settings-btn').addEventListener('click', openSettingsMenu);
