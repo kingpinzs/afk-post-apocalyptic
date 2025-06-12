@@ -35,19 +35,19 @@ function createGatheringActions(resources) {
 
         const button = document.createElement('button');
         button.id = `gather-${resource}`;
-        button.textContent = `Gather ${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
-        button.addEventListener('click', () => gatherResource(resource));
-
-        const progressBarContainer = document.createElement('div');
-        progressBarContainer.className = 'progress-bar-container';
+        button.className = 'progress-button';
+        const textSpan = document.createElement('span');
+        textSpan.textContent = `Gather ${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
+        button.appendChild(textSpan);
 
         const progressBar = document.createElement('div');
         progressBar.id = `${resource}-progress-bar`;
         progressBar.className = 'progress-bar';
+        button.appendChild(progressBar);
 
-        progressBarContainer.appendChild(progressBar);
+        button.addEventListener('click', () => gatherResource(resource));
+
         gatherAction.appendChild(button);
-        gatherAction.appendChild(progressBarContainer);
         actionsContainer.appendChild(gatherAction);
     });
 }
