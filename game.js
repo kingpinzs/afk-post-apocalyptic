@@ -21,6 +21,17 @@ async function initializeGame() {
     document.getElementById('submit-puzzle').addEventListener('click', submitUnlockPuzzleAnswer);
     document.getElementById('close-puzzle').addEventListener('click', closePuzzlePopup);
 
+    // Bottom navigation
+    document.querySelectorAll('#bottom-nav .nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#bottom-nav .nav-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const target = btn.dataset.target;
+            document.querySelectorAll('.game-section').forEach(sec => sec.classList.remove('game-section-active'));
+            document.getElementById(target).classList.add('game-section-active');
+        });
+    });
+
     // Start game loop
     setInterval(gameLoop, 1000); // Update every second
 }
