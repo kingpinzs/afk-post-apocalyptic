@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1e1e2f">
     <title>Advanced Survival and Civilization Rebuilder</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
@@ -14,13 +17,28 @@
             Day: <span id="day-count">1</span> | Time: <span id="time-emoji">🌅</span> <span id="time-display">00:00</span>
         </div>
         <div id="resources">
-            <p><i class="fas fa-utensils"></i> Food: <span id="food">100</span> / 100</p>
-            <progress id="food-bar" value="100" max="100"></progress>
-            <p><i class="fas fa-water"></i> Water: <span id="water">100</span> / 100</p>
-            <progress id="water-bar" value="100" max="100"></progress>
-            <p><i class="fas fa-tree"></i> Wood: <span id="wood">0</span></p>
-            <p><i class="fas fa-mountain"></i> Stone: <span id="stone">0</span></p>
-            <p><i class="fas fa-book"></i> Knowledge: <span id="knowledge">2</span></p>
+            <div class="resource-item">
+                <i class="fas fa-utensils"></i>
+                <span id="food">100</span>
+                <progress id="food-bar" value="100" max="100"></progress>
+            </div>
+            <div class="resource-item">
+                <i class="fas fa-water"></i>
+                <span id="water">100</span>
+                <progress id="water-bar" value="100" max="100"></progress>
+            </div>
+            <div class="resource-item">
+                <i class="fas fa-tree"></i>
+                <span id="wood">0</span>
+            </div>
+            <div class="resource-item">
+                <i class="fas fa-mountain"></i>
+                <span id="stone">0</span>
+            </div>
+            <div class="resource-item">
+                <i class="fas fa-book"></i>
+                <span id="knowledge">2</span>
+            </div>
         </div>
         <div id="population">
             <div class="population-info">
@@ -40,25 +58,32 @@
                 <div id="work-progress-bar" class="progress-bar"></div>
             </div>
         </div>
-        <div id="actions">
+        <div id="actions" class="game-section game-section-active">
              <!-- Gathering buttons will be dynamically inserted here -->
             <button id="study">Study the Book</button>
         </div>
-        <div id="crafting">
+        <div id="crafting" class="game-section">
             <h2>Crafting</h2>
             <div id="craftable-items"></div>
             <h3>Crafting Queue</h3>
             <div id="crafting-queue"></div>
         </div>
-        <div id="automation">
+        <div id="automation" class="game-section">
             <h2>Automation</h2>
             <div id="automation-controls"></div>
         </div>
-        <div id="log">
+        <div id="log" class="game-section">
             <h2>Event Log</h2>
             <ul id="event-log"></ul>
         </div>
     </div>
+
+    <nav id="bottom-nav">
+        <button class="nav-btn active" data-target="actions"><i class="fas fa-hand-paper"></i><span>Gather</span></button>
+        <button class="nav-btn" data-target="crafting"><i class="fas fa-hammer"></i><span>Craft</span></button>
+        <button class="nav-btn" data-target="automation"><i class="fas fa-robot"></i><span>Auto</span></button>
+        <button class="nav-btn" data-target="log"><i class="fas fa-list"></i><span>Log</span></button>
+    </nav>
 
     <div id="puzzle-popup" class="popup">
         <h2 id="puzzle-title"></h2>

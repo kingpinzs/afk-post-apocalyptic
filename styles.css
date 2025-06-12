@@ -19,6 +19,8 @@ p, li {
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
+    width: 100%;
+    padding-bottom: 70px; /* space for bottom nav */
 }
 
 
@@ -206,24 +208,33 @@ button:hover {
 }
 
 #resources {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Two columns for resources */
-    gap: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
     background-color: #34495e;
-    padding: 15px;
+    padding: 10px;
     border-radius: 8px;
     margin-bottom: 20px;
+    gap: 10px;
 }
 
-#resources p {
-    margin: 0;
-    font-size: 1.1em;
+.resource-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     color: #ffffff;
+    min-width: 60px;
 }
 
-#resources progress {
-    width: 100%;
-    margin-top: 5px;
+.resource-item i {
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+.resource-item progress {
+    width: 60px;
+    height: 8px;
+    margin-top: 2px;
 }
 progress {
     width: 100%;
@@ -381,4 +392,87 @@ progress::-moz-progress-bar {
     background-color: #27ae60;
     width: 0%;
     transition: width 0.3s linear;
+}
+
+.game-section {
+    display: none;
+}
+
+.game-section.game-section-active {
+    display: block;
+}
+
+/* Bottom navigation */
+#bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    background-color: #1e1e2f;
+    border-top: 1px solid #2c3e50;
+    z-index: 100;
+}
+
+#bottom-nav .nav-btn {
+    flex: 1;
+    padding: 8px 0;
+    border: none;
+    background: none;
+    color: #fff;
+    font-size: 0.8em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#bottom-nav .nav-btn i {
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+#bottom-nav .nav-btn.active {
+    background-color: #34495e;
+}
+
+@media (max-width: 600px) {
+    body {
+        font-size: 14px;
+    }
+
+    #game-container {
+        padding: 10px;
+        padding-bottom: 70px;
+    }
+
+    #resources {
+        justify-content: space-between;
+        gap: 5px;
+    }
+
+    #actions {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    button {
+        width: 100%;
+        padding: 15px;
+        font-size: 1.1em;
+    }
+
+    #log {
+        height: 150px;
+    }
+
+    .gather-action {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .progress-bar-container {
+        margin-left: 0;
+        margin-top: 5px;
+        width: 100%;
+    }
 }
