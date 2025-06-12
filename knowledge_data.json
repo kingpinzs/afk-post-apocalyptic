@@ -28,7 +28,8 @@
     "gatherCount": 0,
     "studyCount": 0,
     "craftCount": 0,
-    "daysSinceGrowth": 0
+    "daysSinceGrowth": 0,
+    "automationProgress": {}
   },
   "constants": {
     "DAY_LENGTH": 600,

@@ -1,6 +1,5 @@
 import { gameState, getConfig, adjustAvailableWorkers } from './gameState.js';
 import { updateDisplay, logEvent } from './ui.js';
-import { getGatheringRate } from './resources.js';
 
 export function updateAutomationControls() {
     const config = getConfig();
@@ -73,23 +72,32 @@ function updateAutomationDisplay() {
 export function runAutomation() {
     const config = getConfig();
     Object.entries(gameState.automationAssignments).forEach(([itemId, count]) => {
-        const item = config.items.find(i => i.id === itemId);
-        if (item && count > 0) {
-            if (item.effect.foodProductionRate) {
-                const foodProduced = item.effect.foodProductionRate * count;
-                gameState.food = Math.min(100, gameState.food + foodProduced);
-                logEvent(`${item.name} produced ${foodProduced.toFixed(1)} food.`);
+        if (count <= 0) return;
+
+        gameState.automationProgress[itemId] = (gameState.automationProgress[itemId] || 0) + 1;
+
+        if (gameState.automationProgress[itemId] >= 30) {
+            gameState.automationProgress[itemId] -= 30;
+
+            if (itemId.startsWith('gather_')) {
+                const resource = itemId.replace('gather_', '');
+                gameState[resource] = (gameState[resource] || 0) + count;
+                logEvent(`Workers gathered ${count} ${resource}.`);
+            } else {
+                const item = config.items.find(i => i.id === itemId);
+                if (item && item.effect) {
+                    Object.entries(item.effect).forEach(([key]) => {
+                        if (key.endsWith('ProductionRate')) {
+                            const resource = key.replace('ProductionRate', '');
+                            gameState[resource] = (gameState[resource] || 0) + count;
+                            if (resource === 'food' || resource === 'water') {
+                                gameState[resource] = Math.min(100, gameState[resource]);
+                            }
+                            logEvent(`${item.name} produced ${count} ${resource}.`);
+                        }
+                    });
+                }
             }
-            if (item.effect.waterProductionRate) {
-                const waterProduced = item.effect.waterProductionRate * count;
-                gameState.water = Math.min(100, gameState.water + waterProduced);
-                logEvent(`${item.name} produced ${waterProduced.toFixed(1)} water.`);
-            }
-        } else if (itemId.startsWith('gather_') && count > 0) {
-            const resource = itemId.replace('gather_', '');
-            const amount = getGatheringRate(resource) * count;
-            gameState[resource] += amount;
-            logEvent(`Workers gathered ${amount.toFixed(1)} ${resource}.`);
         }
     });
     updateDisplay();

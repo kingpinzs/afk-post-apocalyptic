@@ -5,9 +5,9 @@ import { getGatheringMultiplier } from './resources.js';
 export function updateDisplay() {
     document.getElementById('food').textContent = Math.floor(gameState.food);
     document.getElementById('water').textContent = Math.floor(gameState.water);
-    document.getElementById('wood').textContent = gameState.wood;
-    document.getElementById('stone').textContent = gameState.stone;
-    document.getElementById('knowledge').textContent = gameState.knowledge;
+    document.getElementById('wood').textContent = Math.floor(gameState.wood);
+    document.getElementById('stone').textContent = Math.floor(gameState.stone);
+    document.getElementById('knowledge').textContent = Math.floor(gameState.knowledge);
     document.getElementById('food-bar').value = gameState.food;
     document.getElementById('water-bar').value = gameState.water;
     document.getElementById('population-count').textContent = gameState.population;
