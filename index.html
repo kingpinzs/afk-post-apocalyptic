@@ -55,7 +55,18 @@
         <div class="divider"></div>
         <div id="actions" class="game-section game-section-active">
              <!-- Gathering buttons will be dynamically inserted here -->
-            <button id="study">Study the Book</button>
+        </div>
+        <div id="book" class="game-section">
+            <h2>Study Book</h2>
+            <div id="book-page">
+                <div id="book-question">
+                    <p id="book-puzzle-text"></p>
+                    <input type="text" id="book-answer" placeholder="Answer">
+                    <button id="book-submit">Submit</button>
+                </div>
+                <div id="book-item-info" style="display:none;"></div>
+            </div>
+            <button id="book-next" class="book-nav">&rarr;</button>
         </div>
         <div id="crafting" class="game-section">
             <h2>Crafting</h2>
@@ -77,6 +88,7 @@
         <button class="nav-btn active" data-target="actions"><i class="fas fa-hand-paper"></i><span>Gather</span></button>
         <button class="nav-btn" data-target="crafting"><i class="fas fa-hammer"></i><span>Craft</span></button>
         <button class="nav-btn" data-target="automation"><i class="fas fa-robot"></i><span>Auto</span></button>
+        <button class="nav-btn" data-target="book"><i class="fas fa-book-open"></i><span>Book</span></button>
         <button class="nav-btn" data-target="log"><i class="fas fa-list"></i><span>Log</span></button>
     </nav>
 
