@@ -473,7 +473,6 @@ progress::-moz-progress-bar {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.5rem 1rem;
-  background-color: #f9f9f9;
   border-radius: 4px;
 }
 
@@ -501,27 +500,23 @@ progress::-moz-progress-bar {
 #day-night-cycle span {
   font-family: Arial, sans-serif;
   font-size: 0.95rem;
-  color: #333;
 }
 
 .population-info i {
   font-size: 1.2rem;
-  color: #0073e6;
 }
 
 #train-worker-btn {
   padding: 0.25rem 0.75rem;
   font-size: 0.85rem;
-  border: 1px solid #0073e6;
+
   border-radius: 3px;
-  background: transparent;
+
   cursor: pointer;
-  transition: background-color 150ms ease-in-out;
+
 }
 
-#train-worker-btn:hover {
-  background-color: rgba(0, 115, 230, 0.1);
-}
+
 
 
 @media (max-width: 600px) {
