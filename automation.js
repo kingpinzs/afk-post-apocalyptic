@@ -76,8 +76,8 @@ export function runAutomation() {
 
         gameState.automationProgress[itemId] = (gameState.automationProgress[itemId] || 0) + 1;
 
-        if (gameState.automationProgress[itemId] >= 30) {
-            gameState.automationProgress[itemId] -= 30;
+        if (gameState.automationProgress[itemId] >= 10) {
+            gameState.automationProgress[itemId] -= 10;
 
             if (itemId.startsWith('gather_')) {
                 const resource = itemId.replace('gather_', '');
