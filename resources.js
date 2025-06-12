@@ -162,19 +162,28 @@ export function study() {
     updateWorkingSection();
 
     const duration = 5000 / getResearchSpeedMultiplier();
+    let progress = 0;
+    const interval = 100;
 
-    setTimeout(() => {
-        const knowledgeGain = 1 * getKnowledgeGainMultiplier();
-        gameState.knowledge += knowledgeGain;
-        logEvent(`Studied the book. Gained ${knowledgeGain.toFixed(1)} knowledge point${knowledgeGain !== 1 ? 's' : ''}.`);
-        gameState.availableWorkers++;
-        gameState.currentWork = null;
-        updateDisplay();
+    const progressInterval = setInterval(() => {
+        progress += interval;
+        updateWorkingSection(progress / duration);
 
-        // Check if we should show an unlock puzzle
-        const nextUnlock = getNextUnlockPuzzle();
-        if (nextUnlock) {
-            showUnlockPuzzle(nextUnlock);
+        if (progress >= duration) {
+            clearInterval(progressInterval);
+            const knowledgeGain = 1 * getKnowledgeGainMultiplier();
+            gameState.knowledge += knowledgeGain;
+            logEvent(`Studied the book. Gained ${knowledgeGain.toFixed(1)} knowledge point${knowledgeGain !== 1 ? 's' : ''}.`);
+            gameState.availableWorkers++;
+            gameState.currentWork = null;
+            updateDisplay();
+
+            // Check if we should show an unlock puzzle
+            const nextUnlock = getNextUnlockPuzzle();
+            if (nextUnlock) {
+                showUnlockPuzzle(nextUnlock);
+            }
+            updateWorkingSection();
         }
-    }, duration); // Study time affected by research speed
+    }, interval); // Study time affected by research speed
 }
