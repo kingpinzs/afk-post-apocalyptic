@@ -501,7 +501,19 @@ progress::-moz-progress-bar {
   font-family: Arial, sans-serif;
   font-size: 0.95rem;
 }
-
+#time-section {
+  display: flex;
+  flex-direction: column;
+  align-content: center;
+  align-items: center;
+}
+#time-emoji {
+  margin-bottom: .5rem;
+  font-size: 21px;
+}
+#time-area {
+  display: flex;
+}
 .population-info i {
   font-size: 1.2rem;
 }
