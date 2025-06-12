@@ -31,6 +31,7 @@ p, li {
     z-index: 50;
     background-color: #1e1e2f;
     padding: 10px;
+    margin-bottom: 10px;
 }
 
 #settings-btn {
@@ -153,7 +154,7 @@ progress {
 .gather-action {
     display: flex;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
 }
 
 .progress-bar-container {
@@ -176,6 +177,7 @@ progress {
 .progress-button {
     position: relative;
     overflow: hidden;
+    padding: 8px 12px;
 }
 
 .progress-button .progress-bar {
@@ -346,13 +348,13 @@ progress::-moz-progress-bar {
 
 .divider {
     border-top: 1px solid #7f8c8d;
-    margin: 20px 0;
+    margin: 10px 0;
 }
 #actions.game-section-active {
     display: grid;
     grid-template-columns: 1fr 1fr; /* Two columns for better organization */
-    gap: 15px;
-    padding: 15px;
+    gap: 10px;
+    padding: 10px;
     background-color: #34495e;
     border-radius: 10px;
     margin-bottom: 20px;
