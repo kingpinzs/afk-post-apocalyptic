@@ -24,12 +24,21 @@
     "population": 1,
     "workers": 1,
     "day": 1,
-    "time": 0
+    "time": 0,
+    "gatherCount": 0,
+    "studyCount": 0,
+    "craftCount": 0,
+    "daysSinceGrowth": 0
   },
   "constants": {
     "DAY_LENGTH": 600,
     "DAY_PHASE": 300,
-    "POPULATION_THRESHOLD": 50
+    "POPULATION_THRESHOLD": 50,
+    "POPULATION_GROWTH_DAYS": 3,
+    "POPULATION_GATHER_REQUIRED": 5,
+    "POPULATION_STUDY_REQUIRED": 2,
+    "POPULATION_CRAFT_REQUIRED": 1,
+    "POPULATION_GROWTH_COST": 10
   },
   "gatheringTimes": {
     "wood": 5000,

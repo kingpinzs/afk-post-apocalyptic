@@ -7,7 +7,11 @@ export const gameState = {
     currentWork: null,
     craftingQueue: [],
     currentBookIndex: 0,
-    workers: 0
+    workers: 0,
+    gatherCount: 0,
+    studyCount: 0,
+    craftCount: 0,
+    daysSinceGrowth: 0
 };
 
 export async function loadGameConfig() {

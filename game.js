@@ -94,6 +94,7 @@ function updateTime() {
     gameState.time = (gameState.time + 1) % config.constants.DAY_LENGTH;
     if (gameState.time === 0) {
         gameState.day += 1;
+        gameState.daysSinceGrowth += 1;
     }
     updateTimeEmoji();
     updateTimeDisplay();
@@ -119,7 +120,11 @@ function resetGame() {
         time: 0,
         craftedItems: {},
         automationAssignments: {},
-        availableWorkers: 0
+        availableWorkers: 0,
+        gatherCount: 0,
+        studyCount: 0,
+        craftCount: 0,
+        daysSinceGrowth: 0
     });
     updateDisplay();
     updateCraftableItems();
