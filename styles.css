@@ -201,6 +201,9 @@ progress {
     position: relative;
     overflow: hidden;
     padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .progress-button .progress-bar {
@@ -215,6 +218,10 @@ progress {
 .progress-button span {
     position: relative;
     z-index: 1;
+}
+
+.progress-button .multiplier {
+    margin-left: 8px;
 }
 
 #crafting-queue {
