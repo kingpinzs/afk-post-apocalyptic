@@ -30,25 +30,25 @@ p, li {
     top: 0;
     z-index: 50;
     background-color: #1e1e2f;
-    padding-top: 10px;
-    padding-right: 40px; /* space for settings button */
+    padding: 10px;
 }
 
 #settings-btn {
-    position: absolute;
-    top: 10px;
+    position: fixed;
+    bottom: 60px;
     right: 10px;
     background: none;
     border: none;
     color: #fff;
     font-size: 24px;
     cursor: pointer;
+    z-index: 101;
 }
 
 #settings-menu {
     display: none;
-    position: absolute;
-    top: 40px;
+    position: fixed;
+    bottom: 110px;
     right: 10px;
     background-color: #34495e;
     padding: 10px;
@@ -73,6 +73,7 @@ h1, h2 {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 0;
 }
 
 #population {
@@ -249,6 +250,7 @@ button:hover {
     background-color: #34495e;
     padding: 10px;
     border-radius: 8px;
+    margin-top: 0;
     margin-bottom: 20px;
     gap: 10px;
 }
@@ -311,7 +313,7 @@ progress::-moz-progress-bar {
 
 #population p {
     margin: 0;
-    font-size: 1.2em;
+    font-size: 1em;
     color: #ecf0f1;
 }
 .population-info {
