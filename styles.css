@@ -36,9 +36,6 @@ p, li {
 }
 
 #settings-btn {
-    position: fixed;
-    bottom: 60px;
-    right: 10px;
     background: none;
     border: none;
     color: #fff;
