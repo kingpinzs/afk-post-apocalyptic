@@ -12,7 +12,7 @@ export function gatherResource(resource) {
     }
 
     const button = document.getElementById(`gather-${resource}`);
-    const progressBar = document.getElementById(`${resource}-progress-bar`);
+    const progressBar = button.querySelector('.progress-bar');
     
     if (button.disabled) return;  // If already gathering, do nothing
     

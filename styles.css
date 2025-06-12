@@ -124,6 +124,26 @@ progress {
     transition: width 0.1s ease-in-out;
 }
 
+/* Progress bar overlay inside buttons */
+.progress-button {
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-button .progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: rgba(39, 174, 96, 0.5);
+    z-index: 0;
+}
+
+.progress-button span {
+    position: relative;
+    z-index: 1;
+}
+
 #crafting-queue {
     margin-top: 10px;
 }
