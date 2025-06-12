@@ -3,6 +3,18 @@ import { logEvent, updateDisplay, updateWorkingSection, showUnlockPuzzle } from 
 import { updateAutomationControls } from './automation.js';
 import { updateCraftableItems, areDependenciesMet } from './crafting.js';
 
+export function getGatheringMultiplier(resource) {
+    return Object.values(gameState.craftedItems).reduce((mult, item) => {
+        if (item.effect) {
+            const key = `${resource}GatheringMultiplier`;
+            if (item.effect[key]) {
+                mult *= item.effect[key];
+            }
+        }
+        return mult;
+    }, 1);
+}
+
 
 export function gatherResource(resource) {
     const config = getConfig();
@@ -42,9 +54,7 @@ export function gatherResource(resource) {
 function getGatheringTime(resource) {
     const config = getConfig();
     let time = config.gatheringTimes[resource];
-    if (resource === 'wood' && gameState.craftedItems.axe) {
-        time /= gameState.craftedItems.axe.effect.woodGatheringMultiplier;
-    }
+    time /= getGatheringMultiplier(resource);
     // Apply gathering efficiency modifier from events
     time /= (gameState.gatheringEfficiency || 1);
     // You can add more modifiers here based on other upgrades or skills
@@ -52,11 +62,8 @@ function getGatheringTime(resource) {
 }
 
 function completeGathering(resource) {
-    let amount = 1;
-    if (resource === 'wood' && gameState.craftedItems.axe) {
-        amount = gameState.craftedItems.axe.effect.woodGatheringMultiplier;
-    }
-    
+    let amount = getGatheringMultiplier(resource);
+
     // Apply gathering efficiency modifier
     amount *= (gameState.gatheringEfficiency || 1);
     

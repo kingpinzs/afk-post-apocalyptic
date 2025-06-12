@@ -1,5 +1,5 @@
 import { gameState, loadGameConfig, getConfig } from './gameState.js';
-import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu } from './ui.js';
+import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu, updateGatherButtons } from './ui.js';
 import { gatherResource, consumeResources, produceResources, checkPopulationGrowth, trainWorker } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
@@ -13,6 +13,7 @@ async function initializeGame() {
     updateCraftableItems();
     updateAutomationControls();
     createGatheringActions(config.resources);
+    updateGatherButtons();
     initBook();
 
     // Event listeners
@@ -57,6 +58,9 @@ function createGatheringActions(resources) {
         const textSpan = document.createElement('span');
         textSpan.textContent = `Gather ${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
         button.appendChild(textSpan);
+        const multSpan = document.createElement('span');
+        multSpan.className = 'multiplier';
+        button.appendChild(multSpan);
 
         const progressBar = document.createElement('div');
         progressBar.id = `${resource}-progress-bar`;

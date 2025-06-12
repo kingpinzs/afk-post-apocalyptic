@@ -1,5 +1,6 @@
 import { gameState, getConfig } from './gameState.js';
 import { updateCraftableItems } from './crafting.js';
+import { getGatheringMultiplier } from './resources.js';
 
 export function updateDisplay() {
     document.getElementById('food').textContent = Math.floor(gameState.food);
@@ -13,6 +14,7 @@ export function updateDisplay() {
     document.getElementById('available-workers').textContent = gameState.availableWorkers;
     document.getElementById('total-workers').textContent = gameState.workers;
     document.getElementById('day-count').textContent = gameState.day;
+    updateGatherButtons();
 }
 
 // Previously displayed current work progress. Section removed, so keep stub.
@@ -95,4 +97,20 @@ export function openSettingsMenu() {
 
 export function closeSettingsMenu() {
     document.getElementById('settings-menu').style.display = 'none';
+}
+
+export function updateGatherButtons() {
+    const config = getConfig();
+    config.resources.forEach(resource => {
+        const button = document.getElementById(`gather-${resource}`);
+        if (!button) return;
+        let multiplierSpan = button.querySelector('.multiplier');
+        if (!multiplierSpan) {
+            multiplierSpan = document.createElement('span');
+            multiplierSpan.className = 'multiplier';
+            button.appendChild(multiplierSpan);
+        }
+        const mult = getGatheringMultiplier(resource);
+        multiplierSpan.textContent = mult > 1 ? `x${mult}` : '';
+    });
 }
