@@ -190,6 +190,12 @@ progress {
     margin-top: 10px;
 }
 
+#book-nav-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
 /* Progress bar overlay inside buttons */
 .progress-button {
     position: relative;
