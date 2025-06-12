@@ -1,5 +1,5 @@
 import { gameState, loadGameConfig, getConfig } from './gameState.js';
-import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup } from './ui.js';
+import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu } from './ui.js';
 import { gatherResource, consumeResources, produceResources, checkPopulationGrowth, study } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
@@ -20,6 +20,8 @@ async function initializeGame() {
     document.getElementById('study').addEventListener('click', study);
     document.getElementById('submit-puzzle').addEventListener('click', submitUnlockPuzzleAnswer);
     document.getElementById('close-puzzle').addEventListener('click', closePuzzlePopup);
+    document.getElementById('settings-btn').addEventListener('click', openSettingsMenu);
+    document.getElementById('close-settings').addEventListener('click', closeSettingsMenu);
 
     // Bottom navigation
     document.querySelectorAll('#bottom-nav .nav-btn').forEach(btn => {

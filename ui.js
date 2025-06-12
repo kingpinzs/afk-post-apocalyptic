@@ -87,3 +87,11 @@ export function submitUnlockPuzzleAnswer() {
 export function closePuzzlePopup() {
     document.getElementById('puzzle-popup').style.display = 'none';
 }
+
+export function openSettingsMenu() {
+    document.getElementById('settings-menu').style.display = 'block';
+}
+
+export function closeSettingsMenu() {
+    document.getElementById('settings-menu').style.display = 'none';
+}
