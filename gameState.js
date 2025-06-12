@@ -6,7 +6,8 @@ export const gameState = {
     automationAssignments: {},
     currentWork: null,
     craftingQueue: [],
-    currentBookIndex: 0
+    currentBookIndex: 0,
+    workers: 0
 };
 
 export async function loadGameConfig() {
@@ -19,7 +20,7 @@ export async function loadGameConfig() {
         
         // Initialize gameState with values from config
         Object.assign(gameState, gameConfig.initialState);
-        gameState.availableWorkers = gameState.population;
+        gameState.availableWorkers = gameState.workers;
     } catch (error) {
         console.error("Failed to load game configuration:", error);
     }
