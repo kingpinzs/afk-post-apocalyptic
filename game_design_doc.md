@@ -47,6 +47,8 @@ Each craftable item requires solving a puzzle, adding an element of problem-solv
 ## 6. Population and Workers
 
 - Population grows when food and water thresholds are met
+- Population grows after every 3 to 5 itmes crafted and after every 2 to 6 knowledge points on top of the food and water. 
+- if the food and water drop below 50 then popul;ation will not grow until its over that amount
 - Each population unit can be assigned to automated resource gathering
 - Balancing workers between different tasks is key to efficient growth
 
