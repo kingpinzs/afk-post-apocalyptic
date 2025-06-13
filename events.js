@@ -64,3 +64,11 @@ function endEvent(event) {
 
     updateDisplay();
 }
+
+export function triggerRandomEvent() {
+    const config = getConfig();
+    const events = config.events;
+    if (events.length === 0) return;
+    const event = events[Math.floor(Math.random() * events.length)];
+    triggerEvent(event);
+}
