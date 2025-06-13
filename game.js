@@ -3,7 +3,7 @@ import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlo
 import { gatherResource, consumeResources, logDailyConsumption, produceResources, checkPopulationGrowth, trainWorker } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
-import { checkForEvents, updateActiveEvents } from './events.js';
+import { checkForEvents, updateActiveEvents, advanceEventTime } from './events.js';
 import { initBook } from './book.js';
 
 function saveGame(manual = false) {
@@ -68,6 +68,13 @@ function applyOfflineProgress() {
         logDailyConsumption();
         produceResources();
         checkPopulationGrowth();
+        checkForEvents();
+        advanceEventTime(config.constants.DAY_LENGTH);
+    }
+
+    const remaining = seconds - daysPassed * config.constants.DAY_LENGTH;
+    if (remaining > 0) {
+        advanceEventTime(remaining);
     }
 
     checkSurvival();
@@ -86,6 +93,7 @@ async function initializeGame() {
     updateGatherButtons();
     initBook();
     updateDisplay();
+    checkForEvents();
 
     // Event listeners
     // config.resources.forEach(resource => {

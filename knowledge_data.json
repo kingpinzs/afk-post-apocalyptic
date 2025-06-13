@@ -493,6 +493,39 @@
         "stone": -25
       },
       "probability": 0.03
+    },
+    {
+      "id": "blizzard",
+      "name": "Blizzard",
+      "description": "A raging blizzard slows your workers but provides extra water.",
+      "effect": {
+        "water": 20,
+        "gatheringEfficiency": 0.7
+      },
+      "duration": 2,
+      "probability": 0.04
+    },
+    {
+      "id": "heatwave",
+      "name": "Heatwave",
+      "description": "Scorching heat dries up water supplies and tires your workers.",
+      "effect": {
+        "water": -20,
+        "gatheringEfficiency": 0.85
+      },
+      "duration": 2,
+      "probability": 0.04
+    },
+    {
+      "id": "abandoned_cache",
+      "name": "Abandoned Cache",
+      "description": "You discover an abandoned supply cache filled with useful items.",
+      "effect": {
+        "food": 20,
+        "water": 20,
+        "knowledge": 3
+      },
+      "probability": 0.05
     }
   ],
   "items": [
