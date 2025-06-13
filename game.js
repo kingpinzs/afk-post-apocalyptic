@@ -1,4 +1,4 @@
-import { gameState, loadGameConfig, getConfig } from './gameState.js';
+import { gameState, loadGameConfig, getConfig, getPrestigeMultiplier } from './gameState.js';
 import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu, updateGatherButtons } from './ui.js';
 import { gatherResource, consumeResources, logDailyConsumption, produceResources, checkPopulationGrowth, trainWorker } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
