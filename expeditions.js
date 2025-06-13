@@ -1,6 +1,6 @@
 import { gameState, getConfig, adjustAvailableWorkers } from './gameState.js';
 import { logEvent } from './ui.js';
-import { recordResourceGain } from './stats.js';
+import { addResource } from './resourceManager.js';
 import { triggerRandomEvent } from './events.js';
 
 export function initExpeditions() {
@@ -33,8 +33,7 @@ function completeExpedition() {
         const rewards = config.resources;
         const resource = rewards[Math.floor(Math.random() * rewards.length)];
         const amount = Math.round(Math.random() * 5 + 5);
-        gameState[resource] = (gameState[resource] || 0) + amount;
-        recordResourceGain(resource, amount);
+        addResource(resource, amount);
         logEvent(`Expedition returned with ${amount} ${resource}.`);
     }
 }

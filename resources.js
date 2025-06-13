@@ -1,7 +1,7 @@
 import { gameState, getConfig, adjustAvailableWorkers, getPrestigeMultiplier } from './gameState.js';
 import { logEvent, updateDisplay, updateWorkingSection, showUnlockPuzzle } from './ui.js';
 import { checkAchievements } from './achievements.js';
-import { recordResourceGain } from './stats.js';
+import { addResource, subtractResource, getResource } from './resourceManager.js';
 import { updateAutomationControls } from './automation.js';
 import { updateCraftableItems, areDependenciesMet } from './crafting.js';
 
@@ -105,8 +105,7 @@ function completeScavenge() {
     const rewards = ['wood', 'stone', 'food', 'water'];
     const resource = rewards[Math.floor(Math.random() * rewards.length)];
     const amount = Math.round((Math.random() * 2 + 1) * getPrestigeMultiplier());
-    gameState[resource] = (gameState[resource] || 0) + amount;
-    recordResourceGain(resource, amount);
+    addResource(resource, amount);
     logEvent(`Scavenged ${amount} ${resource}.`);
     adjustAvailableWorkers(1);
     gameState.currentWork = null;
@@ -127,8 +126,7 @@ function completeGathering(resource) {
     // Round the amount to avoid fractional resources
     amount = Math.round(amount);
 
-    gameState[resource] += amount;
-    recordResourceGain(resource, amount);
+    addResource(resource, amount);
     logEvent(`Gathered ${amount} ${resource}.`);
 
     adjustAvailableWorkers(1);
@@ -149,11 +147,11 @@ export function consumeResources(seconds = 1) {
     const ratePerSecond = (dailyRate * gameState.population) / config.constants.DAY_LENGTH;
     const amount = ratePerSecond * seconds * (season.consumption || 1);
 
-    const foodConsumed = Math.min(gameState.food, amount);
-    const waterConsumed = Math.min(gameState.water, amount);
+    const foodConsumed = Math.min(getResource('food'), amount);
+    const waterConsumed = Math.min(getResource('water'), amount);
 
-    gameState.food -= foodConsumed;
-    gameState.water -= waterConsumed;
+    subtractResource('food', foodConsumed);
+    subtractResource('water', waterConsumed);
 
     gameState.dailyFoodConsumed += foodConsumed;
     gameState.dailyWaterConsumed += waterConsumed;
@@ -172,15 +170,13 @@ export function produceResources() {
     if (gameState.craftedItems.farm) {
         const base = gameState.craftedItems.farm.effect.foodProductionRate;
         const foodProduced = base * (gameState.automationAssignments.farm || 0) * mult * (season.production || 1);
-        gameState.food += foodProduced;
-        recordResourceGain('food', foodProduced);
+        addResource('food', foodProduced);
         logEvent(`Farm produced ${foodProduced.toFixed(1)} food.`);
     }
     if (gameState.craftedItems.well) {
         const baseW = gameState.craftedItems.well.effect.waterProductionRate;
         const waterProduced = baseW * (gameState.automationAssignments.well || 0) * mult * (season.production || 1);
-        gameState.water += waterProduced;
-        recordResourceGain('water', waterProduced);
+        addResource('water', waterProduced);
         logEvent(`Well produced ${waterProduced.toFixed(1)} water.`);
     }
     gameState.food = Math.min(gameState.food, 100);
@@ -201,8 +197,8 @@ export function checkPopulationGrowth() {
     ) {
         gameState.population += 1;
         const cost = config.constants.POPULATION_GROWTH_COST;
-        gameState.food = Math.max(0, gameState.food - cost);
-        gameState.water = Math.max(0, gameState.water - cost);
+        subtractResource('food', Math.min(getResource('food'), cost));
+        subtractResource('water', Math.min(getResource('water'), cost));
         logEvent("Your settlement has grown! Train newcomers to put them to work.");
         gameState.gatherCount = 0;
         gameState.studyCount = 0;
@@ -219,11 +215,11 @@ export function trainWorker() {
         logEvent("No untrained population available.");
         return;
     }
-    if (gameState.knowledge < 1) {
+    if (getResource('knowledge') < 1) {
         logEvent("Not enough knowledge to train a worker.");
         return;
     }
-    gameState.knowledge -= 1;
+    subtractResource('knowledge', 1);
     gameState.workers += 1;
     adjustAvailableWorkers(1);
     logEvent("Trained a new worker.");
@@ -288,7 +284,7 @@ export function study() {
         if (progress >= duration) {
             clearInterval(progressInterval);
             const knowledgeGain = 1 * getKnowledgeGainMultiplier();
-            gameState.knowledge += knowledgeGain;
+            addResource('knowledge', knowledgeGain);
             logEvent(`Studied the book. Gained ${knowledgeGain.toFixed(1)} knowledge point${knowledgeGain !== 1 ? 's' : ''}.`);
             adjustAvailableWorkers(1);
             gameState.currentWork = null;

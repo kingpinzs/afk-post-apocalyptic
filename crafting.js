@@ -3,6 +3,7 @@ import { logEvent, updateDisplay, updateWorkingSection } from './ui.js';
 import { checkAchievements } from './achievements.js';
 import { updateAutomationControls } from './automation.js';
 import { recordItemCraft } from './stats.js';
+import { subtractResource } from './resourceManager.js';
 
 const craftingQueue = [];
 
@@ -42,7 +43,7 @@ function startCrafting(item) {
     // Deduct resources except knowledge, which is not consumed
     Object.entries(item.requirements).forEach(([resource, amount]) => {
         if (resource !== 'knowledge') {
-            gameState[resource] -= amount;
+            subtractResource(resource, amount);
         }
     });
 
@@ -124,7 +125,7 @@ function craftItem(item) {
     // and should never decrease.
     Object.entries(item.requirements).forEach(([resource, amount]) => {
         if (resource !== 'knowledge') {
-            gameState[resource] -= amount;
+            subtractResource(resource, amount);
         }
     });
     gameState.craftedItems[item.id] = item;
