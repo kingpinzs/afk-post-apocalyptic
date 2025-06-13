@@ -154,7 +154,13 @@ progress {
 
 #event-popup {
     min-width: 200px;
+    max-width: 300px;
     text-align: center;
+    top: 10px;
+    left: 50%;
+    transform: translate(-50%, 0);
+    font-size: 0.9rem;
+    padding: 10px;
 }
 
 #achievement-list {
@@ -166,6 +172,14 @@ progress {
     display: flex;
     justify-content: space-between;
     margin-bottom: 5px;
+}
+
+#population-progress {
+    margin-top: 10px;
+}
+
+#population-progress h3 {
+    margin: 0 0 5px 0;
 }
 
 .achievement-unlocked {
