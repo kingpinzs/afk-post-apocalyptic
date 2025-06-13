@@ -2,6 +2,7 @@ import { gameState, getConfig } from './gameState.js';
 import { updateDisplay } from './ui.js';
 import { checkPopulationGrowth } from './resources.js';
 import { updateCraftableItems } from './crafting.js';
+import { addResource } from './resourceManager.js';
 
 export function initBook() {
     gameState.currentBookIndex = 0;
@@ -77,7 +78,7 @@ function submitAnswer() {
         if (!gameState.unlockedFeatures.includes(puzzle.unlocks)) {
             gameState.unlockedFeatures.push(puzzle.unlocks);
         }
-        gameState.knowledge += 1;
+        addResource('knowledge', 1);
         gameState.studyCount += 1;
         updateDisplay();
         updateCraftableItems();

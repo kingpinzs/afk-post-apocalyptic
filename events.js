@@ -1,6 +1,6 @@
 import { gameState, getConfig } from './gameState.js';
 import { logEvent, updateDisplay, showEventPopup } from './ui.js';
-import { recordResourceGain } from './stats.js';
+import { changeResource } from './resourceManager.js';
 
 let activeEvents = [];
 
@@ -19,8 +19,7 @@ function triggerEvent(event) {
 
     Object.entries(event.effect).forEach(([key, value]) => {
         if (key in gameState) {
-            gameState[key] += value;
-            if (value > 0) recordResourceGain(key, value);
+            changeResource(key, value);
         } else if (key === 'gatheringEfficiency') {
             // Store the efficiency modifier
             gameState.gatheringEfficiency = (gameState.gatheringEfficiency || 1) * value;
