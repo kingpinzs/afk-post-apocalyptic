@@ -6,8 +6,23 @@ import { updateAutomationControls, runAutomation } from './automation.js';
 import { checkForEvents, updateActiveEvents } from './events.js';
 import { initBook } from './book.js';
 
+function saveGame(manual = false) {
+    localStorage.setItem('afkGameSave', JSON.stringify(gameState));
+    if (manual) {
+        logEvent('Game saved');
+    }
+}
+
+function loadSavedGame() {
+    const saved = localStorage.getItem('afkGameSave');
+    if (saved) {
+        Object.assign(gameState, JSON.parse(saved));
+    }
+}
+
 async function initializeGame() {
     await loadGameConfig();
+    loadSavedGame();
     const config = getConfig();
 
     updateCraftableItems();
@@ -15,6 +30,7 @@ async function initializeGame() {
     createGatheringActions(config.resources);
     updateGatherButtons();
     initBook();
+    updateDisplay();
 
     // Event listeners
     // config.resources.forEach(resource => {
@@ -24,6 +40,10 @@ async function initializeGame() {
     document.getElementById('close-puzzle').addEventListener('click', closePuzzlePopup);
     document.getElementById('settings-btn').addEventListener('click', openSettingsMenu);
     document.getElementById('close-settings').addEventListener('click', closeSettingsMenu);
+    const saveBtn = document.getElementById('save-game-btn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', () => saveGame(true));
+    }
     const trainBtn = document.getElementById('train-worker-btn');
     if (trainBtn) {
         trainBtn.addEventListener('click', trainWorker);
@@ -42,6 +62,7 @@ async function initializeGame() {
 
     // Start game loop
     setInterval(gameLoop, 1000); // Update every second
+    setInterval(saveGame, 30000); // Auto-save every 30 seconds
 }
 
 function createGatheringActions(resources) {
