@@ -3,6 +3,7 @@ import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlo
 import { gatherResource, consumeResources, logDailyConsumption, produceResources, checkPopulationGrowth, trainWorker } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
+import { prestigeGame, resetState } from './prestige.js';
 import { checkForEvents, updateActiveEvents, advanceEventTime } from './events.js';
 import { initBook } from './book.js';
 import { initAchievements } from './achievements.js';
@@ -38,18 +39,19 @@ function applyOfflineProgress() {
     consumeResources(seconds);
 
     const cycles = Math.floor(seconds / 10);
+    const mult = getPrestigeMultiplier();
     Object.entries(gameState.automationAssignments).forEach(([itemId, count]) => {
         if (count <= 0) return;
         if (itemId.startsWith('gather_')) {
             const resource = itemId.replace('gather_', '');
-            gameState[resource] = (gameState[resource] || 0) + count * cycles;
+            gameState[resource] = (gameState[resource] || 0) + count * cycles * mult;
         } else {
             const item = config.items.find(i => i.id === itemId);
             if (item && item.effect) {
                 Object.keys(item.effect).forEach(key => {
                     if (key.endsWith('ProductionRate')) {
                         const resource = key.replace('ProductionRate', '');
-                        gameState[resource] = (gameState[resource] || 0) + count * cycles;
+                        gameState[resource] = (gameState[resource] || 0) + count * cycles * mult;
                         if (resource === 'food' || resource === 'water') {
                             gameState[resource] = Math.min(100, gameState[resource]);
                         }
@@ -108,6 +110,10 @@ async function initializeGame() {
     const saveBtn = document.getElementById('save-game-btn');
     if (saveBtn) {
         saveBtn.addEventListener('click', () => saveGame(true));
+    }
+    const prestigeBtn = document.getElementById('prestige-btn');
+    if (prestigeBtn) {
+        prestigeBtn.addEventListener('click', prestigeGame);
     }
     const trainBtn = document.getElementById('train-worker-btn');
     if (trainBtn) {
@@ -195,26 +201,7 @@ function checkSurvival() {
 }
 
 function resetGame() {
-    Object.assign(gameState, {
-        food: 100,
-        water: 100,
-        wood: 0,
-        stone: 0,
-        knowledge: 0,
-        population: 1,
-        workers: 0,
-        day: 1,
-        time: 0,
-        craftedItems: {},
-        automationAssignments: {},
-        availableWorkers: 0,
-        gatherCount: 0,
-        studyCount: 0,
-        craftCount: 0,
-        daysSinceGrowth: 0,
-        dailyFoodConsumed: 0,
-        dailyWaterConsumed: 0
-    });
+    resetState();
     updateDisplay();
     updateCraftableItems();
     updateAutomationControls();

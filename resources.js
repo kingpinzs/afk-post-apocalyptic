@@ -1,4 +1,4 @@
-import { gameState, getConfig, adjustAvailableWorkers } from './gameState.js';
+import { gameState, getConfig, adjustAvailableWorkers, getPrestigeMultiplier } from './gameState.js';
 import { logEvent, updateDisplay, updateWorkingSection, showUnlockPuzzle } from './ui.js';
 import { checkAchievements } from './achievements.js';
 import { updateAutomationControls } from './automation.js';
@@ -71,6 +71,7 @@ function completeGathering(resource) {
 
     // Apply gathering efficiency modifier
     amount *= (gameState.gatheringEfficiency || 1);
+    amount *= getPrestigeMultiplier();
     
     // Round the amount to avoid fractional resources
     amount = Math.round(amount);
@@ -113,13 +114,14 @@ export function logDailyConsumption() {
 
 
 export function produceResources() {
+    const mult = getPrestigeMultiplier();
     if (gameState.craftedItems.farm) {
-        const foodProduced = gameState.craftedItems.farm.effect.foodProductionRate * (gameState.automationAssignments.farm || 0);
+        const foodProduced = gameState.craftedItems.farm.effect.foodProductionRate * (gameState.automationAssignments.farm || 0) * mult;
         gameState.food += foodProduced;
         logEvent(`Farm produced ${foodProduced.toFixed(1)} food.`);
     }
     if (gameState.craftedItems.well) {
-        const waterProduced = gameState.craftedItems.well.effect.waterProductionRate * (gameState.automationAssignments.well || 0);
+        const waterProduced = gameState.craftedItems.well.effect.waterProductionRate * (gameState.automationAssignments.well || 0) * mult;
         gameState.water += waterProduced;
         logEvent(`Well produced ${waterProduced.toFixed(1)} water.`);
     }

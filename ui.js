@@ -1,4 +1,4 @@
-import { gameState, getConfig } from './gameState.js';
+import { gameState, getConfig, getPrestigeMultiplier } from './gameState.js';
 import { updateCraftableItems } from './crafting.js';
 import { getGatheringMultiplier } from './resources.js';
 
@@ -19,6 +19,8 @@ export function updateDisplay() {
     document.getElementById('available-workers').textContent = gameState.availableWorkers;
     document.getElementById('total-workers').textContent = gameState.workers;
     document.getElementById('day-count').textContent = gameState.day;
+    const prestigeEl = document.getElementById('prestige-points');
+    if (prestigeEl) prestigeEl.textContent = gameState.prestigePoints || 0;
     updateGatherButtons();
 }
 
@@ -131,7 +133,7 @@ export function updateGatherButtons() {
             multiplierSpan.className = 'multiplier';
             button.appendChild(multiplierSpan);
         }
-        const mult = getGatheringMultiplier(resource);
+        const mult = getGatheringMultiplier(resource) * getPrestigeMultiplier();
         multiplierSpan.textContent = mult > 1 ? `x${mult}` : '';
     });
 }

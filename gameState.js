@@ -16,6 +16,7 @@ export const gameState = {
     dailyFoodConsumed: 0,
     dailyWaterConsumed: 0,
     lastSaved: null,
+    prestigePoints: 0,
     achievements: {}
 };
 
@@ -51,4 +52,14 @@ export function adjustAvailableWorkers(delta) {
         0,
         Math.min(gameState.availableWorkers + delta, gameState.workers)
     );
+}
+
+export function getPrestigeMultiplier() {
+    let mult = 1 + (gameState.prestigePoints || 0) * 0.1;
+    Object.values(gameState.craftedItems).forEach(item => {
+        if (item.effect && item.effect.globalPrestigeMultiplier) {
+            mult *= item.effect.globalPrestigeMultiplier;
+        }
+    });
+    return mult;
 }
