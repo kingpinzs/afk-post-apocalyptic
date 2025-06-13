@@ -452,6 +452,47 @@
       },
       "duration": 3,
       "probability": 0.06
+    },
+    {
+      "id": "drought",
+      "name": "Drought",
+      "description": "A severe drought reduces water supplies and slows gathering.",
+      "effect": {
+        "water": -30,
+        "gatheringEfficiency": 0.9
+      },
+      "duration": 3,
+      "probability": 0.05
+    },
+    {
+      "id": "bandit_raid",
+      "name": "Bandit Raid",
+      "description": "Bandits raid your settlement and steal resources.",
+      "effect": {
+        "food": -20,
+        "wood": -20
+      },
+      "probability": 0.04
+    },
+    {
+      "id": "traveling_merchant",
+      "name": "Traveling Merchant",
+      "description": "A wandering merchant offers useful supplies.",
+      "effect": {
+        "food": 20,
+        "stone": 20,
+        "knowledge": 2
+      },
+      "probability": 0.05
+    },
+    {
+      "id": "minor_earthquake",
+      "name": "Minor Earthquake",
+      "description": "An earthquake damages structures and costs some stone.",
+      "effect": {
+        "stone": -25
+      },
+      "probability": 0.03
     }
   ],
   "items": [

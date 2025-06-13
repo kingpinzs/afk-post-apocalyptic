@@ -52,6 +52,22 @@ export function logEvent(message) {
     }
 }
 
+export function showEventPopup(event) {
+    const popup = document.getElementById('event-popup');
+    const nameEl = document.getElementById('event-name');
+    const descEl = document.getElementById('event-description');
+    nameEl.textContent = event.name;
+    descEl.textContent = event.description;
+    popup.style.display = 'block';
+    const config = getConfig();
+    const duration = event.duration ? event.duration * config.constants.DAY_LENGTH : 0;
+    const displaySeconds = Math.max(duration, 3);
+    if (popup._timeout) clearTimeout(popup._timeout);
+    popup._timeout = setTimeout(() => {
+        popup.style.display = 'none';
+    }, displaySeconds * 1000);
+}
+
 export function showUnlockPuzzle(puzzle) {
     const puzzlePopup = document.getElementById('puzzle-popup');
     document.getElementById('puzzle-title').textContent = 'Unlock New Feature';
