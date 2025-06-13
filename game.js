@@ -2,14 +2,14 @@ import { gameState, loadGameConfig, getConfig, getPrestigeMultiplier } from './g
 import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu, updateGatherButtons } from './ui.js';
 import { gatherResource, scavenge, consumeResources, logDailyConsumption, produceResources, checkPopulationGrowth, trainWorker } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
-import { updateAutomationControls, runAutomation } from './automation.js';
+import { updateAutomationControls, runAutomation, hasActiveAutomation } from './automation.js';
 import { prestigeGame, resetState } from './prestige.js';
-import { checkForEvents, updateActiveEvents, advanceEventTime } from './events.js';
+import { checkForEvents, updateActiveEvents, advanceEventTime, hasActiveEvents } from './events.js';
 import { initBook } from './book.js';
 import { initAchievements } from './achievements.js';
 import { startTutorial, checkTutorialProgress, nextStep, skipTutorial } from './tutorial.js';
 import { recordResourceGain } from './stats.js';
-import { initExpeditions, updateExpeditions } from './expeditions.js';
+import { initExpeditions, updateExpeditions, hasExpeditions } from './expeditions.js';
 
 function saveGame(manual = false) {
     gameState.lastSaved = Date.now();
@@ -155,7 +155,8 @@ async function initializeGame() {
     startTutorial();
 
     // Start game loop
-    setInterval(gameLoop, 1000); // Update every second
+    lastLoop = Date.now();
+    scheduleNextLoop();
     setInterval(saveGame, 30000); // Auto-save every 30 seconds
 }
 
@@ -203,34 +204,38 @@ function createGatheringActions(resources) {
     actionsContainer.appendChild(scavengeAction);
 }
 
-function gameLoop() {
-    updateTime();
-    consumeResources(1);
-    if (gameState.time === 0) { // Start of a new day
+function gameLoop(delta) {
+    const daysPassed = updateTime(delta);
+    consumeResources(delta);
+    for (let i = 0; i < daysPassed; i++) {
         logDailyConsumption();
         produceResources();
         checkPopulationGrowth();
         checkForEvents();
     }
-    runAutomation();
-    updateActiveEvents();
-    updateExpeditions();
+    runAutomation(delta);
+    updateActiveEvents(delta);
+    updateExpeditions(delta);
     checkSurvival();
     checkTutorialProgress();
     updateDisplay();
     processQueue();
 }
 
-function updateTime() {
+function updateTime(seconds) {
     const config = getConfig();
-    gameState.time = (gameState.time + 1) % config.constants.DAY_LENGTH;
-    if (gameState.time === 0) {
-        gameState.day += 1;
-        gameState.daysSinceGrowth += 1;
+    const totalTime = gameState.time + seconds;
+    const dayLength = config.constants.DAY_LENGTH;
+    const daysPassed = Math.floor(totalTime / dayLength);
+    gameState.time = totalTime % dayLength;
+    if (daysPassed > 0) {
+        gameState.day += daysPassed;
+        gameState.daysSinceGrowth += daysPassed;
         checkSeasonChange();
     }
     updateTimeEmoji();
     updateTimeDisplay();
+    return daysPassed;
 }
 
 function checkSeasonChange() {
@@ -255,6 +260,33 @@ function resetGame() {
     updateDisplay();
     updateCraftableItems();
     updateAutomationControls();
+}
+
+let lastLoop = 0;
+
+function isGameActive() {
+    return (
+        gameState.currentWork ||
+        hasActiveAutomation() ||
+        hasActiveEvents() ||
+        hasExpeditions()
+    );
+}
+
+function getUpdateInterval() {
+    return isGameActive() ? 1000 : 5000;
+}
+
+function gameLoopWrapper() {
+    const now = Date.now();
+    const delta = (now - lastLoop) / 1000;
+    lastLoop = now;
+    gameLoop(delta);
+    scheduleNextLoop();
+}
+
+function scheduleNextLoop() {
+    setTimeout(gameLoopWrapper, getUpdateInterval());
 }
 
 // Initialize the game

@@ -39,10 +39,10 @@ function completeExpedition() {
     }
 }
 
-export function updateExpeditions() {
+export function updateExpeditions(seconds = 1) {
     const completed = [];
     gameState.expeditions.forEach(exp => {
-        exp.remaining -= 1;
+        exp.remaining -= seconds;
         if (exp.remaining <= 0) completed.push(exp);
     });
     completed.forEach(exp => {
@@ -52,6 +52,10 @@ export function updateExpeditions() {
         gameState.expeditions = gameState.expeditions.filter(e => e.remaining > 0);
         updateExpeditionUI();
     }
+}
+
+export function hasExpeditions() {
+    return gameState.expeditions.length > 0;
 }
 
 function updateExpeditionUI() {

@@ -70,14 +70,14 @@ function updateAutomationDisplay() {
     });
 }
 
-export function runAutomation() {
+export function runAutomation(seconds = 1) {
     const config = getConfig();
     Object.entries(gameState.automationAssignments).forEach(([itemId, count]) => {
         if (count <= 0) return;
 
-        gameState.automationProgress[itemId] = (gameState.automationProgress[itemId] || 0) + 1;
+        gameState.automationProgress[itemId] = (gameState.automationProgress[itemId] || 0) + seconds;
 
-        if (gameState.automationProgress[itemId] >= 10) {
+        while (gameState.automationProgress[itemId] >= 10) {
             gameState.automationProgress[itemId] -= 10;
 
             const mult = getPrestigeMultiplier();
@@ -105,4 +105,8 @@ export function runAutomation() {
         }
     });
     updateDisplay();
+}
+
+export function hasActiveAutomation() {
+    return Object.values(gameState.automationAssignments).some(v => v > 0);
 }
