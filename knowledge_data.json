@@ -29,7 +29,8 @@
     "studyCount": 0,
     "craftCount": 0,
     "daysSinceGrowth": 0,
-    "automationProgress": {}
+    "automationProgress": {},
+    "lastSaved": 0
   },
   "constants": {
     "DAY_LENGTH": 600,
@@ -39,7 +40,8 @@
     "POPULATION_GATHER_REQUIRED": 5,
     "POPULATION_STUDY_REQUIRED": 2,
     "POPULATION_CRAFT_REQUIRED": 1,
-    "POPULATION_GROWTH_COST": 10
+    "POPULATION_GROWTH_COST": 10,
+    "OFFLINE_PROGRESS_LIMIT": 28800
   },
   "gatheringTimes": {
     "wood": 5000,

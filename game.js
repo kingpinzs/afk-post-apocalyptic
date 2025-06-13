@@ -7,6 +7,7 @@ import { checkForEvents, updateActiveEvents } from './events.js';
 import { initBook } from './book.js';
 
 function saveGame(manual = false) {
+    gameState.lastSaved = Date.now();
     localStorage.setItem('afkGameSave', JSON.stringify(gameState));
     if (manual) {
         logEvent('Game saved');
@@ -20,9 +21,63 @@ function loadSavedGame() {
     }
 }
 
+function applyOfflineProgress() {
+    const config = getConfig();
+    if (!gameState.lastSaved) {
+        gameState.lastSaved = Date.now();
+        return;
+    }
+    const now = Date.now();
+    const elapsed = Math.floor((now - gameState.lastSaved) / 1000);
+    if (elapsed <= 0) return;
+
+    const limit = config.constants.OFFLINE_PROGRESS_LIMIT || 28800;
+    const seconds = Math.min(elapsed, limit);
+
+    consumeResources(seconds);
+
+    const cycles = Math.floor(seconds / 10);
+    Object.entries(gameState.automationAssignments).forEach(([itemId, count]) => {
+        if (count <= 0) return;
+        if (itemId.startsWith('gather_')) {
+            const resource = itemId.replace('gather_', '');
+            gameState[resource] = (gameState[resource] || 0) + count * cycles;
+        } else {
+            const item = config.items.find(i => i.id === itemId);
+            if (item && item.effect) {
+                Object.keys(item.effect).forEach(key => {
+                    if (key.endsWith('ProductionRate')) {
+                        const resource = key.replace('ProductionRate', '');
+                        gameState[resource] = (gameState[resource] || 0) + count * cycles;
+                        if (resource === 'food' || resource === 'water') {
+                            gameState[resource] = Math.min(100, gameState[resource]);
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    const totalTime = gameState.time + seconds;
+    const daysPassed = Math.floor(totalTime / config.constants.DAY_LENGTH);
+    gameState.time = totalTime % config.constants.DAY_LENGTH;
+    gameState.day += daysPassed;
+    gameState.daysSinceGrowth += daysPassed;
+
+    for (let i = 0; i < daysPassed; i++) {
+        logDailyConsumption();
+        produceResources();
+        checkPopulationGrowth();
+    }
+
+    checkSurvival();
+    gameState.lastSaved = now;
+}
+
 async function initializeGame() {
     await loadGameConfig();
     loadSavedGame();
+    applyOfflineProgress();
     const config = getConfig();
 
     updateCraftableItems();
