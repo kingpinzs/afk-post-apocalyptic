@@ -288,6 +288,7 @@ export function study() {
             }
             updateWorkingSection();
             gameState.studyCount += 1;
+            updateDisplay();
             checkAchievements();
         }
     }, interval); // Study time affected by research speed
