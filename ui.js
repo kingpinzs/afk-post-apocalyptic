@@ -23,6 +23,7 @@ export function updateDisplay() {
     if (prestigeEl) prestigeEl.textContent = gameState.prestigePoints || 0;
     updateGatherButtons();
     updateGrowthIndicators();
+    updateStatsDisplay();
 }
 
 // Previously displayed current work progress. Section removed, so keep stub.
@@ -171,4 +172,40 @@ export function updateGrowthIndicators() {
         li.textContent = `${req.met ? '✅' : '❌'} ${req.text}`;
         list.appendChild(li);
     });
+}
+
+export function updateStatsDisplay() {
+    const container = document.getElementById('stats-content');
+    if (!container) return;
+    const stats = gameState.stats || { resourcesGathered: {}, itemsCrafted: {} };
+    container.innerHTML = '';
+
+    const dayP = document.createElement('p');
+    dayP.textContent = `Days Survived: ${gameState.day}`;
+    container.appendChild(dayP);
+
+    const resHeader = document.createElement('h3');
+    resHeader.textContent = 'Resources Gathered';
+    container.appendChild(resHeader);
+    const resList = document.createElement('ul');
+    Object.entries(stats.resourcesGathered).forEach(([res, amt]) => {
+        const li = document.createElement('li');
+        li.textContent = `${res}: ${Math.floor(amt)}`;
+        resList.appendChild(li);
+    });
+    container.appendChild(resList);
+
+    const itemHeader = document.createElement('h3');
+    itemHeader.textContent = 'Items Crafted';
+    container.appendChild(itemHeader);
+    const itemList = document.createElement('ul');
+    const config = getConfig();
+    Object.entries(stats.itemsCrafted).forEach(([id, count]) => {
+        const item = config.items.find(i => i.id === id);
+        const name = item ? item.name : id;
+        const li = document.createElement('li');
+        li.textContent = `${name}: ${count}`;
+        itemList.appendChild(li);
+    });
+    container.appendChild(itemList);
 }

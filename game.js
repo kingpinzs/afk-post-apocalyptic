@@ -8,6 +8,7 @@ import { checkForEvents, updateActiveEvents, advanceEventTime } from './events.j
 import { initBook } from './book.js';
 import { initAchievements } from './achievements.js';
 import { startTutorial, checkTutorialProgress, nextStep, skipTutorial } from './tutorial.js';
+import { recordResourceGain } from './stats.js';
 
 function saveGame(manual = false) {
     gameState.lastSaved = Date.now();
@@ -45,14 +46,18 @@ function applyOfflineProgress() {
         if (count <= 0) return;
         if (itemId.startsWith('gather_')) {
             const resource = itemId.replace('gather_', '');
-            gameState[resource] = (gameState[resource] || 0) + count * cycles * mult;
+            const gained = count * cycles * mult;
+            gameState[resource] = (gameState[resource] || 0) + gained;
+            recordResourceGain(resource, gained);
         } else {
             const item = config.items.find(i => i.id === itemId);
             if (item && item.effect) {
                 Object.keys(item.effect).forEach(key => {
                     if (key.endsWith('ProductionRate')) {
                         const resource = key.replace('ProductionRate', '');
-                        gameState[resource] = (gameState[resource] || 0) + count * cycles * mult;
+                        const gained = count * cycles * mult;
+                        gameState[resource] = (gameState[resource] || 0) + gained;
+                        recordResourceGain(resource, gained);
                         if (resource === 'food' || resource === 'water') {
                             gameState[resource] = Math.min(100, gameState[resource]);
                         }

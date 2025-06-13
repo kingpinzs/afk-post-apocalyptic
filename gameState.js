@@ -17,7 +17,11 @@ export const gameState = {
     dailyWaterConsumed: 0,
     lastSaved: null,
     prestigePoints: 0,
-    achievements: {}
+    achievements: {},
+    stats: {
+        resourcesGathered: {},
+        itemsCrafted: {}
+    }
 };
 
 export async function loadGameConfig() {
@@ -31,6 +35,9 @@ export async function loadGameConfig() {
         // Initialize gameState with values from config
         Object.assign(gameState, gameConfig.initialState);
         if (!gameState.achievements) gameState.achievements = {};
+        if (!gameState.stats) {
+            gameState.stats = { resourcesGathered: {}, itemsCrafted: {} };
+        }
         gameState.availableWorkers = gameState.workers;
         gameState.automationProgress = {};
         gameState.dailyFoodConsumed = 0;
