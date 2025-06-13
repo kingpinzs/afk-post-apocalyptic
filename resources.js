@@ -55,7 +55,9 @@ export function gatherResource(resource) {
 
 export function getGatheringTime(resource) {
     const config = getConfig();
-    let time = config.gatheringTimes[resource];
+    const baseTime = config.gatheringTimes[resource];
+    const dayScale = config.constants.DAY_LENGTH / 600;
+    let time = baseTime * dayScale;
     time /= getGatheringMultiplier(resource);
     // Apply gathering efficiency modifier from events
     time /= (gameState.gatheringEfficiency || 1);
