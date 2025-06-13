@@ -552,7 +552,8 @@ progress::-moz-progress-bar {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 1rem;
+  gap: .2rem;
+  max-width: 200px;
 }
 
 .population-info {
@@ -596,9 +597,7 @@ progress::-moz-progress-bar {
   align-items: center;
 }
 #time-season {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: inline-block;
   margin-top: 0.2rem;
 }
 .population-info i {
@@ -610,7 +609,7 @@ progress::-moz-progress-bar {
   font-size: 0.85rem;
   border-radius: 3px;
   cursor: pointer;
-  width: 25%;
+  width: 32%;
 }
 
 
