@@ -54,15 +54,15 @@
     "DAYS_PER_SEASON": 10
   },
   "gatheringTimes": {
-    "wood": 5000,
-    "stone": 7000,
-    "food": 3000,
-    "water": 2000,
-    "clay": 6000,
-    "fiber": 4000,
-    "ore": 8000,
-    "herbs": 5000,
-    "fruit": 4000
+    "wood": 50000,
+    "stone": 70000,
+    "food": 30000,
+    "water": 20000,
+    "clay": 60000,
+    "fiber": 40000,
+    "ore": 80000,
+    "herbs": 50000,
+    "fruit": 40000
   },
   "seasons": [
     { "name": "Spring", "gatheringEfficiency": 1.1, "consumption": 1, "production": 1.1 },
