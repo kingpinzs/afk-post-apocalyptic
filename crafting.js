@@ -5,8 +5,6 @@ import { updateAutomationControls } from './automation.js';
 import { recordItemCraft } from './stats.js';
 import { subtractResource } from './resourceManager.js';
 
-const craftingQueue = [];
-
 export function updateCraftableItems() {
     if (!gameState.unlockedFeatures.includes('crafting')) {
         document.getElementById('crafting').style.display = 'none';
@@ -105,7 +103,7 @@ function completeCrafting(item) {
 function updateCraftingQueue() {
     const queueContainer = document.getElementById('crafting-queue');
     queueContainer.innerHTML = '';
-    craftingQueue.forEach(craftingItem => {
+    gameState.craftingQueue.forEach(craftingItem => {
         const itemElement = document.createElement('div');
         itemElement.className = 'crafting-item';
         itemElement.innerHTML = `
