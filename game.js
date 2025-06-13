@@ -289,5 +289,12 @@ function scheduleNextLoop() {
     setTimeout(gameLoopWrapper, getUpdateInterval());
 }
 
+async function startGame() {
+    const loading = document.getElementById('loading-screen');
+    if (loading) loading.style.display = 'flex';
+    await initializeGame();
+    if (loading) loading.style.display = 'none';
+}
+
 // Initialize the game
-initializeGame();
+startGame();
