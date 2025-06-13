@@ -22,6 +22,7 @@ export function updateDisplay() {
     const prestigeEl = document.getElementById('prestige-points');
     if (prestigeEl) prestigeEl.textContent = gameState.prestigePoints || 0;
     updateGatherButtons();
+    updateGrowthIndicators();
 }
 
 // Previously displayed current work progress. Section removed, so keep stub.
@@ -135,5 +136,39 @@ export function updateGatherButtons() {
         }
         const mult = getGatheringMultiplier(resource) * getPrestigeMultiplier();
         multiplierSpan.textContent = mult > 1 ? `x${mult}` : '';
+    });
+}
+
+export function updateGrowthIndicators() {
+    const config = getConfig();
+    const list = document.getElementById('growth-requirements');
+    if (!list) return;
+    const threshold = config.constants.POPULATION_THRESHOLD;
+    const items = [
+        { met: gameState.food >= threshold, text: `Food \u2265 ${threshold}` },
+        { met: gameState.water >= threshold, text: `Water \u2265 ${threshold}` },
+        {
+            met: gameState.daysSinceGrowth >= config.constants.POPULATION_GROWTH_DAYS,
+            text: `Days ${gameState.daysSinceGrowth}/${config.constants.POPULATION_GROWTH_DAYS}`
+        },
+        {
+            met: gameState.gatherCount >= config.constants.POPULATION_GATHER_REQUIRED,
+            text: `Gather ${gameState.gatherCount}/${config.constants.POPULATION_GATHER_REQUIRED}`
+        },
+        {
+            met: gameState.studyCount >= config.constants.POPULATION_STUDY_REQUIRED,
+            text: `Study ${gameState.studyCount}/${config.constants.POPULATION_STUDY_REQUIRED}`
+        },
+        {
+            met: gameState.craftCount >= config.constants.POPULATION_CRAFT_REQUIRED,
+            text: `Craft ${gameState.craftCount}/${config.constants.POPULATION_CRAFT_REQUIRED}`
+        }
+    ];
+
+    list.innerHTML = '';
+    items.forEach(req => {
+        const li = document.createElement('li');
+        li.textContent = `${req.met ? '✅' : '❌'} ${req.text}`;
+        list.appendChild(li);
     });
 }

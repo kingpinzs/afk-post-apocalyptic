@@ -395,6 +395,19 @@ progress::-moz-progress-bar {
     opacity: 1;
 }
 
+.requirements-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 5px;
+    font-size: 0.8em;
+}
+
+.requirements-list li {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .divider {
     border-top: 1px solid #7f8c8d;
     margin: 10px 0;
