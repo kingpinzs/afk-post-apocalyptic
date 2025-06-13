@@ -1,5 +1,6 @@
 import { gameState, getConfig, adjustAvailableWorkers } from './gameState.js';
 import { logEvent, updateDisplay, updateWorkingSection } from './ui.js';
+import { checkAchievements } from './achievements.js';
 import { updateAutomationControls } from './automation.js';
 
 const craftingQueue = [];
@@ -88,6 +89,7 @@ function completeCrafting(item) {
     updateWorkingSection();
     updateAutomationControls();
     gameState.craftCount += 1;
+    checkAchievements();
 
     if (gameState.craftingQueue.length > 0) {
         processQueue();

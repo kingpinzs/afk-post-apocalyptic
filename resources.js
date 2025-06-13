@@ -1,5 +1,6 @@
 import { gameState, getConfig, adjustAvailableWorkers } from './gameState.js';
 import { logEvent, updateDisplay, updateWorkingSection, showUnlockPuzzle } from './ui.js';
+import { checkAchievements } from './achievements.js';
 import { updateAutomationControls } from './automation.js';
 import { updateCraftableItems, areDependenciesMet } from './crafting.js';
 
@@ -84,6 +85,7 @@ function completeGathering(resource) {
     updateCraftableItems();
     updateWorkingSection();
     gameState.gatherCount += 1;
+    checkAchievements();
 }
 
 
@@ -148,6 +150,7 @@ export function checkPopulationGrowth() {
         gameState.daysSinceGrowth = 0;
         updateAutomationControls();
         updateDisplay();
+        checkAchievements();
     }
 }
 
@@ -238,6 +241,7 @@ export function study() {
             }
             updateWorkingSection();
             gameState.studyCount += 1;
+            checkAchievements();
         }
     }, interval); // Study time affected by research speed
 }

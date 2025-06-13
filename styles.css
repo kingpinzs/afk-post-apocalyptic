@@ -153,6 +153,26 @@ progress {
     text-align: center;
 }
 
+#achievement-list {
+    list-style: none;
+    padding: 0;
+}
+
+#achievement-list li {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.achievement-unlocked {
+    color: gold;
+}
+
+#achievement-popup {
+    min-width: 200px;
+    text-align: center;
+}
+
 .gather-action {
     display: flex;
     align-items: center;

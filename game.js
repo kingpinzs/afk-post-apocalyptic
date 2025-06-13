@@ -5,6 +5,7 @@ import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
 import { checkForEvents, updateActiveEvents, advanceEventTime } from './events.js';
 import { initBook } from './book.js';
+import { initAchievements } from './achievements.js';
 
 function saveGame(manual = false) {
     gameState.lastSaved = Date.now();
@@ -92,6 +93,7 @@ async function initializeGame() {
     createGatheringActions(config.resources);
     updateGatherButtons();
     initBook();
+    initAchievements();
     updateDisplay();
     checkForEvents();
 

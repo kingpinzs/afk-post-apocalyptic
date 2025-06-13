@@ -30,7 +30,8 @@
     "craftCount": 0,
     "daysSinceGrowth": 0,
     "automationProgress": {},
-    "lastSaved": 0
+    "lastSaved": 0,
+    "achievements": {}
   },
   "constants": {
     "DAY_LENGTH": 600,
