@@ -5,11 +5,12 @@
   "main": "automation.js",
   "scripts": {
     "start": "http-server -o",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "http-server": "^14.1.1"
-  }
+  },
+  "type": "module"
 }

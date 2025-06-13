@@ -72,7 +72,3 @@ export function getPrestigeMultiplier() {
     });
     return mult;
 }
-
-export function setGameConfig(config) {
-    gameConfig = config;
-}
