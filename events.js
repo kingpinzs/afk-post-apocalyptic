@@ -34,15 +34,19 @@ function triggerEvent(event) {
     updateDisplay();
 }
 
-export function updateActiveEvents() {
+export function advanceEventTime(seconds) {
     activeEvents = activeEvents.filter(event => {
-        event.remainingDuration--;
+        event.remainingDuration -= seconds;
         if (event.remainingDuration <= 0) {
             endEvent(event);
             return false;
         }
         return true;
     });
+}
+
+export function updateActiveEvents() {
+    advanceEventTime(1);
 }
 
 function endEvent(event) {
