@@ -54,8 +54,8 @@ Each craftable item requires solving a puzzle, adding an element of problem-solv
 
 ## 7. Day/Night Cycle
 
-- A full day lasts 10 minutes in real-time
-- 5 minutes of daylight, 5 minutes of night
+- A full day lasts 10 minutes in real-time, representing a 24 hour cycle
+- Morning begins at **06:00**, afternoon at **12:00** and night at **20:00**
 - Certain activities may be more or less efficient depending on the time of day
 
 ## 8. Progression
