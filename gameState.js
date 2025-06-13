@@ -12,7 +12,9 @@ export const gameState = {
     gatherCount: 0,
     studyCount: 0,
     craftCount: 0,
-    daysSinceGrowth: 0
+    daysSinceGrowth: 0,
+    dailyFoodConsumed: 0,
+    dailyWaterConsumed: 0
 };
 
 export async function loadGameConfig() {
@@ -27,6 +29,8 @@ export async function loadGameConfig() {
         Object.assign(gameState, gameConfig.initialState);
         gameState.availableWorkers = gameState.workers;
         gameState.automationProgress = {};
+        gameState.dailyFoodConsumed = 0;
+        gameState.dailyWaterConsumed = 0;
     } catch (error) {
         console.error("Failed to load game configuration:", error);
     }

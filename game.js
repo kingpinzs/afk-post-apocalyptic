@@ -1,6 +1,6 @@
 import { gameState, loadGameConfig, getConfig } from './gameState.js';
 import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu, updateGatherButtons } from './ui.js';
-import { gatherResource, consumeResources, produceResources, checkPopulationGrowth, trainWorker } from './resources.js';
+import { gatherResource, consumeResources, logDailyConsumption, produceResources, checkPopulationGrowth, trainWorker } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
 import { checkForEvents, updateActiveEvents } from './events.js';
@@ -76,8 +76,9 @@ function createGatheringActions(resources) {
 
 function gameLoop() {
     updateTime();
+    consumeResources(1);
     if (gameState.time === 0) { // Start of a new day
-        consumeResources();
+        logDailyConsumption();
         produceResources();
         checkPopulationGrowth();
         checkForEvents();
@@ -124,7 +125,9 @@ function resetGame() {
         gatherCount: 0,
         studyCount: 0,
         craftCount: 0,
-        daysSinceGrowth: 0
+        daysSinceGrowth: 0,
+        dailyFoodConsumed: 0,
+        dailyWaterConsumed: 0
     });
     updateDisplay();
     updateCraftableItems();

@@ -87,15 +87,26 @@ function completeGathering(resource) {
 }
 
 
-export function consumeResources() {
-    const consumptionRate = gameState.craftedItems.shelter ? 0.5 : 1;
-    const foodConsumption = Math.min(gameState.food, consumptionRate * gameState.population);
-    const waterConsumption = Math.min(gameState.water, consumptionRate * gameState.population);
-    
-    gameState.food -= foodConsumption;
-    gameState.water -= waterConsumption;
-    
-    logEvent(`Consumed ${foodConsumption.toFixed(1)} food and ${waterConsumption.toFixed(1)} water for the day.`);
+export function consumeResources(seconds = 1) {
+    const config = getConfig();
+    const dailyRate = gameState.craftedItems.shelter ? 0.5 : 1;
+    const ratePerSecond = (dailyRate * gameState.population) / config.constants.DAY_LENGTH;
+    const amount = ratePerSecond * seconds;
+
+    const foodConsumed = Math.min(gameState.food, amount);
+    const waterConsumed = Math.min(gameState.water, amount);
+
+    gameState.food -= foodConsumed;
+    gameState.water -= waterConsumed;
+
+    gameState.dailyFoodConsumed += foodConsumed;
+    gameState.dailyWaterConsumed += waterConsumed;
+}
+
+export function logDailyConsumption() {
+    logEvent(`Consumed ${gameState.dailyFoodConsumed.toFixed(1)} food and ${gameState.dailyWaterConsumed.toFixed(1)} water for the day.`);
+    gameState.dailyFoodConsumed = 0;
+    gameState.dailyWaterConsumed = 0;
 }
 
 
