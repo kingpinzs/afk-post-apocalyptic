@@ -14,7 +14,8 @@ export const gameState = {
     craftCount: 0,
     daysSinceGrowth: 0,
     dailyFoodConsumed: 0,
-    dailyWaterConsumed: 0
+    dailyWaterConsumed: 0,
+    lastSaved: null
 };
 
 export async function loadGameConfig() {
