@@ -66,6 +66,51 @@ export function getGatheringRate(resource) {
     return getGatheringMultiplier(resource) / (getGatheringTime(resource) / 1000);
 }
 
+export function scavenge() {
+    if (gameState.availableWorkers === 0) {
+        logEvent("No available workers to scavenge.");
+        return;
+    }
+
+    const button = document.getElementById('scavenge');
+    const progressBar = button.querySelector('.progress-bar');
+    if (button.disabled) return;
+
+    button.disabled = true;
+    adjustAvailableWorkers(-1);
+    gameState.currentWork = { type: 'scavenging' };
+    updateWorkingSection();
+
+    let progress = 0;
+    const interval = 100;
+    const duration = 4000;
+    const progressInterval = setInterval(() => {
+        progress += interval;
+        progressBar.style.width = `${(progress / duration) * 100}%`;
+        if (progress >= duration) {
+            clearInterval(progressInterval);
+            completeScavenge();
+            button.disabled = false;
+            progressBar.style.width = '0%';
+        }
+    }, interval);
+}
+
+function completeScavenge() {
+    const rewards = ['wood', 'stone', 'food', 'water'];
+    const resource = rewards[Math.floor(Math.random() * rewards.length)];
+    const amount = Math.round((Math.random() * 2 + 1) * getPrestigeMultiplier());
+    gameState[resource] = (gameState[resource] || 0) + amount;
+    logEvent(`Scavenged ${amount} ${resource}.`);
+    adjustAvailableWorkers(1);
+    gameState.currentWork = null;
+    updateDisplay();
+    updateCraftableItems();
+    updateWorkingSection();
+    gameState.gatherCount += 1;
+    checkAchievements();
+}
+
 function completeGathering(resource) {
     let amount = getGatheringMultiplier(resource);
 
