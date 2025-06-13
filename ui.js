@@ -19,6 +19,10 @@ export function updateDisplay() {
     document.getElementById('available-workers').textContent = gameState.availableWorkers;
     document.getElementById('total-workers').textContent = gameState.workers;
     document.getElementById('day-count').textContent = gameState.day;
+    const config = getConfig();
+    const seasonName = config.seasons[gameState.seasonIndex].name;
+    const seasonEl = document.getElementById('current-season');
+    if (seasonEl) seasonEl.textContent = seasonName;
     const prestigeEl = document.getElementById('prestige-points');
     if (prestigeEl) prestigeEl.textContent = gameState.prestigePoints || 0;
     updateGatherButtons();

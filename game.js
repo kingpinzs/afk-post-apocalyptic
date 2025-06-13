@@ -82,6 +82,13 @@ function applyOfflineProgress() {
         advanceEventTime(config.constants.DAY_LENGTH);
     }
 
+    const prevSeason = gameState.seasonIndex;
+    const daysPerSeason = config.constants.DAYS_PER_SEASON || 30;
+    gameState.seasonIndex = Math.floor((gameState.day - 1) / daysPerSeason) % config.seasons.length;
+    if (gameState.seasonIndex !== prevSeason) {
+        logEvent(`The season has changed to ${config.seasons[gameState.seasonIndex].name}.`);
+    }
+
     const remaining = seconds - daysPassed * config.constants.DAY_LENGTH;
     if (remaining > 0) {
         advanceEventTime(remaining);
@@ -220,9 +227,20 @@ function updateTime() {
     if (gameState.time === 0) {
         gameState.day += 1;
         gameState.daysSinceGrowth += 1;
+        checkSeasonChange();
     }
     updateTimeEmoji();
     updateTimeDisplay();
+}
+
+function checkSeasonChange() {
+    const config = getConfig();
+    const days = config.constants.DAYS_PER_SEASON || 30;
+    if ((gameState.day - 1) % days === 0 && gameState.day !== 1) {
+        gameState.seasonIndex = (gameState.seasonIndex + 1) % config.seasons.length;
+        const season = config.seasons[gameState.seasonIndex].name;
+        logEvent(`The season has changed to ${season}.`);
+    }
 }
 
 function checkSurvival() {
