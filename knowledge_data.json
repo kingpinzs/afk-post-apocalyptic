@@ -542,6 +542,107 @@
         "knowledge": 3
       },
       "probability": 0.05
+    },
+    {
+      "id": "lost_wanderer",
+      "name": "Lost Wanderer",
+      "description": "A lone wanderer stumbles into camp and decides to stay.",
+      "effect": {
+        "population": 1,
+        "food": -10
+      },
+      "probability": 0.03
+    },
+    {
+      "id": "forest_fire",
+      "name": "Forest Fire",
+      "description": "A spreading fire burns nearby woods and hampers gathering.",
+      "effect": {
+        "wood": -30,
+        "gatheringEfficiency": 0.8
+      },
+      "duration": 2,
+      "probability": 0.02
+    },
+    {
+      "id": "mysterious_ruins",
+      "name": "Mysterious Ruins",
+      "description": "Explorers uncover ancient ruins filled with knowledge.",
+      "effect": {
+        "knowledge": 8,
+        "stone": 10
+      },
+      "probability": 0.03
+    },
+    {
+      "id": "disease_outbreak",
+      "name": "Disease Outbreak",
+      "description": "An illness spreads through the settlement.",
+      "effect": {
+        "population": -1,
+        "gatheringEfficiency": 0.8
+      },
+      "duration": 3,
+      "probability": 0.02
+    },
+    {
+      "id": "meteor_shower",
+      "name": "Meteor Shower",
+      "description": "Falling meteors yield rare ore and spark curiosity.",
+      "effect": {
+        "ore": 20,
+        "knowledge": 2
+      },
+      "probability": 0.02
+    },
+    {
+      "id": "wild_animal_attack",
+      "name": "Wild Animal Attack",
+      "description": "Wild animals attack the camp, causing injuries and losses.",
+      "effect": {
+        "food": -15,
+        "population": -1
+      },
+      "probability": 0.03
+    },
+    {
+      "id": "hidden_spring",
+      "name": "Hidden Spring",
+      "description": "A newly found spring replenishes the water supply.",
+      "effect": {
+        "water": 50
+      },
+      "probability": 0.04
+    },
+    {
+      "id": "equipment_failure",
+      "name": "Equipment Failure",
+      "description": "Key equipment breaks down, slowing progress.",
+      "effect": {
+        "gatheringEfficiency": 0.75
+      },
+      "duration": 2,
+      "probability": 0.03
+    },
+    {
+      "id": "pilgrim_visit",
+      "name": "Passing Pilgrims",
+      "description": "Pilgrims trade wisdom for supplies.",
+      "effect": {
+        "knowledge": 4,
+        "food": -10
+      },
+      "probability": 0.03
+    },
+    {
+      "id": "celebration",
+      "name": "Spontaneous Celebration",
+      "description": "Your people hold a celebration, boosting morale and productivity.",
+      "effect": {
+        "gatheringEfficiency": 1.15
+      },
+      "duration": 2,
+      "probability": 0.02
     }
   ],
   "items": [
