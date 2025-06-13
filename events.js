@@ -47,8 +47,12 @@ export function advanceEventTime(seconds) {
     });
 }
 
-export function updateActiveEvents() {
-    advanceEventTime(1);
+export function updateActiveEvents(seconds = 1) {
+    advanceEventTime(seconds);
+}
+
+export function hasActiveEvents() {
+    return activeEvents.length > 0;
 }
 
 function endEvent(event) {
