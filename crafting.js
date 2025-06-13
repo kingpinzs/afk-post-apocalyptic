@@ -2,6 +2,7 @@ import { gameState, getConfig, adjustAvailableWorkers } from './gameState.js';
 import { logEvent, updateDisplay, updateWorkingSection } from './ui.js';
 import { checkAchievements } from './achievements.js';
 import { updateAutomationControls } from './automation.js';
+import { recordItemCraft } from './stats.js';
 
 const craftingQueue = [];
 
@@ -78,6 +79,7 @@ export function processQueue() {
 function completeCrafting(item) {
     // Store the full item data so other systems can access its effects
     gameState.craftedItems[item.id] = item;
+    recordItemCraft(item.id);
     logEvent(`Crafted ${item.name}!`);
     
     adjustAvailableWorkers(1);

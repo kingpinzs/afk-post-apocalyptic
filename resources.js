@@ -1,6 +1,7 @@
 import { gameState, getConfig, adjustAvailableWorkers, getPrestigeMultiplier } from './gameState.js';
 import { logEvent, updateDisplay, updateWorkingSection, showUnlockPuzzle } from './ui.js';
 import { checkAchievements } from './achievements.js';
+import { recordResourceGain } from './stats.js';
 import { updateAutomationControls } from './automation.js';
 import { updateCraftableItems, areDependenciesMet } from './crafting.js';
 
@@ -101,6 +102,7 @@ function completeScavenge() {
     const resource = rewards[Math.floor(Math.random() * rewards.length)];
     const amount = Math.round((Math.random() * 2 + 1) * getPrestigeMultiplier());
     gameState[resource] = (gameState[resource] || 0) + amount;
+    recordResourceGain(resource, amount);
     logEvent(`Scavenged ${amount} ${resource}.`);
     adjustAvailableWorkers(1);
     gameState.currentWork = null;
@@ -122,6 +124,7 @@ function completeGathering(resource) {
     amount = Math.round(amount);
 
     gameState[resource] += amount;
+    recordResourceGain(resource, amount);
     logEvent(`Gathered ${amount} ${resource}.`);
 
     adjustAvailableWorkers(1);
@@ -163,11 +166,13 @@ export function produceResources() {
     if (gameState.craftedItems.farm) {
         const foodProduced = gameState.craftedItems.farm.effect.foodProductionRate * (gameState.automationAssignments.farm || 0) * mult;
         gameState.food += foodProduced;
+        recordResourceGain('food', foodProduced);
         logEvent(`Farm produced ${foodProduced.toFixed(1)} food.`);
     }
     if (gameState.craftedItems.well) {
         const waterProduced = gameState.craftedItems.well.effect.waterProductionRate * (gameState.automationAssignments.well || 0) * mult;
         gameState.water += waterProduced;
+        recordResourceGain('water', waterProduced);
         logEvent(`Well produced ${waterProduced.toFixed(1)} water.`);
     }
     gameState.food = Math.min(gameState.food, 100);

@@ -32,7 +32,11 @@
     "automationProgress": {},
     "lastSaved": 0,
     "prestigePoints": 0,
-    "achievements": {}
+    "achievements": {},
+    "stats": {
+      "resourcesGathered": {},
+      "itemsCrafted": {}
+    }
   },
   "constants": {
     "DAY_LENGTH": 600,

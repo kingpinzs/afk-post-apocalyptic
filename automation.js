@@ -1,5 +1,6 @@
 import { gameState, getConfig, adjustAvailableWorkers, getPrestigeMultiplier } from './gameState.js';
 import { updateDisplay, logEvent } from './ui.js';
+import { recordResourceGain } from './stats.js';
 
 export function updateAutomationControls() {
     const config = getConfig();
@@ -83,6 +84,7 @@ export function runAutomation() {
             if (itemId.startsWith('gather_')) {
                 const resource = itemId.replace('gather_', '');
                 gameState[resource] = (gameState[resource] || 0) + count * mult;
+                recordResourceGain(resource, count * mult);
                 logEvent(`Workers gathered ${count * mult} ${resource}.`);
             } else {
                 const item = config.items.find(i => i.id === itemId);
@@ -91,6 +93,7 @@ export function runAutomation() {
                         if (key.endsWith('ProductionRate')) {
                             const resource = key.replace('ProductionRate', '');
                             gameState[resource] = (gameState[resource] || 0) + count * mult;
+                            recordResourceGain(resource, count * mult);
                             if (resource === 'food' || resource === 'water') {
                                 gameState[resource] = Math.min(100, gameState[resource]);
                             }
