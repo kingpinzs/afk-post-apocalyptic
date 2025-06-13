@@ -61,6 +61,7 @@ Each craftable item requires solving a puzzle, adding an element of problem-solv
 ## 8. Progression
 
 1. Early Game: Focus on survival, manually gathering resources
+   - New "Scavenge Ruins" mini-game offers random basic resources in short sessions
 2. Mid Game: Craft basic tools, build shelter, start automating resource gathering
 3. Late Game: Expand population, build advanced structures, focus on knowledge and tech advancement
 

@@ -1,6 +1,6 @@
 import { gameState, loadGameConfig, getConfig, getPrestigeMultiplier } from './gameState.js';
 import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu, updateGatherButtons } from './ui.js';
-import { gatherResource, consumeResources, logDailyConsumption, produceResources, checkPopulationGrowth, trainWorker } from './resources.js';
+import { gatherResource, scavenge, consumeResources, logDailyConsumption, produceResources, checkPopulationGrowth, trainWorker } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
 import { prestigeGame, resetState } from './prestige.js';
@@ -164,6 +164,20 @@ function createGatheringActions(resources) {
         gatherAction.appendChild(button);
         actionsContainer.appendChild(gatherAction);
     });
+
+    // Scavenge mini-game button
+    const scavengeAction = document.createElement('div');
+    scavengeAction.className = 'gather-action';
+    const scavengeBtn = document.createElement('button');
+    scavengeBtn.id = 'scavenge';
+    scavengeBtn.className = 'progress-button';
+    scavengeBtn.innerHTML = '<span>Scavenge Ruins</span>';
+    const scavengeBar = document.createElement('div');
+    scavengeBar.className = 'progress-bar';
+    scavengeBtn.appendChild(scavengeBar);
+    scavengeBtn.addEventListener('click', scavenge);
+    scavengeAction.appendChild(scavengeBtn);
+    actionsContainer.appendChild(scavengeAction);
 }
 
 function gameLoop() {
