@@ -8,7 +8,11 @@ export function updateAutomationControls() {
     automationControlsContainer.innerHTML = '';
 
     config.items.forEach(item => {
-        if (gameState.craftedItems[item.id] && (item.effect.foodProductionRate || item.effect.waterProductionRate)) {
+        if (
+            gameState.craftedItems[item.id] &&
+            item.effect &&
+            (item.effect.foodProductionRate || item.effect.waterProductionRate)
+        ) {
             const div = document.createElement('div');
             div.className = 'automation-control';
             div.innerHTML = `
