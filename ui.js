@@ -35,18 +35,23 @@ export function updateWorkingSection() {}
 
 export function updateTimeDisplay() {
     const config = getConfig();
-    const hours = Math.floor(gameState.time / 60);
-    const minutes = gameState.time % 60;
+    const dayLength = config.constants.DAY_LENGTH;
+    const totalMinutes = (gameState.time / dayLength) * 1440;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = Math.floor(totalMinutes % 60);
     document.getElementById('time-display').textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
 export function updateTimeEmoji() {
     const config = getConfig();
+    const dayLength = config.constants.DAY_LENGTH;
+    const totalHours = (gameState.time / dayLength) * 24;
+    const hours = Math.floor(totalHours);
     const timeEmojiElement = document.getElementById('time-emoji');
-    if (gameState.time < config.constants.DAY_PHASE) {
-        timeEmojiElement.textContent = '☀️';
-    } else {
+    if (hours >= 20 || hours < 6) {
         timeEmojiElement.textContent = '🌙';
+    } else {
+        timeEmojiElement.textContent = '☀️';
     }
 }
 
