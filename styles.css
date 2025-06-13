@@ -138,6 +138,10 @@ progress {
     z-index: 1000;
 }
 
+.highlight {
+    box-shadow: 0 0 10px 2px yellow;
+}
+
 .popup input {
     width: 100%;
     padding: 5px;
