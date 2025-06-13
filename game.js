@@ -1,6 +1,6 @@
 import { gameState, loadGameConfig, getConfig, getPrestigeMultiplier } from './gameState.js';
 import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu, updateGatherButtons } from './ui.js';
-import { gatherResource, scavenge, consumeResources, logDailyConsumption, produceResources, checkPopulationGrowth, trainWorker } from './resources.js';
+import { gatherResource, scavenge, consumeResources, logDailyConsumption, produceResources, checkPopulationGrowth, trainWorker, study } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation, hasActiveAutomation } from './automation.js';
 import { prestigeGame, resetState } from './prestige.js';
@@ -202,6 +202,20 @@ function createGatheringActions(resources) {
     scavengeBtn.addEventListener('click', scavenge);
     scavengeAction.appendChild(scavengeBtn);
     actionsContainer.appendChild(scavengeAction);
+
+    // Study action button
+    const studyAction = document.createElement('div');
+    studyAction.className = 'gather-action';
+    const studyBtn = document.createElement('button');
+    studyBtn.id = 'study';
+    studyBtn.className = 'progress-button';
+    studyBtn.innerHTML = '<span>Study</span>';
+    const studyBar = document.createElement('div');
+    studyBar.className = 'progress-bar';
+    studyBtn.appendChild(studyBar);
+    studyBtn.addEventListener('click', study);
+    studyAction.appendChild(studyBtn);
+    actionsContainer.appendChild(studyAction);
 }
 
 function gameLoop(delta) {
