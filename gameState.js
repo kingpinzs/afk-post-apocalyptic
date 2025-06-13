@@ -13,6 +13,7 @@ export const gameState = {
     studyCount: 0,
     craftCount: 0,
     daysSinceGrowth: 0,
+    seasonIndex: 0,
     expeditions: [],
     dailyFoodConsumed: 0,
     dailyWaterConsumed: 0,

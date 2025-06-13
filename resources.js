@@ -59,6 +59,10 @@ export function getGatheringTime(resource) {
     time /= getGatheringMultiplier(resource);
     // Apply gathering efficiency modifier from events
     time /= (gameState.gatheringEfficiency || 1);
+    const season = config.seasons[gameState.seasonIndex] || {};
+    if (season.gatheringEfficiency) {
+        time /= season.gatheringEfficiency;
+    }
     // You can add more modifiers here based on other upgrades or skills
     return time;
 }
@@ -141,8 +145,9 @@ function completeGathering(resource) {
 export function consumeResources(seconds = 1) {
     const config = getConfig();
     const dailyRate = gameState.craftedItems.shelter ? 0.5 : 1;
+    const season = config.seasons[gameState.seasonIndex] || {};
     const ratePerSecond = (dailyRate * gameState.population) / config.constants.DAY_LENGTH;
-    const amount = ratePerSecond * seconds;
+    const amount = ratePerSecond * seconds * (season.consumption || 1);
 
     const foodConsumed = Math.min(gameState.food, amount);
     const waterConsumed = Math.min(gameState.water, amount);
@@ -163,14 +168,17 @@ export function logDailyConsumption() {
 
 export function produceResources() {
     const mult = getPrestigeMultiplier();
+    const season = getConfig().seasons[gameState.seasonIndex] || {};
     if (gameState.craftedItems.farm) {
-        const foodProduced = gameState.craftedItems.farm.effect.foodProductionRate * (gameState.automationAssignments.farm || 0) * mult;
+        const base = gameState.craftedItems.farm.effect.foodProductionRate;
+        const foodProduced = base * (gameState.automationAssignments.farm || 0) * mult * (season.production || 1);
         gameState.food += foodProduced;
         recordResourceGain('food', foodProduced);
         logEvent(`Farm produced ${foodProduced.toFixed(1)} food.`);
     }
     if (gameState.craftedItems.well) {
-        const waterProduced = gameState.craftedItems.well.effect.waterProductionRate * (gameState.automationAssignments.well || 0) * mult;
+        const baseW = gameState.craftedItems.well.effect.waterProductionRate;
+        const waterProduced = baseW * (gameState.automationAssignments.well || 0) * mult * (season.production || 1);
         gameState.water += waterProduced;
         recordResourceGain('water', waterProduced);
         logEvent(`Well produced ${waterProduced.toFixed(1)} water.`);

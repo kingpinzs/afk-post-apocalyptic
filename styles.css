@@ -567,6 +567,12 @@ progress::-moz-progress-bar {
   flex-direction: column;
   align-items: center;
 }
+#time-season {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 0.2rem;
+}
 .population-info i {
   font-size: 1.2rem;
 }
