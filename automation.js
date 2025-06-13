@@ -1,4 +1,4 @@
-import { gameState, getConfig, adjustAvailableWorkers } from './gameState.js';
+import { gameState, getConfig, adjustAvailableWorkers, getPrestigeMultiplier } from './gameState.js';
 import { updateDisplay, logEvent } from './ui.js';
 
 export function updateAutomationControls() {
@@ -79,21 +79,22 @@ export function runAutomation() {
         if (gameState.automationProgress[itemId] >= 10) {
             gameState.automationProgress[itemId] -= 10;
 
+            const mult = getPrestigeMultiplier();
             if (itemId.startsWith('gather_')) {
                 const resource = itemId.replace('gather_', '');
-                gameState[resource] = (gameState[resource] || 0) + count;
-                logEvent(`Workers gathered ${count} ${resource}.`);
+                gameState[resource] = (gameState[resource] || 0) + count * mult;
+                logEvent(`Workers gathered ${count * mult} ${resource}.`);
             } else {
                 const item = config.items.find(i => i.id === itemId);
                 if (item && item.effect) {
                     Object.entries(item.effect).forEach(([key]) => {
                         if (key.endsWith('ProductionRate')) {
                             const resource = key.replace('ProductionRate', '');
-                            gameState[resource] = (gameState[resource] || 0) + count;
+                            gameState[resource] = (gameState[resource] || 0) + count * mult;
                             if (resource === 'food' || resource === 'water') {
                                 gameState[resource] = Math.min(100, gameState[resource]);
                             }
-                            logEvent(`${item.name} produced ${count} ${resource}.`);
+                            logEvent(`${item.name} produced ${count * mult} ${resource}.`);
                         }
                     });
                 }
