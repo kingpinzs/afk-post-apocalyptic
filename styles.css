@@ -608,11 +608,9 @@ progress::-moz-progress-bar {
 #train-worker-btn {
   padding: 0.25rem 0.75rem;
   font-size: 0.85rem;
-
   border-radius: 3px;
-
   cursor: pointer;
-
+  width: 25%;
 }
 
 
