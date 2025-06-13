@@ -148,6 +148,11 @@ progress {
     margin-top: 10px;
 }
 
+#event-popup {
+    min-width: 200px;
+    text-align: center;
+}
+
 .gather-action {
     display: flex;
     align-items: center;

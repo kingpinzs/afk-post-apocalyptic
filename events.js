@@ -1,5 +1,5 @@
 import { gameState, getConfig } from './gameState.js';
-import { logEvent, updateDisplay } from './ui.js';
+import { logEvent, updateDisplay, showEventPopup } from './ui.js';
 
 let activeEvents = [];
 
@@ -14,7 +14,8 @@ export function checkForEvents() {
 
 function triggerEvent(event) {
     logEvent(`Event: ${event.name} - ${event.description}`);
-    
+    showEventPopup(event);
+
     Object.entries(event.effect).forEach(([key, value]) => {
         if (key in gameState) {
             gameState[key] += value;
@@ -25,7 +26,9 @@ function triggerEvent(event) {
     });
 
     if (event.duration) {
-        activeEvents.push({...event, remainingDuration: event.duration});
+        const config = getConfig();
+        const durationSeconds = event.duration * config.constants.DAY_LENGTH;
+        activeEvents.push({ ...event, remainingDuration: durationSeconds });
     }
 
     updateDisplay();
