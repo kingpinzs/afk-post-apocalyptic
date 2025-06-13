@@ -29,6 +29,7 @@
     "studyCount": 0,
     "craftCount": 0,
     "daysSinceGrowth": 0,
+    "expeditions": [],
     "automationProgress": {},
     "lastSaved": 0,
     "prestigePoints": 0,
@@ -47,7 +48,8 @@
     "POPULATION_STUDY_REQUIRED": 1,
     "POPULATION_CRAFT_REQUIRED": 1,
     "POPULATION_GROWTH_COST": 5,
-    "OFFLINE_PROGRESS_LIMIT": 28800
+    "OFFLINE_PROGRESS_LIMIT": 28800,
+    "EXPEDITION_DURATION": 30
   },
   "gatheringTimes": {
     "wood": 5000,

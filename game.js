@@ -9,6 +9,7 @@ import { initBook } from './book.js';
 import { initAchievements } from './achievements.js';
 import { startTutorial, checkTutorialProgress, nextStep, skipTutorial } from './tutorial.js';
 import { recordResourceGain } from './stats.js';
+import { initExpeditions, updateExpeditions } from './expeditions.js';
 
 function saveGame(manual = false) {
     gameState.lastSaved = Date.now();
@@ -102,6 +103,7 @@ async function initializeGame() {
     updateGatherButtons();
     initBook();
     initAchievements();
+    initExpeditions();
     updateDisplay();
     checkForEvents();
 
@@ -205,6 +207,7 @@ function gameLoop() {
     }
     runAutomation();
     updateActiveEvents();
+    updateExpeditions();
     checkSurvival();
     checkTutorialProgress();
     updateDisplay();
