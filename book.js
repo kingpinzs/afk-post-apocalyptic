@@ -1,5 +1,6 @@
 import { gameState, getConfig } from './gameState.js';
 import { updateDisplay } from './ui.js';
+import { checkPopulationGrowth } from './resources.js';
 import { updateCraftableItems } from './crafting.js';
 
 export function initBook() {
@@ -77,8 +78,10 @@ function submitAnswer() {
             gameState.unlockedFeatures.push(puzzle.unlocks);
         }
         gameState.knowledge += 1;
+        gameState.studyCount += 1;
         updateDisplay();
         updateCraftableItems();
+        checkPopulationGrowth();
         renderPage();
     } else {
         alert('Incorrect answer. Try again!');
