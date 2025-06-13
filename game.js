@@ -7,6 +7,7 @@ import { prestigeGame, resetState } from './prestige.js';
 import { checkForEvents, updateActiveEvents, advanceEventTime } from './events.js';
 import { initBook } from './book.js';
 import { initAchievements } from './achievements.js';
+import { startTutorial, checkTutorialProgress, nextStep, skipTutorial } from './tutorial.js';
 
 function saveGame(manual = false) {
     gameState.lastSaved = Date.now();
@@ -131,6 +132,14 @@ async function initializeGame() {
         });
     });
 
+    // Tutorial buttons
+    const nextBtn = document.getElementById('tutorial-next');
+    const skipBtn = document.getElementById('tutorial-skip');
+    if (nextBtn) nextBtn.addEventListener('click', nextStep);
+    if (skipBtn) skipBtn.addEventListener('click', skipTutorial);
+
+    startTutorial();
+
     // Start game loop
     setInterval(gameLoop, 1000); // Update every second
     setInterval(saveGame, 30000); // Auto-save every 30 seconds
@@ -192,6 +201,7 @@ function gameLoop() {
     runAutomation();
     updateActiveEvents();
     checkSurvival();
+    checkTutorialProgress();
     updateDisplay();
     processQueue();
 }
