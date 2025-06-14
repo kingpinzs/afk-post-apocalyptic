@@ -205,6 +205,11 @@ progress {
     text-align: center;
 }
 
+#offline-popup {
+    min-width: 200px;
+    text-align: center;
+}
+
 .gather-action {
     display: flex;
     align-items: center;

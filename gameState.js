@@ -14,6 +14,8 @@ export const gameState = {
     craftCount: 0,
     daysSinceGrowth: 0,
     seasonIndex: 0,
+    offlineSeconds: 0,
+    offlineLimit: 28800,
     expeditions: [],
     dailyFoodConsumed: 0,
     dailyWaterConsumed: 0,

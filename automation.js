@@ -1,6 +1,7 @@
 import { gameState, getConfig, adjustAvailableWorkers, getPrestigeMultiplier } from './gameState.js';
 import { updateDisplay, logEvent } from './ui.js';
 import { addResource } from './resourceManager.js';
+import { trainWorker } from './resources.js';
 
 export function updateAutomationControls() {
     const config = getConfig();
@@ -30,6 +31,18 @@ export function updateAutomationControls() {
     if (gameState.craftedItems.axe) {
         addResourceControl('wood', 'Chop Wood');
     }
+
+    // Auto-train workers
+    const trainDiv = document.createElement('div');
+    trainDiv.className = 'automation-control';
+    trainDiv.innerHTML = `
+        <p>Train Worker: <span id="train_worker-assigned">${gameState.automationAssignments['train_worker'] || 0}</span> assigned</p>
+        <button id="train_worker-assign">+</button>
+        <button id="train_worker-unassign">-</button>
+    `;
+    automationControlsContainer.appendChild(trainDiv);
+    document.getElementById('train_worker-assign').addEventListener('click', () => assignWorker('train_worker'));
+    document.getElementById('train_worker-unassign').addEventListener('click', () => unassignWorker('train_worker'));
 }
 
 function addResourceControl(resource, label) {
@@ -89,6 +102,8 @@ export function runAutomation(seconds = 1) {
                 const resource = itemId.replace('gather_', '');
                 addResource(resource, count * mult);
                 logEvent(`Workers gathered ${count * mult} ${resource}.`);
+            } else if (itemId === 'train_worker') {
+                trainWorker();
             } else {
                 const item = config.items.find(i => i.id === itemId);
                 if (item && item.effect) {
