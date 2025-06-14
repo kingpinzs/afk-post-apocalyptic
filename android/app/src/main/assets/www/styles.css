@@ -1,0 +1,662 @@
+html, body {
+    font-family: Arial, sans-serif;
+    background-color: #1e1e2f;
+    color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+    padding-top: 80px;
+    font-size: 16px;
+    overflow-x: hidden; /* Prevent unwanted horizontal scroll */
+}
+
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #1e1e2f;
+    color: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+h1, h2, h3 {
+    font-weight: 700;
+}
+
+p, li {
+    line-height: 1.6;
+}
+
+#game-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 20px;
+    width: 100%;
+    padding-bottom: 70px; /* space for bottom nav */
+    box-sizing: border-box; /* Include padding in width */
+}
+
+#top-section {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    background-color: #1e1e2f;
+}
+
+#settings-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 101;
+}
+
+#settings-menu {
+    display: none;
+    position: fixed;
+    bottom: 110px;
+    right: 10px;
+    background-color: #34495e;
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 1000;
+}
+
+
+h1, h2 {
+    text-align: center;
+    color: #e74c3c;
+}
+
+#day-night-cycle, #resources, #actions, #crafting, #knowledge, #automation {
+    background-color: #34495e;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+#day-night-cycle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0;
+}
+
+#population {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+button {
+    background-color: #3498db;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+button:disabled {
+    background-color: #7f8c8d;
+    cursor: not-allowed;
+}
+
+#log {
+    background-color: #34495e;
+    border-radius: 5px;
+    padding: 10px;
+    height: 200px;
+    overflow-y: scroll;
+}
+
+#event-log {
+    list-style-type: none;
+    padding: 0;
+}
+
+#event-log li {
+    margin-bottom: 5px;
+}
+
+progress {
+    width: 100%;
+    height: 20px;
+}
+
+.popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #34495e;
+    padding: 20px;
+    border-radius: 5px;
+    z-index: 1000;
+}
+
+.highlight {
+    box-shadow: 0 0 10px 2px yellow;
+}
+
+.popup input {
+    width: 100%;
+    padding: 5px;
+    margin-top: 10px;
+}
+
+.popup button {
+    margin-top: 10px;
+}
+
+#event-popup {
+    min-width: 200px;
+    max-width: 300px;
+    text-align: center;
+    top: 10px;
+    left: 50%;
+    transform: translate(-50%, 0);
+    font-size: 0.9rem;
+    padding: 10px;
+}
+
+#achievement-list {
+    list-style: none;
+    padding: 0;
+}
+
+#achievement-list li {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+#population-progress {
+    margin-top: 10px;
+}
+
+#population-progress h3 {
+    margin: 0 0 5px 0;
+}
+
+.achievement-unlocked {
+    color: gold;
+}
+
+#achievement-popup {
+    min-width: 200px;
+    text-align: center;
+}
+
+.gather-action {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.progress-bar-container {
+    flex-grow: 1;
+    height: 20px;
+    background-color: #2c3e50;
+    margin-left: 10px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    width: 0;
+    height: 100%;
+    background-color: #27ae60;
+    transition: width 0.1s ease-in-out;
+}
+
+#book {
+    background-color: #34495e;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+#book-page {
+    min-height: 120px;
+}
+
+.book-nav {
+    margin-top: 10px;
+}
+
+#book-nav-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+/* Progress bar overlay inside buttons */
+.progress-button {
+    position: relative;
+    overflow: hidden;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.progress-button .progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: rgba(39, 174, 96, 0.5);
+    z-index: 0;
+}
+
+.progress-button span {
+    position: relative;
+    z-index: 1;
+}
+
+.progress-button .multiplier {
+    margin-left: 8px;
+}
+
+#crafting-queue {
+    margin-top: 10px;
+}
+
+.crafting-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.crafting-item .progress-bar-container {
+    flex-grow: 1;
+    height: 20px;
+    background-color: #2c3e50;
+    margin-left: 10px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.crafting-item .progress-bar {
+    width: 0;
+    height: 100%;
+    background-color: #e67e22;
+    transition: width 0.1s linear;
+}
+
+
+.automation-control {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.automation-control button {
+    padding: 5px 10px;
+}
+
+#game-container h1 {
+    color: #ff6f61;
+}
+
+button {
+    background-color: #ff6f61;
+    color: #fff;
+}
+
+button:hover {
+    background-color: #ff3b2f;
+}
+
+#resources {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    background-color: #34495e;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 0;
+    margin-bottom: 20px;
+    gap: 10px;
+}
+
+.resource-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #ffffff;
+    min-width: 60px;
+}
+
+.resource-item i {
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+.resource-item progress {
+    width: 60px;
+    height: 8px;
+    margin-top: 2px;
+}
+progress {
+    width: 100%;
+    height: 25px;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+progress::-webkit-progress-bar {
+    background-color: #2c3e50;
+    border-radius: 5px;
+}
+
+progress::-webkit-progress-value {
+    background-color: #27ae60; /* Green color */
+    border-radius: 5px;
+}
+
+progress::-moz-progress-bar {
+    background-color: #27ae60;
+}
+
+#population {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.population-info {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.population-info i {
+    font-size: 24px;
+    color: #f39c12; /* Orange to stand out */
+}
+
+#population p {
+    margin: 0;
+    font-size: 1em;
+    color: #ecf0f1;
+    text-align: center;
+}
+.population-info {
+    position: relative;
+    cursor: pointer;
+}
+
+.population-info:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #34495e;
+    color: #ecf0f1;
+    padding: 5px;
+    border-radius: 5px;
+    white-space: nowrap;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.population-info:hover::after {
+    opacity: 1;
+}
+
+.requirements-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 5px;
+    font-size: 0.8em;
+}
+
+.requirements-list li {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.divider {
+    border-top: 1px solid #7f8c8d;
+    margin: 10px 0;
+}
+#actions.game-section-active {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two columns for better organization */
+    gap: 10px;
+    padding: 10px;
+    background-color: #34495e;
+    border-radius: 10px;
+    margin-bottom: 56px;
+    padding-top: 25px;
+}
+
+.action-card {
+    display: flex;
+    align-items: center;
+    background-color: #e74c3c;
+    border-radius: 8px;
+    padding: 10px;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, background-color 0.3s;
+}
+
+.action-card:hover {
+    background-color: #d35400;
+    transform: translateY(-5px);
+}
+
+.action-card:active {
+    transform: translateY(0);
+}
+
+.action-text {
+    margin: 0;
+    font-size: 1.1em;
+    flex-grow: 1;
+}
+
+.progress-bar-container {
+    flex-grow: 1;
+    height: 15px;
+    background-color: #2c3e50;
+    margin-left: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: #27ae60;
+    width: 0%;
+    transition: width 0.3s linear;
+}
+
+.game-section {
+    display: none;
+}
+
+.game-section.game-section-active {
+    display: block;
+}
+
+/* Bottom navigation */
+#bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    background-color: #1e1e2f;
+    border-top: 1px solid #2c3e50;
+    z-index: 100;
+}
+
+#bottom-nav .nav-btn {
+    flex: 1;
+    padding: 8px 0;
+    border: none;
+    background: none;
+    color: #fff;
+    font-size: 0.8em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#bottom-nav .nav-btn i {
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+#bottom-nav .nav-btn.active {
+    background-color: #34495e;
+}
+
+#day-night-cycle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
+
+#population {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+.population-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  #day-night-cycle {
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+}
+
+#day-night-cycle span {
+  font-family: Arial, sans-serif;
+  font-size: 0.95rem;
+}
+#time-section {
+  display: flex;
+  flex-direction: column;
+  align-content: center;
+  align-items: center;
+}
+#time-emoji {
+  margin-bottom: .4rem;
+  font-size: 20px;
+}
+#time-area {
+  display: flex;
+}
+#time-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#time-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#time-season {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 0.2rem;
+}
+.population-info i {
+  font-size: 1.2rem;
+}
+
+#train-worker-btn {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+
+  border-radius: 3px;
+
+  cursor: pointer;
+
+}
+
+
+
+
+@media (max-width: 600px) {
+    body {
+        font-size: 14px;
+    }
+
+    #game-container {
+        padding: 0 10px;
+        padding-bottom: 70px;
+        padding-top: 42px;
+    }
+
+    #resources {
+        justify-content: space-between;
+        gap: 5px;
+    }
+
+    #actions.game-section-active {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    button {
+        width: 100%;
+        padding: 15px;
+        font-size: 1.1em;
+    }
+
+    #log {
+        height: 150px;
+    }
+
+    .gather-action {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .progress-bar-container {
+        margin-left: 0;
+        margin-top: 5px;
+        width: 100%;
+    }
+}
