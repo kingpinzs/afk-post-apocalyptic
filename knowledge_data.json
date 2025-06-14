@@ -30,6 +30,8 @@
     "craftCount": 0,
     "daysSinceGrowth": 0,
     "seasonIndex": 0,
+    "offlineSeconds": 0,
+    "offlineLimit": 28800,
     "expeditions": [],
     "automationProgress": {},
     "lastSaved": 0,
@@ -643,6 +645,17 @@
       },
       "duration": 2,
       "probability": 0.02
+    },
+    {
+      "id": "solar_eclipse",
+      "name": "Solar Eclipse",
+      "description": "A brief eclipse amazes everyone and sparks curiosity.",
+      "effect": {
+        "knowledge": 5,
+        "gatheringEfficiency": 0.9
+      },
+      "duration": 1,
+      "probability": 0.03
     }
   ],
   "items": [

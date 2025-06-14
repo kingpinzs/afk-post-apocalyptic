@@ -5,7 +5,8 @@ export const achievementsList = [
     { id: 'gather_10', name: 'First Forager', type: 'gatherCount', target: 10, reward: '🏅', description: 'Gather resources 10 times.' },
     { id: 'craft_5', name: 'Apprentice Crafter', type: 'craftCount', target: 5, reward: '🔨', description: 'Craft 5 items.' },
     { id: 'study_5', name: 'Scholar', type: 'studyCount', target: 5, reward: '📖', description: 'Study 5 times.' },
-    { id: 'pop_5', name: 'Growing Settlement', type: 'population', target: 5, reward: '👥', description: 'Reach population of 5.' }
+    { id: 'pop_5', name: 'Growing Settlement', type: 'population', target: 5, reward: '👥', description: 'Reach population of 5.' },
+    { id: 'afk_24h', name: 'Time Traveler', type: 'offlineSeconds', target: 86400, reward: '⏰', description: 'Accumulate 24 hours offline.' }
 ];
 
 export function initAchievements() {

@@ -42,6 +42,7 @@ export function prestigeGame() {
         return;
     }
     gameState.prestigePoints = (gameState.prestigePoints || 0) + gain;
+    gameState.offlineLimit = (gameState.offlineLimit || 0) + 3600;
     resetState();
     updateCraftableItems();
     updateAutomationControls();

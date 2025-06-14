@@ -1,5 +1,5 @@
-import { gameState, loadGameConfig, getConfig, getPrestigeMultiplier } from './gameState.js';
-import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu, updateGatherButtons } from './ui.js';
+import { gameState, loadGameConfig, getConfig, getPrestigeMultiplier, adjustAvailableWorkers } from './gameState.js';
+import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu, updateGatherButtons, showOfflinePopup } from './ui.js';
 import { gatherResource, scavenge, consumeResources, logDailyConsumption, produceResources, checkPopulationGrowth, trainWorker, study } from './resources.js';
 import { updateCraftableItems, processQueue } from './crafting.js';
 import { updateAutomationControls, runAutomation, hasActiveAutomation } from './automation.js';
@@ -10,6 +10,7 @@ import { initAchievements } from './achievements.js';
 import { startTutorial, checkTutorialProgress, nextStep, skipTutorial } from './tutorial.js';
 import { addResource } from './resourceManager.js';
 import { initExpeditions, updateExpeditions, hasExpeditions } from './expeditions.js';
+import { recordItemCraft } from './stats.js';
 
 function saveGame(manual = false) {
     gameState.lastSaved = Date.now();
@@ -36,19 +37,27 @@ function applyOfflineProgress() {
     const elapsed = Math.floor((now - gameState.lastSaved) / 1000);
     if (elapsed <= 0) return;
 
-    const limit = config.constants.OFFLINE_PROGRESS_LIMIT || 28800;
+    const limit = gameState.offlineLimit || config.constants.OFFLINE_PROGRESS_LIMIT || 28800;
     const seconds = Math.min(elapsed, limit);
+
+    gameState.offlineSeconds = (gameState.offlineSeconds || 0) + seconds;
 
     consumeResources(seconds);
 
     const cycles = Math.floor(seconds / 10);
     const mult = getPrestigeMultiplier();
+    const gainedResources = {};
     Object.entries(gameState.automationAssignments).forEach(([itemId, count]) => {
         if (count <= 0) return;
         if (itemId.startsWith('gather_')) {
             const resource = itemId.replace('gather_', '');
             const gained = count * cycles * mult;
             addResource(resource, gained);
+            gainedResources[resource] = (gainedResources[resource] || 0) + gained;
+        } else if (itemId === 'train_worker') {
+            for (let i = 0; i < cycles; i++) {
+                trainWorker();
+            }
         } else {
             const item = config.items.find(i => i.id === itemId);
             if (item && item.effect) {
@@ -57,6 +66,7 @@ function applyOfflineProgress() {
                         const resource = key.replace('ProductionRate', '');
                         const gained = count * cycles * mult;
                         addResource(resource, gained);
+                        gainedResources[resource] = (gainedResources[resource] || 0) + gained;
                         if (resource === 'food' || resource === 'water') {
                             gameState[resource] = Math.min(100, gameState[resource]);
                         }
@@ -90,6 +100,41 @@ function applyOfflineProgress() {
     const remaining = seconds - daysPassed * config.constants.DAY_LENGTH;
     if (remaining > 0) {
         advanceEventTime(remaining);
+    }
+
+    // Progress crafting queue
+    let craftSeconds = seconds;
+    while (craftSeconds > 0 && gameState.craftingQueue.length > 0) {
+        const craft = gameState.craftingQueue[0];
+        const remainingMs = craft.duration - craft.progress;
+        const step = Math.min(craftSeconds * 1000, remainingMs);
+        craft.progress += step;
+        craftSeconds -= step / 1000;
+        if (craft.progress >= craft.duration) {
+            // replicate completeCrafting
+            gameState.craftedItems[craft.item.id] = craft.item;
+            recordItemCraft(craft.item.id);
+            logEvent(`Crafted ${craft.item.name}!`);
+            adjustAvailableWorkers(1);
+            gameState.currentWork = null;
+            gameState.craftingQueue.shift();
+            updateCraftableItems();
+            updateAutomationControls();
+            gameState.craftCount += 1;
+            checkAchievements();
+        }
+    }
+
+    // Expeditions
+    if (gameState.expeditions.length > 0) {
+        updateExpeditions(seconds);
+    }
+
+    if (Object.keys(gainedResources).length > 0) {
+        const summary = Object.entries(gainedResources)
+            .map(([r, a]) => `${Math.floor(a)} ${r}`)
+            .join(', ');
+        showOfflinePopup(`While you were away (${Math.floor(seconds)}s): ${summary}`);
     }
 
     checkSurvival();
@@ -126,11 +171,24 @@ async function initializeGame() {
     }
     const prestigeBtn = document.getElementById('prestige-btn');
     if (prestigeBtn) {
-        prestigeBtn.addEventListener('click', prestigeGame);
+        prestigeBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to prestige? This will reset your progress.')) {
+                prestigeGame();
+            }
+        });
     }
     const trainBtn = document.getElementById('train-worker-btn');
     if (trainBtn) {
         trainBtn.addEventListener('click', trainWorker);
+    }
+
+    const offlineInput = document.getElementById('offline-limit-input');
+    if (offlineInput) {
+        offlineInput.value = Math.floor((gameState.offlineLimit || config.constants.OFFLINE_PROGRESS_LIMIT) / 3600);
+        offlineInput.addEventListener('change', () => {
+            const hours = parseFloat(offlineInput.value) || 0;
+            gameState.offlineLimit = hours * 3600;
+        });
     }
 
     // Bottom navigation

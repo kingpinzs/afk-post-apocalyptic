@@ -81,6 +81,17 @@ export function showEventPopup(event) {
     }, displaySeconds * 1000);
 }
 
+export function showOfflinePopup(message) {
+    const popup = document.getElementById('offline-popup');
+    if (!popup) return;
+    popup.textContent = message;
+    popup.style.display = 'block';
+    if (popup._timeout) clearTimeout(popup._timeout);
+    popup._timeout = setTimeout(() => {
+        popup.style.display = 'none';
+    }, 4000);
+}
+
 export function showUnlockPuzzle(puzzle) {
     const puzzlePopup = document.getElementById('puzzle-popup');
     document.getElementById('puzzle-title').textContent = 'Unlock New Feature';
