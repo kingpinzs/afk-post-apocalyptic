@@ -1,306 +1,368 @@
-import { gameState, getConfig, adjustAvailableWorkers, getPrestigeMultiplier } from './gameState.js';
+import { gameState, getConfig } from './gameState.js';
 import { logEvent, updateDisplay, updateWorkingSection, showUnlockPuzzle } from './ui.js';
-import { checkAchievements } from './achievements.js';
-import { addResource, subtractResource, getResource } from './resourceManager.js';
 import { updateAutomationControls } from './automation.js';
-import { updateCraftableItems, areDependenciesMet } from './crafting.js';
+import { updateCraftableItems } from './crafting.js';
+import { playGather, playStudy, playUnlock } from './audio.js';
+import { getEffect } from './effects.js';
 
-export function getGatheringMultiplier(resource) {
-    return Object.values(gameState.craftedItems).reduce((mult, item) => {
-        if (item.effect) {
-            const key = `${resource}GatheringMultiplier`;
-            if (item.effect[key]) {
-                mult *= item.effect[key];
-            }
-        }
-        return mult;
-    }, 1);
+let activeIntervals = [];
+
+function trackInterval(id) {
+    activeIntervals.push(id);
 }
 
+function untrackInterval(id) {
+    activeIntervals = activeIntervals.filter(i => i !== id);
+}
+
+export function clearActiveIntervals() {
+    activeIntervals.forEach(id => clearInterval(id));
+    activeIntervals = [];
+}
+
+export function resetGathering() {
+    const config = getConfig();
+    config.resources.forEach(resource => {
+        const button = document.getElementById(`gather-${resource}`);
+        if (button) {
+            button.disabled = false;
+            delete button.dataset.gathering;
+        }
+        const bar = document.getElementById(`${resource}-progress-bar`);
+        if (bar) bar.style.width = '0%';
+    });
+}
 
 export function gatherResource(resource) {
-    const config = getConfig();
-    if (gameState.availableWorkers === 0) {
+    if (gameState.availableWorkers <= 0) {
         logEvent("No available workers to gather resources.");
         return;
     }
 
     const button = document.getElementById(`gather-${resource}`);
-    const progressBar = button.querySelector('.progress-bar');
-    
-    if (button.disabled) return;  // If already gathering, do nothing
-    
-    button.disabled = true;
-    adjustAvailableWorkers(-1);
-    gameState.currentWork = { type: 'gathering', resource: resource };
-    updateWorkingSection();
+    const progressBar = document.getElementById(`${resource}-progress-bar`);
 
-    let progress = 0;
-    const interval = 100;  // Update every 100ms
-    const duration = getGatheringTime(resource);
-    
-    const progressInterval = setInterval(() => {
-        progress += interval;
-        const percentage = (progress / duration) * 100;
-        progressBar.style.width = `${percentage}%`;
-        
-        if (progress >= duration) {
-            clearInterval(progressInterval);
-            completeGathering(resource);
-            button.disabled = false;
-            progressBar.style.width = '0%';
-        }
-    }, interval);
-}
-
-export function getGatheringTime(resource) {
-    const config = getConfig();
-    const baseTime = config.gatheringTimes[resource];
-    const dayScale = config.constants.DAY_LENGTH / 600;
-    let time = baseTime * dayScale;
-    time /= getGatheringMultiplier(resource);
-    // Apply gathering efficiency modifier from events
-    time /= (gameState.gatheringEfficiency || 1);
-    const season = config.seasons[gameState.seasonIndex] || {};
-    if (season.gatheringEfficiency) {
-        time /= season.gatheringEfficiency;
-    }
-    // You can add more modifiers here based on other upgrades or skills
-    return time;
-}
-
-export function getGatheringRate(resource) {
-    return getGatheringMultiplier(resource) / (getGatheringTime(resource) / 1000);
-}
-
-export function scavenge() {
-    if (gameState.availableWorkers === 0) {
-        logEvent("No available workers to scavenge.");
-        return;
-    }
-
-    const button = document.getElementById('scavenge');
-    const progressBar = button.querySelector('.progress-bar');
     if (button.disabled) return;
 
+    // Don't gather if resource is already at cap
+    if (gameState[resource] >= getResourceCap(resource)) return;
+
     button.disabled = true;
-    adjustAvailableWorkers(-1);
-    gameState.currentWork = { type: 'scavenging' };
+    button.dataset.gathering = 'true';
+    gameState.availableWorkers--;
+    gameState.currentWork = { type: 'gathering', resource: resource };
     updateWorkingSection();
+    updateDisplay();
 
     let progress = 0;
     const interval = 100;
-    const duration = 4000;
+    const duration = getGatheringTime(resource);
+
     const progressInterval = setInterval(() => {
+        // Stop gathering if game over mid-gather
+        if (gameState.isGameOver) {
+            clearInterval(progressInterval);
+            untrackInterval(progressInterval);
+            progressBar.style.width = '0%';
+            delete button.dataset.gathering;
+            button.disabled = true;
+            gameState.availableWorkers++;
+            gameState.currentWork = null;
+            updateWorkingSection();
+            return;
+        }
+
         progress += interval;
-        progressBar.style.width = `${(progress / duration) * 100}%`;
+        const percentage = (progress / duration) * 100;
+        progressBar.style.width = `${percentage}%`;
+
         if (progress >= duration) {
             clearInterval(progressInterval);
-            completeScavenge();
-            button.disabled = false;
+            untrackInterval(progressInterval);
+            completeGathering(resource);
             progressBar.style.width = '0%';
+            delete button.dataset.gathering;
+            // Re-enable unless resource is at cap
+            const cap = getResourceCap(resource);
+            button.disabled = (gameState[resource] >= cap);
         }
     }, interval);
+    trackInterval(progressInterval);
 }
 
-function completeScavenge() {
-    const rewards = ['wood', 'stone', 'food', 'water'];
-    const resource = rewards[Math.floor(Math.random() * rewards.length)];
-    const amount = Math.round((Math.random() * 2 + 1) * getPrestigeMultiplier());
-    addResource(resource, amount);
-    logEvent(`Scavenged ${amount} ${resource}.`);
-    adjustAvailableWorkers(1);
-    gameState.currentWork = null;
-    updateDisplay();
-    updateCraftableItems();
-    updateWorkingSection();
-    gameState.gatherCount += 1;
-    checkAchievements();
+function getGatheringTime(resource) {
+    const config = getConfig();
+    let time = config.gatheringTimes[resource];
+    const multiplier = getToolMultiplier(resource);
+    if (multiplier > 1) {
+        time /= multiplier;
+    }
+    time /= (gameState.gatheringEfficiency || 1);
+
+    // toolEfficiencyMultiplier (blacksmith) — global gathering speed bonus
+    const toolEff = getEffect('toolEfficiencyMultiplier');
+    if (toolEff > 1) time /= toolEff;
+
+    // productivityMultiplier (brewery) — global gathering bonus
+    const productivity = getEffect('productivityMultiplier');
+    if (productivity > 1) time /= productivity;
+
+    // Apply difficulty modifier if set
+    if (gameState.difficulty) {
+        const config2 = getConfig();
+        const preset = config2.difficultyPresets?.[gameState.difficulty];
+        if (preset?.gatheringBonus) time /= preset.gatheringBonus;
+    }
+
+    return Math.max(500, time); // Minimum 0.5s gathering time
+}
+
+function getToolMultiplier(resource) {
+    // Check all crafted items for gathering multipliers that match this resource
+    const multiplierKeys = {
+        wood: 'woodGatheringMultiplier',
+        stone: 'stoneGatheringMultiplier',
+        ore: 'oreGatheringMultiplier',
+        food: 'foodGatheringMultiplier'
+    };
+    const key = multiplierKeys[resource];
+    if (!key) return 1;
+
+    let multiplier = getEffect(key);
+
+    // meatGatheringMultiplier (hunting_lodge) stacks with food
+    if (resource === 'food') {
+        multiplier *= getEffect('meatGatheringMultiplier');
+    }
+
+    return multiplier;
 }
 
 function completeGathering(resource) {
-    let amount = getGatheringMultiplier(resource);
-
-    // Apply gathering efficiency modifier
-    amount *= (gameState.gatheringEfficiency || 1);
-    amount *= getPrestigeMultiplier();
-    
-    // Round the amount to avoid fractional resources
-    amount = Math.round(amount);
+    let amount = getToolMultiplier(resource);
+    amount = Math.max(1, Math.round(amount));
 
     addResource(resource, amount);
     logEvent(`Gathered ${amount} ${resource}.`);
+    playGather();
 
-    adjustAvailableWorkers(1);
+    // Track stats for achievements
+    gameState.stats.totalGathered = (gameState.stats.totalGathered || 0) + amount;
+
+    gameState.availableWorkers++;
     gameState.currentWork = null;
-    
+
     updateDisplay();
     updateCraftableItems();
     updateWorkingSection();
-    gameState.gatherCount += 1;
-    checkAchievements();
 }
 
+export function consumeResources(meals = 1) {
+    // Use effect engine for resource consumption multiplier
+    const consumptionMult = getEffect('resourceConsumptionMultiplier');
 
-export function consumeResources(seconds = 1) {
+    // waterEfficiencyMultiplier (irrigation) reduces water consumption
+    const waterEfficiency = getEffect('waterEfficiencyMultiplier');
+
+    // Apply difficulty modifier
+    let difficultyMult = 1;
+    if (gameState.difficulty) {
+        const config = getConfig();
+        const preset = config.difficultyPresets?.[gameState.difficulty];
+        if (preset?.consumptionMultiplier) difficultyMult = preset.consumptionMultiplier;
+    }
+
+    // Diminishing per-capita cost: base * sqrt(population)
+    const BASE_FOOD = 3;
+    const BASE_WATER = 2;
+    const pop = gameState.population;
+    const foodConsumption = Math.min(gameState.food, (BASE_FOOD * Math.sqrt(pop) * consumptionMult * difficultyMult) / meals);
+    const waterMult = waterEfficiency > 1 ? consumptionMult / waterEfficiency : consumptionMult;
+    const waterConsumption = Math.min(gameState.water, (BASE_WATER * Math.sqrt(pop) * waterMult * difficultyMult) / meals);
+
+    gameState.food -= foodConsumption;
+    gameState.water -= waterConsumption;
+}
+
+/**
+ * Per-resource storage cap. Applies global storehouse multiplier
+ * plus resource-specific multipliers (granary for food, pottery for water).
+ *
+ * @param {string} [resource] - Optional resource name for per-resource bonuses.
+ * @returns {number} The cap for the given resource.
+ */
+export function getResourceCap(resource) {
     const config = getConfig();
-    const dailyRate = gameState.craftedItems.shelter ? 0.5 : 1;
-    const season = config.seasons[gameState.seasonIndex] || {};
-    const ratePerSecond = (dailyRate * gameState.population) / config.constants.DAY_LENGTH;
-    const amount = ratePerSecond * seconds * (season.consumption || 1);
+    const tiers = config.resourceCapTiers;
+    let cap = 100;
 
-    const foodConsumed = Math.min(getResource('food'), amount);
-    const waterConsumed = Math.min(getResource('water'), amount);
+    if (tiers) {
+        for (const tier of tiers) {
+            if (!tier.requires || gameState.unlockedFeatures.includes(tier.requires)) {
+                cap = tier.cap;
+                break;
+            }
+        }
+    }
 
-    subtractResource('food', foodConsumed);
-    subtractResource('water', waterConsumed);
+    // Global storage multiplier (storehouse)
+    cap *= getEffect('storageCapacityMultiplier');
 
-    gameState.dailyFoodConsumed += foodConsumed;
-    gameState.dailyWaterConsumed += waterConsumed;
+    // Per-resource storage multipliers
+    if (resource === 'food') {
+        cap *= getEffect('foodStorageMultiplier');
+    } else if (resource === 'water') {
+        cap *= getEffect('waterStorageMultiplier');
+    }
+
+    return cap;
 }
 
-export function logDailyConsumption() {
-    logEvent(`Consumed ${gameState.dailyFoodConsumed.toFixed(1)} food and ${gameState.dailyWaterConsumed.toFixed(1)} water for the day.`);
-    gameState.dailyFoodConsumed = 0;
-    gameState.dailyWaterConsumed = 0;
+export function addResource(resource, amount) {
+    const cap = getResourceCap(resource);
+    gameState[resource] += amount;
+    // Cap all gathering resources (knowledge is uncapped)
+    if (resource !== 'knowledge') {
+        gameState[resource] = Math.min(gameState[resource], cap);
+    }
 }
 
-
-export function produceResources() {
-    const mult = getPrestigeMultiplier();
-    const season = getConfig().seasons[gameState.seasonIndex] || {};
-    if (gameState.craftedItems.farm) {
-        const base = gameState.craftedItems.farm.effect.foodProductionRate;
-        const foodProduced = base * (gameState.automationAssignments.farm || 0) * mult * (season.production || 1);
-        addResource('food', foodProduced);
-        logEvent(`Farm produced ${foodProduced.toFixed(1)} food.`);
-    }
-    if (gameState.craftedItems.well) {
-        const baseW = gameState.craftedItems.well.effect.waterProductionRate;
-        const waterProduced = baseW * (gameState.automationAssignments.well || 0) * mult * (season.production || 1);
-        addResource('water', waterProduced);
-        logEvent(`Well produced ${waterProduced.toFixed(1)} water.`);
-    }
-    gameState.food = Math.min(gameState.food, 100);
-    gameState.water = Math.min(gameState.water, 100);
-    updateDisplay();
+export function capResources() {
+    const config = getConfig();
+    config.resources.forEach(resource => {
+        const cap = getResourceCap(resource);
+        gameState[resource] = Math.min(gameState[resource], cap);
+    });
 }
 
 export function checkPopulationGrowth() {
     const config = getConfig();
-    const threshold = config.constants.POPULATION_THRESHOLD;
-    if (
-        gameState.food >= threshold &&
-        gameState.water >= threshold &&
-        gameState.daysSinceGrowth >= config.constants.POPULATION_GROWTH_DAYS &&
-        gameState.gatherCount >= config.constants.POPULATION_GATHER_REQUIRED &&
-        gameState.studyCount >= config.constants.POPULATION_STUDY_REQUIRED &&
-        gameState.craftCount >= config.constants.POPULATION_CRAFT_REQUIRED
-    ) {
+    let threshold = config.constants.POPULATION_THRESHOLD;
+
+    // populationCapacityMultiplier (metropolis) — caps max population.
+    // Sandbox mode bypasses the cap so the player can keep growing freely.
+    const maxPop = Math.floor(10 * getEffect('populationCapacityMultiplier'));
+    if (!gameState.sandboxMode && gameState.population >= maxPop) return;
+
+    // populationHealthMultiplier (apothecary, aqueduct, hospital) — reduces growth threshold
+    const healthMult = getEffect('populationHealthMultiplier');
+    if (healthMult > 1) threshold = Math.max(10, Math.floor(threshold / healthMult));
+
+    // immigrationRate (monument) — passive daily growth chance independent of resources
+    const immigrationRate = getEffect('immigrationRate');
+    if (immigrationRate > 0 && Math.random() < immigrationRate && gameState.population < maxPop) {
         gameState.population += 1;
-        const cost = config.constants.POPULATION_GROWTH_COST;
-        subtractResource('food', Math.min(getResource('food'), cost));
-        subtractResource('water', Math.min(getResource('water'), cost));
-        logEvent("Your settlement has grown! Train newcomers to put them to work.");
-        gameState.gatherCount = 0;
-        gameState.studyCount = 0;
-        gameState.craftCount = 0;
-        gameState.daysSinceGrowth = 0;
+        gameState.availableWorkers += 1;
+        logEvent("A new settler has arrived, attracted by your settlement!");
         updateAutomationControls();
-        updateDisplay();
-        checkAchievements();
     }
-}
 
-export function trainWorker() {
-    if (gameState.population <= gameState.workers) {
-        logEvent("No untrained population available.");
-        return;
-    }
-    if (getResource('knowledge') < 1) {
-        logEvent("Not enough knowledge to train a worker.");
-        return;
-    }
-    subtractResource('knowledge', 1);
-    gameState.workers += 1;
-    adjustAvailableWorkers(1);
-    logEvent("Trained a new worker.");
-    updateAutomationControls();
-    updateDisplay();
-}
-
-function getKnowledgeGainMultiplier() {
-    return Object.values(gameState.craftedItems).reduce((mult, item) => {
-        if (item.effect && item.effect.knowledgeGenerationMultiplier) {
-            mult *= item.effect.knowledgeGenerationMultiplier;
+    // Standard resource-based growth
+    if (gameState.food >= threshold && gameState.water >= threshold) {
+        // populationHappinessMultiplier — makes growth probabilistic when > 1
+        const happinessMult = getEffect('populationHappinessMultiplier');
+        if (happinessMult > 1) {
+            const chance = Math.min(1, happinessMult * 0.5);
+            if (Math.random() > chance) return; // Happiness roll failed
         }
-        return mult;
-    }, 1);
-}
 
-function getResearchSpeedMultiplier() {
-    return Object.values(gameState.craftedItems).reduce((mult, item) => {
-        if (item.effect && item.effect.researchSpeedMultiplier) {
-            mult *= item.effect.researchSpeedMultiplier;
-        }
-        return mult;
-    }, 1);
-}
-
-function getNextUnlockPuzzle() {
-    const config = getConfig();
-    const puzzle = config.unlockPuzzles.find(p => !gameState.unlockedFeatures.includes(p.unlocks));
-    if (puzzle) {
-        return puzzle;
+        gameState.population += 1;
+        gameState.availableWorkers += 1;
+        gameState.food -= threshold;
+        gameState.water -= threshold;
+        logEvent("The population has grown! You have a new available worker.");
+        updateAutomationControls();
     }
-    const nextItem = config.items.find(item => !gameState.unlockedFeatures.includes(item.id) && areDependenciesMet(item));
-    if (nextItem) {
-        return {
-            id: `item_${nextItem.id}`,
-            puzzle: nextItem.puzzle,
-            answer: nextItem.puzzleAnswer,
-            unlocks: nextItem.id
-        };
-    }
-    return null;
 }
 
 export function study() {
-    if (gameState.availableWorkers === 0) {
+    if (gameState.studyGate) {
+        logEvent("Gather the new resources before studying again.");
+        return;
+    }
+    if (gameState.availableWorkers <= 0) {
         logEvent("No available workers to study.");
         return;
     }
 
-    adjustAvailableWorkers(-1);
+    gameState.availableWorkers--;
     gameState.currentWork = { type: 'studying' };
     updateWorkingSection();
+    updateDisplay();
 
-    const duration = 5000 / getResearchSpeedMultiplier();
     let progress = 0;
     const interval = 100;
+    let duration = 5000;
 
-    const progressInterval = setInterval(() => {
+    // knowledgeGenerationMultiplier (library, school, observatory)
+    const knowledgeMult = getEffect('knowledgeGenerationMultiplier');
+    if (knowledgeMult > 1) duration /= knowledgeMult;
+
+    // researchSpeedMultiplier (scriptorium, university, research_lab) — stacks
+    const researchSpeed = getEffect('researchSpeedMultiplier');
+    if (researchSpeed > 1) duration /= researchSpeed;
+
+    duration = Math.max(200, duration); // Minimum 0.2s study time
+
+    const studyInterval = setInterval(() => {
         progress += interval;
         updateWorkingSection(progress / duration);
 
         if (progress >= duration) {
-            clearInterval(progressInterval);
-            const knowledgeGain = 1 * getKnowledgeGainMultiplier();
-            addResource('knowledge', knowledgeGain);
-            logEvent(`Studied the book. Gained ${knowledgeGain.toFixed(1)} knowledge point${knowledgeGain !== 1 ? 's' : ''}.`);
-            adjustAvailableWorkers(1);
+            clearInterval(studyInterval);
+            untrackInterval(studyInterval);
+
+            let knowledgeGained = 1;
+
+            // knowledgeSpreadMultiplier (printing_press) — multiplies knowledge gained
+            const spreadMult = getEffect('knowledgeSpreadMultiplier');
+            if (spreadMult > 1) knowledgeGained = Math.round(knowledgeGained * spreadMult);
+
+            // knowledgeEfficiencyMultiplier (paper_mill) — chance for +1 bonus
+            const efficiencyMult = getEffect('knowledgeEfficiencyMultiplier');
+            if (efficiencyMult > 1 && Math.random() < (efficiencyMult - 1)) {
+                knowledgeGained += 1;
+            }
+
+            gameState.knowledge += knowledgeGained;
+            gameState.maxKnowledge = Math.max(gameState.maxKnowledge, gameState.knowledge);
+            logEvent(`Studied the book. Gained ${knowledgeGained} knowledge point${knowledgeGained > 1 ? 's' : ''}.`);
+            playStudy();
+
+            // Track stats for achievements
+            gameState.stats.totalStudied = (gameState.stats.totalStudied || 0) + knowledgeGained;
+
+            gameState.availableWorkers++;
             gameState.currentWork = null;
             updateDisplay();
+            updateWorkingSection();
 
-            // Check if we should show an unlock puzzle
-            const nextUnlock = getNextUnlockPuzzle();
+            const config = getConfig();
+
+            // Set study gate on currently unlocked gathering resources
+            // (skips naturally on first study since only food/water are unlocked)
+            const gatherableResources = (gameState.unlockedResources || [])
+                .filter(r => r !== 'food' && r !== 'water');
+            if (gatherableResources.length > 0) {
+                const gateAmount = config.constants.STUDY_GATE_AMOUNT || 5;
+                const gate = {};
+                gatherableResources.forEach(r => { gate[r] = gateAmount; });
+                gameState.studyGate = gate;
+                const names = gatherableResources.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ');
+                logEvent(`Gather ${gateAmount} of each resource (${names}) before studying again.`);
+            }
+
+            updateDisplay();
+
+            const nextUnlock = config.unlockPuzzles.find(puzzle =>
+                !gameState.unlockedFeatures.includes(puzzle.unlocks) &&
+                gameState.knowledge >= puzzle.knowledgeRequired
+            );
             if (nextUnlock) {
+                playUnlock();
                 showUnlockPuzzle(nextUnlock);
             }
-            updateWorkingSection();
-            gameState.studyCount += 1;
-            updateDisplay();
-            checkAchievements();
         }
-    }, interval); // Study time affected by research speed
+    }, interval);
+    trackInterval(studyInterval);
 }

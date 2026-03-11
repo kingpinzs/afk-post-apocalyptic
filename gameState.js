@@ -4,28 +4,52 @@ export const gameState = {
     unlockedFeatures: [],
     craftedItems: {},
     automationAssignments: {},
-    automationProgress: {},
     currentWork: null,
     craftingQueue: [],
-    currentBookIndex: 0,
-    workers: 0,
-    gatherCount: 0,
-    studyCount: 0,
-    craftCount: 0,
-    daysSinceGrowth: 0,
-    seasonIndex: 0,
-    offlineSeconds: 0,
-    offlineLimit: 28800,
-    expeditions: [],
-    dailyFoodConsumed: 0,
-    dailyWaterConsumed: 0,
-    lastSaved: null,
-    prestigePoints: 0,
-    achievements: {},
+    isGameOver: false,
+    maxKnowledge: 0,
+    gatheringEfficiency: 1,
+    gatheringModifiers: [],
+    unlockedResources: ['food', 'water'],
+    studyGate: null,
+
+    // Phase 2: Weather & Seasons
+    currentSeason: 'spring',
+    currentWeather: 'clear',
+    seenMilestones: [],
+
+    // Phase 3: Trading & Economy
+    currency: 0,
+    traderVisits: [],
+    activeTrades: [],
+
+    // Phase 4: Exploration, Quests, Achievements
+    explorations: [],
+    activeQuests: [],
+    completedQuests: [],
+    achievements: [],
     stats: {
-        resourcesGathered: {},
-        itemsCrafted: {}
-    }
+        totalCrafted: 0,
+        totalGathered: 0,
+        totalStudied: 0,
+        totalTraded: 0,
+        totalExplored: 0
+    },
+
+    // Phase 5: Difficulty & Population
+    difficulty: 'normal',
+    populationMembers: [],
+
+    // Phase 6: Prestige & Sandbox
+    prestigePoints: 0,
+    prestigeBonuses: {},
+    sandboxMode: false,
+
+    // Phase 7: Factions / Diplomacy
+    factions: [],
+
+    // Save versioning
+    saveVersion: 1
 };
 
 export async function loadGameConfig() {
@@ -35,17 +59,10 @@ export async function loadGameConfig() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         gameConfig = await response.json();
-        
+
         // Initialize gameState with values from config
         Object.assign(gameState, gameConfig.initialState);
-        if (!gameState.achievements) gameState.achievements = {};
-        if (!gameState.stats) {
-            gameState.stats = { resourcesGathered: {}, itemsCrafted: {} };
-        }
-        gameState.availableWorkers = gameState.workers;
-        gameState.automationProgress = {};
-        gameState.dailyFoodConsumed = 0;
-        gameState.dailyWaterConsumed = 0;
+        gameState.availableWorkers = gameState.population;
     } catch (error) {
         console.error("Failed to load game configuration:", error);
     }
@@ -58,19 +75,24 @@ export function getConfig() {
     return gameConfig;
 }
 
-export function adjustAvailableWorkers(delta) {
-    gameState.availableWorkers = Math.max(
-        0,
-        Math.min(gameState.availableWorkers + delta, gameState.workers)
-    );
-}
+export function computeUnlockedResources() {
+    const config = getConfig();
+    const unlocks = config.resourceUnlocks;
+    if (!unlocks) return [];
 
-export function getPrestigeMultiplier() {
-    let mult = 1 + (gameState.prestigePoints || 0) * 0.1;
-    Object.values(gameState.craftedItems).forEach(item => {
-        if (item.effect && item.effect.globalPrestigeMultiplier) {
-            mult *= item.effect.globalPrestigeMultiplier;
+    const newList = [];
+    for (const [resource, rule] of Object.entries(unlocks)) {
+        if (rule.type === 'always') {
+            newList.push(resource);
+        } else if (rule.type === 'feature' && gameState.unlockedFeatures.includes(rule.requires)) {
+            newList.push(resource);
+        } else if (rule.type === 'item' && gameState.craftedItems[rule.requires]) {
+            newList.push(resource);
         }
-    });
-    return mult;
+    }
+
+    const prev = gameState.unlockedResources;
+    const newlyUnlocked = newList.filter(r => !prev.includes(r));
+    gameState.unlockedResources = newList;
+    return newlyUnlocked;
 }

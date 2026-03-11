@@ -1,370 +1,518 @@
-import { gameState, loadGameConfig, getConfig, getPrestigeMultiplier, adjustAvailableWorkers } from './gameState.js';
-import { updateDisplay, updateTimeDisplay, updateTimeEmoji, logEvent, submitUnlockPuzzleAnswer, closePuzzlePopup, openSettingsMenu, closeSettingsMenu, updateGatherButtons, showOfflinePopup } from './ui.js';
-import { gatherResource, scavenge, consumeResources, logDailyConsumption, produceResources, checkPopulationGrowth, trainWorker, study } from './resources.js';
-import { updateCraftableItems, processQueue } from './crafting.js';
-import { updateAutomationControls, runAutomation, hasActiveAutomation } from './automation.js';
-import { prestigeGame, resetState } from './prestige.js';
-import { checkForEvents, updateActiveEvents, advanceEventTime, hasActiveEvents } from './events.js';
-import { initBook } from './book.js';
-import { initAchievements } from './achievements.js';
-import { startTutorial, checkTutorialProgress, nextStep, skipTutorial } from './tutorial.js';
-import { addResource } from './resourceManager.js';
-import { initExpeditions, updateExpeditions, hasExpeditions } from './expeditions.js';
-import { recordItemCraft } from './stats.js';
+import { gameState, loadGameConfig, getConfig, computeUnlockedResources } from './gameState.js';
+import { updateDisplay, updateTimeDisplay, updateTimeEmoji, updateDayNightCycle, logEvent, submitUnlockPuzzleAnswer, showGameOver, clearEventLog, updateGatheringVisibility, updateTradingSection, updateExplorationSection, updateQuestsSection, updateAchievementsSection, updatePopulationSection, updateFactionsSection } from './ui.js';
+import { updateTrading, executeTrade } from './trading.js';
+import { gatherResource, consumeResources, capResources, checkPopulationGrowth, study, clearActiveIntervals, resetGathering } from './resources.js';
+import { updateCraftableItems, processQueue, clearCraftingInterval, submitCraftingPuzzleAnswer } from './crafting.js';
+import { updateAutomationControls, runAutomation } from './automation.js';
+import { checkForEvents, updateActiveEvents, resetActiveEvents, updateWeather, checkMilestoneEvents } from './events.js';
+import { saveGame, loadGame, hasSave, deleteSave } from './save.js';
+import { initializePopulationMembers, updatePopulation, addPopulationMember } from './population.js';
+import { initAudio, initMuteState, playClick, playGameOver, playVictory, toggleMute, isMuted } from './audio.js';
+import { updateExplorations, startExploration } from './exploration.js';
+import { checkQuestAvailability, checkQuestCompletion } from './quests.js';
+import { checkAchievements } from './achievements.js';
+import { getEffect } from './effects.js';
+import { toggleTechTree } from './techtree.js';
+import { initializeFactions, checkFactionAppearance, updateFactions, sendGift, establishTradeAgreement } from './factions.js';
 
-function saveGame(manual = false) {
-    gameState.lastSaved = Date.now();
-    localStorage.setItem('afkGameSave', JSON.stringify(gameState));
-    if (manual) {
-        logEvent('Game saved');
-    }
+let saveInterval = null;
+
+function showGameUI() {
+    document.getElementById('title-screen').style.opacity = '0';
+    setTimeout(() => {
+        document.getElementById('title-screen').style.display = 'none';
+        document.getElementById('game-container').style.display = 'block';
+        document.getElementById('hud').style.display = 'flex';
+        document.getElementById('inventory').style.display = 'block';
+        document.getElementById('bottom-nav').style.display = 'flex';
+    }, 1000);
 }
 
-function loadSavedGame() {
-    const saved = localStorage.getItem('afkGameSave');
-    if (saved) {
-        Object.assign(gameState, JSON.parse(saved));
-    }
-}
-
-function applyOfflineProgress() {
-    const config = getConfig();
-    if (!gameState.lastSaved) {
-        gameState.lastSaved = Date.now();
-        return;
-    }
-    const now = Date.now();
-    const elapsed = Math.floor((now - gameState.lastSaved) / 1000);
-    if (elapsed <= 0) return;
-
-    const limit = gameState.offlineLimit || config.constants.OFFLINE_PROGRESS_LIMIT || 28800;
-    const seconds = Math.min(elapsed, limit);
-
-    gameState.offlineSeconds = (gameState.offlineSeconds || 0) + seconds;
-
-    consumeResources(seconds);
-
-    const cycles = Math.floor(seconds / 10);
-    const mult = getPrestigeMultiplier();
-    const gainedResources = {};
-    Object.entries(gameState.automationAssignments).forEach(([itemId, count]) => {
-        if (count <= 0) return;
-        if (itemId.startsWith('gather_')) {
-            const resource = itemId.replace('gather_', '');
-            const gained = count * cycles * mult;
-            addResource(resource, gained);
-            gainedResources[resource] = (gainedResources[resource] || 0) + gained;
-        } else if (itemId === 'train_worker') {
-            for (let i = 0; i < cycles; i++) {
-                trainWorker();
-            }
-        } else {
-            const item = config.items.find(i => i.id === itemId);
-            if (item && item.effect) {
-                Object.keys(item.effect).forEach(key => {
-                    if (key.endsWith('ProductionRate')) {
-                        const resource = key.replace('ProductionRate', '');
-                        const gained = count * cycles * mult;
-                        addResource(resource, gained);
-                        gainedResources[resource] = (gainedResources[resource] || 0) + gained;
-                        if (resource === 'food' || resource === 'water') {
-                            gameState[resource] = Math.min(100, gameState[resource]);
-                        }
-                    }
-                });
-            }
-        }
-    });
-
-    const totalTime = gameState.time + seconds;
-    const daysPassed = Math.floor(totalTime / config.constants.DAY_LENGTH);
-    gameState.time = totalTime % config.constants.DAY_LENGTH;
-    gameState.day += daysPassed;
-    gameState.daysSinceGrowth += daysPassed;
-
-    for (let i = 0; i < daysPassed; i++) {
-        logDailyConsumption();
-        produceResources();
-        checkPopulationGrowth();
-        checkForEvents();
-        advanceEventTime(config.constants.DAY_LENGTH);
-    }
-
-    const prevSeason = gameState.seasonIndex;
-    const daysPerSeason = config.constants.DAYS_PER_SEASON || 30;
-    gameState.seasonIndex = Math.floor((gameState.day - 1) / daysPerSeason) % config.seasons.length;
-    if (gameState.seasonIndex !== prevSeason) {
-        logEvent(`The season has changed to ${config.seasons[gameState.seasonIndex].name}.`);
-    }
-
-    const remaining = seconds - daysPassed * config.constants.DAY_LENGTH;
-    if (remaining > 0) {
-        advanceEventTime(remaining);
-    }
-
-    // Progress crafting queue
-    let craftSeconds = seconds;
-    while (craftSeconds > 0 && gameState.craftingQueue.length > 0) {
-        const craft = gameState.craftingQueue[0];
-        const remainingMs = craft.duration - craft.progress;
-        const step = Math.min(craftSeconds * 1000, remainingMs);
-        craft.progress += step;
-        craftSeconds -= step / 1000;
-        if (craft.progress >= craft.duration) {
-            // replicate completeCrafting
-            gameState.craftedItems[craft.item.id] = craft.item;
-            recordItemCraft(craft.item.id);
-            logEvent(`Crafted ${craft.item.name}!`);
-            adjustAvailableWorkers(1);
-            gameState.currentWork = null;
-            gameState.craftingQueue.shift();
-            updateCraftableItems();
-            updateAutomationControls();
-            gameState.craftCount += 1;
-            checkAchievements();
-        }
-    }
-
-    // Expeditions
-    if (gameState.expeditions.length > 0) {
-        updateExpeditions(seconds);
-    }
-
-    if (Object.keys(gainedResources).length > 0) {
-        const summary = Object.entries(gainedResources)
-            .map(([r, a]) => `${Math.floor(a)} ${r}`)
-            .join(', ');
-        showOfflinePopup(`While you were away (${Math.floor(seconds)}s): ${summary}`);
-    }
-
-    checkSurvival();
-    gameState.lastSaved = now;
+function hideGameUI() {
+    document.getElementById('game-container').style.display = 'none';
+    document.getElementById('hud').style.display = 'none';
+    document.getElementById('inventory').style.display = 'none';
+    document.getElementById('bottom-nav').style.display = 'none';
+    document.getElementById('title-screen').style.display = 'flex';
+    document.getElementById('title-screen').style.opacity = '1';
 }
 
 async function initializeGame() {
     await loadGameConfig();
-    loadSavedGame();
-    applyOfflineProgress();
     const config = getConfig();
+
+    // Show continue button if save exists
+    if (hasSave()) {
+        document.getElementById('continue-game').style.display = 'inline-block';
+    }
 
     updateCraftableItems();
     updateAutomationControls();
     createGatheringActions(config.resources);
-    updateGatherButtons();
-    initBook();
-    initAchievements();
-    initExpeditions();
-    updateDisplay();
-    checkForEvents();
+    computeUnlockedResources();
+    updateGatheringVisibility();
 
-    // Event listeners
-    // config.resources.forEach(resource => {
-    //     document.getElementById(`gather-${resource}`).addEventListener('click', () => gatherResource(resource));
-    // });
-    document.getElementById('submit-puzzle').addEventListener('click', submitUnlockPuzzleAnswer);
-    document.getElementById('close-puzzle').addEventListener('click', closePuzzlePopup);
-    document.getElementById('settings-btn').addEventListener('click', openSettingsMenu);
-    document.getElementById('close-settings').addEventListener('click', closeSettingsMenu);
-    const saveBtn = document.getElementById('save-game-btn');
-    if (saveBtn) {
-        saveBtn.addEventListener('click', () => saveGame(true));
-    }
-    const prestigeBtn = document.getElementById('prestige-btn');
-    if (prestigeBtn) {
-        prestigeBtn.addEventListener('click', () => {
-            if (confirm('Are you sure you want to prestige? This will reset your progress.')) {
-                prestigeGame();
-            }
-        });
-    }
-    const trainBtn = document.getElementById('train-worker-btn');
-    if (trainBtn) {
-        trainBtn.addEventListener('click', trainWorker);
-    }
+    // Sound toggle — restore persisted mute preference
+    initMuteState();
+    const soundBtn = document.getElementById('sound-toggle');
+    soundBtn.textContent = isMuted() ? '🔇' : '🔊';
+    soundBtn.addEventListener('click', () => {
+        initAudio();
+        toggleMute();
+        soundBtn.textContent = isMuted() ? '🔇' : '🔊';
+    });
 
-    const offlineInput = document.getElementById('offline-limit-input');
-    if (offlineInput) {
-        offlineInput.value = Math.floor((gameState.offlineLimit || config.constants.OFFLINE_PROGRESS_LIMIT) / 3600);
-        offlineInput.addEventListener('change', () => {
-            const hours = parseFloat(offlineInput.value) || 0;
-            gameState.offlineLimit = hours * 3600;
-        });
-    }
+    // Puzzle submit — sound only on correct answer (handled inside submit functions)
+    document.getElementById('submit-puzzle').addEventListener('click', () => {
+        initAudio();
+        const type = document.getElementById('puzzle-popup').dataset.puzzleType;
+        if (type === 'crafting') submitCraftingPuzzleAnswer();
+        else submitUnlockPuzzleAnswer();
+    });
 
-    // Bottom navigation
-    document.querySelectorAll('#bottom-nav .nav-btn').forEach(btn => {
+    document.getElementById('puzzle-answer').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            document.getElementById('submit-puzzle').click();
+        }
+    });
+
+    document.getElementById('skip-puzzle').addEventListener('click', () => {
+        document.getElementById('puzzle-popup').style.display = 'none';
+    });
+
+    document.getElementById('restart-game').addEventListener('click', () => {
+        document.getElementById('game-over-popup').style.display = 'none';
+        resetGame();
+    });
+
+    // Victory popup handlers
+    document.getElementById('victory-continue').addEventListener('click', () => {
+        document.getElementById('victory-popup').style.display = 'none';
+        // Enable sandbox mode: removes population cap, keep building freely
+        gameState.sandboxMode = true;
+        logEvent('Sandbox mode activated! Population cap removed. Keep building!');
+    });
+
+    document.getElementById('victory-restart').addEventListener('click', () => {
+        document.getElementById('victory-popup').style.display = 'none';
+        // Award prestige points before resetting
+        const prestigeGain = calculatePrestigeGain();
+        const stored = JSON.parse(localStorage.getItem('postapoc_prestige') || '{"points":0}');
+        stored.points += prestigeGain;
+        localStorage.setItem('postapoc_prestige', JSON.stringify(stored));
+        logEvent(`Earned ${prestigeGain} prestige point${prestigeGain !== 1 ? 's' : ''}!`);
+        resetGame();
+        applyPrestigeBonuses();
+    });
+
+    // Tech tree toggle
+    document.getElementById('tech-tree-toggle')?.addEventListener('click', () => {
+        toggleTechTree();
+    });
+
+    // Difficulty selection — wire up before the start-game handler
+    document.querySelectorAll('.difficulty-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('#bottom-nav .nav-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            const target = btn.dataset.target;
-            document.querySelectorAll('.game-section').forEach(sec => sec.classList.remove('game-section-active'));
-            document.getElementById(target).classList.add('game-section-active');
+            document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            gameState.difficulty = btn.dataset.difficulty;
         });
     });
 
-    // Tutorial buttons
-    const nextBtn = document.getElementById('tutorial-next');
-    const skipBtn = document.getElementById('tutorial-skip');
-    if (nextBtn) nextBtn.addEventListener('click', nextStep);
-    if (skipBtn) skipBtn.addEventListener('click', skipTutorial);
+    // New game button
+    document.getElementById('start-game').addEventListener('click', () => {
+        initAudio();
+        playClick();
+        showGameUI();
+        // Show tutorial on first play
+        if (!localStorage.getItem('postapoc_tutorial_seen')) {
+            document.getElementById('tutorial-overlay').classList.add('active');
+        }
+        gameState.gameStarted = true;
+        initializePopulationMembers();
+        initializeFactions();
+        checkQuestAvailability();
+        startAutoSave();
+    });
 
-    startTutorial();
+    // Continue game button
+    document.getElementById('continue-game').addEventListener('click', () => {
+        initAudio();
+        playClick();
+        if (loadGame()) {
+            gameState.gameStarted = true;
+            initializePopulationMembers();
+            initializeFactions();
+            showGameUI();
+            computeUnlockedResources();
+            updateGatheringVisibility();
+            updateDisplay();
+            updateCraftableItems();
+            updateAutomationControls();
+            updateDayNightCycle();
+            updateTradingSection();
+            updateExplorationSection();
+            updateQuestsSection();
+            updateAchievementsSection();
+            updateFactionsSection();
+            checkQuestAvailability();
+            startAutoSave();
+            logEvent('Game loaded.');
+        }
+    });
+
+    // Study button
+    document.getElementById('study').addEventListener('click', () => {
+        initAudio();
+        study();
+    });
+
+    // Trade button delegation — handles all trade buttons inside #trader-list
+    document.getElementById('trader-list')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-trader-idx]');
+        if (!btn) return;
+        initAudio();
+        executeTrade(parseInt(btn.dataset.traderIdx), parseInt(btn.dataset.tradeIdx));
+        updateTradingSection();
+    });
+
+    // Exploration button delegation — handles all explore buttons inside #exploration-locations
+    document.getElementById('exploration-locations')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-location-id]');
+        if (!btn) return;
+        initAudio();
+        startExploration(btn.dataset.locationId);
+        updateExplorationSection();
+    });
+
+    // Faction button delegation — handles gift and trade agreement buttons inside #faction-list
+    document.getElementById('faction-list')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-faction-id]');
+        if (!btn) return;
+        initAudio();
+        const factionId = btn.dataset.factionId;
+        const action = btn.dataset.action;
+        if (action === 'gift') {
+            sendGift(factionId, 'food', 10);
+        } else if (action === 'trade') {
+            establishTradeAgreement(factionId);
+        }
+        updateFactionsSection();
+    });
+
+    // Mod file handler — loads a custom JSON config and merges it with the base config
+    document.getElementById('mod-file')?.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            const text = await file.text();
+            const customConfig = JSON.parse(text);
+
+            // Validate basic structure — must provide at least one recognised key
+            if (!customConfig.items && !customConfig.events && !customConfig.resources) {
+                document.getElementById('mod-status').textContent = 'Invalid config: needs items, events, or resources';
+                return;
+            }
+
+            // Merge custom data with the live base config
+            const config = getConfig();
+            if (customConfig.items) {
+                config.items = [...config.items, ...customConfig.items];
+            }
+            if (customConfig.events) {
+                config.events = [...config.events, ...customConfig.events];
+            }
+            if (customConfig.explorationLocations) {
+                config.explorationLocations = [...(config.explorationLocations || []), ...customConfig.explorationLocations];
+            }
+            if (customConfig.quests) {
+                config.quests = [...(config.quests || []), ...customConfig.quests];
+            }
+            if (customConfig.achievements) {
+                config.achievements = [...(config.achievements || []), ...customConfig.achievements];
+            }
+
+            document.getElementById('mod-status').textContent = `Loaded: ${file.name}`;
+            logEvent(`Mod loaded: ${file.name}`);
+
+            // Refresh craftable items list to include any new items from the mod
+            updateCraftableItems();
+        } catch (err) {
+            document.getElementById('mod-status').textContent = 'Error: Invalid JSON file';
+            console.error('[mod] Failed to load mod:', err);
+        }
+    });
+
+    // Camp tab mod file handler — mirrors the title-screen mod loader
+    document.getElementById('camp-mod-file')?.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            const text = await file.text();
+            const customConfig = JSON.parse(text);
+
+            if (!customConfig.items && !customConfig.events && !customConfig.resources) {
+                document.getElementById('camp-mod-status').textContent = 'Invalid config: needs items, events, or resources';
+                return;
+            }
+
+            const config = getConfig();
+            if (customConfig.items) {
+                config.items = [...config.items, ...customConfig.items];
+            }
+            if (customConfig.events) {
+                config.events = [...config.events, ...customConfig.events];
+            }
+            if (customConfig.explorationLocations) {
+                config.explorationLocations = [...(config.explorationLocations || []), ...customConfig.explorationLocations];
+            }
+            if (customConfig.quests) {
+                config.quests = [...(config.quests || []), ...customConfig.quests];
+            }
+            if (customConfig.achievements) {
+                config.achievements = [...(config.achievements || []), ...customConfig.achievements];
+            }
+
+            document.getElementById('camp-mod-status').textContent = `Loaded: ${file.name}`;
+            logEvent(`Mod loaded: ${file.name}`);
+            updateCraftableItems();
+        } catch (err) {
+            document.getElementById('camp-mod-status').textContent = 'Error: Invalid JSON file';
+            console.error('[mod] Failed to load mod:', err);
+        }
+    });
+
+    // Manual save button handler (dispatched from inline script via custom event)
+    window.addEventListener('manual-save', () => {
+        if (gameState.gameStarted && !gameState.isGameOver) {
+            saveGame();
+            showSaveIndicator();
+            logEvent('Game saved manually.');
+        }
+    });
 
     // Start game loop
-    lastLoop = Date.now();
-    scheduleNextLoop();
-    setInterval(saveGame, 30000); // Auto-save every 30 seconds
+    setInterval(gameLoop, 1000);
+}
+
+function startAutoSave() {
+    if (saveInterval) clearInterval(saveInterval);
+    saveInterval = setInterval(() => {
+        if (gameState.gameStarted && !gameState.isGameOver) {
+            saveGame();
+            showSaveIndicator();
+        }
+    }, 30000);
+}
+
+function showSaveIndicator() {
+    const indicator = document.getElementById('save-indicator');
+    indicator.classList.add('show');
+    setTimeout(() => indicator.classList.remove('show'), 1500);
 }
 
 function createGatheringActions(resources) {
-    const actionsContainer = document.getElementById('actions');
-    //actionsContainer.innerHTML = ''; // Clear existing content
+    const actionsContainer = document.getElementById('actions-content');
 
     resources.forEach(resource => {
         const gatherAction = document.createElement('div');
         gatherAction.className = 'gather-action';
+        gatherAction.dataset.resource = resource;
 
         const button = document.createElement('button');
         button.id = `gather-${resource}`;
-        button.className = 'progress-button';
-        const textSpan = document.createElement('span');
-        textSpan.textContent = `Gather ${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
-        button.appendChild(textSpan);
-        const multSpan = document.createElement('span');
-        multSpan.className = 'multiplier';
-        button.appendChild(multSpan);
+        button.textContent = `Gather ${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
+        button.addEventListener('click', () => {
+            initAudio();
+            gatherResource(resource);
+        });
+
+        const progressBarContainer = document.createElement('div');
+        progressBarContainer.className = 'progress-bar-container';
 
         const progressBar = document.createElement('div');
         progressBar.id = `${resource}-progress-bar`;
         progressBar.className = 'progress-bar';
-        button.appendChild(progressBar);
 
-        button.addEventListener('click', () => gatherResource(resource));
-
+        progressBarContainer.appendChild(progressBar);
         gatherAction.appendChild(button);
+        gatherAction.appendChild(progressBarContainer);
         actionsContainer.appendChild(gatherAction);
     });
 
-    // Scavenge mini-game button
-    const scavengeAction = document.createElement('div');
-    scavengeAction.className = 'gather-action';
-    const scavengeBtn = document.createElement('button');
-    scavengeBtn.id = 'scavenge';
-    scavengeBtn.className = 'progress-button';
-    scavengeBtn.innerHTML = '<span>Scavenge Ruins</span>';
-    const scavengeBar = document.createElement('div');
-    scavengeBar.className = 'progress-bar';
-    scavengeBtn.appendChild(scavengeBar);
-    scavengeBtn.addEventListener('click', scavenge);
-    scavengeAction.appendChild(scavengeBtn);
-    actionsContainer.appendChild(scavengeAction);
-
-    // Study action button
-    const studyAction = document.createElement('div');
-    studyAction.className = 'gather-action';
-    const studyBtn = document.createElement('button');
-    studyBtn.id = 'study';
-    studyBtn.className = 'progress-button';
-    studyBtn.innerHTML = '<span>Study</span>';
-    const studyBar = document.createElement('div');
-    studyBar.className = 'progress-bar';
-    studyBtn.appendChild(studyBar);
-    studyBtn.addEventListener('click', study);
-    studyAction.appendChild(studyBtn);
-    actionsContainer.appendChild(studyAction);
+    updateGatheringVisibility();
 }
 
-function gameLoop(delta) {
-    const daysPassed = updateTime(delta);
-    consumeResources(delta);
-    for (let i = 0; i < daysPassed; i++) {
-        logDailyConsumption();
-        produceResources();
-        checkPopulationGrowth();
-        checkForEvents();
+function gameLoop() {
+    if (!gameState.gameStarted || gameState.isGameOver) return;
+
+    updateTime();
+
+    // Consume food/water at each meal time (breakfast, lunch, dinner)
+    const config = getConfig();
+    const mealTicks = config.constants.MEAL_TICKS || [0];
+    if (mealTicks.includes(gameState.time)) {
+        consumeResources(mealTicks.length);
     }
-    runAutomation(delta);
-    updateActiveEvents(delta);
-    updateExpeditions(delta);
+
+    // Day-start logic (after breakfast, so new pop eats at lunch/dinner)
+    if (gameState.time === 0) {
+        runAutomation();
+        checkPopulationGrowth();
+        updatePopulation();
+        // Sync population members array with numeric population count
+        while ((gameState.populationMembers?.length || 0) < gameState.population) {
+            addPopulationMember();
+        }
+        checkForEvents();
+        updateActiveEvents();
+        updateWeather();
+        checkMilestoneEvents();
+        updateTrading();
+        // Phase 4: daily systems
+        updateExplorations();
+        checkQuestAvailability();
+        checkAchievements();
+        // Phase 7: factions / diplomacy
+        checkFactionAppearance();
+        updateFactions();
+        capResources();
+    }
+    // Phase 4: cheap per-tick quest completion check
+    checkQuestCompletion();
     checkSurvival();
-    checkTutorialProgress();
     updateDisplay();
+    updateTradingSection();
+    updateExplorationSection();
+    updateQuestsSection();
+    updateAchievementsSection();
+    updatePopulationSection();
+    updateFactionsSection();
     processQueue();
 }
 
-function updateTime(seconds) {
+function updateTime() {
     const config = getConfig();
-    const totalTime = gameState.time + seconds;
-    const dayLength = config.constants.DAY_LENGTH;
-    const daysPassed = Math.floor(totalTime / dayLength);
-    gameState.time = totalTime % dayLength;
-    if (daysPassed > 0) {
-        gameState.day += daysPassed;
-        gameState.daysSinceGrowth += daysPassed;
-        checkSeasonChange();
+    gameState.time = (gameState.time + 1) % config.constants.DAY_LENGTH;
+    if (gameState.time === 0) {
+        gameState.day += 1;
     }
     updateTimeEmoji();
     updateTimeDisplay();
-    return daysPassed;
-}
-
-function checkSeasonChange() {
-    const config = getConfig();
-    const days = config.constants.DAYS_PER_SEASON || 30;
-    if ((gameState.day - 1) % days === 0 && gameState.day !== 1) {
-        gameState.seasonIndex = (gameState.seasonIndex + 1) % config.seasons.length;
-        const season = config.seasons[gameState.seasonIndex].name;
-        logEvent(`The season has changed to ${season}.`);
-    }
+    updateDayNightCycle();
 }
 
 function checkSurvival() {
     if (gameState.food <= 0 || gameState.water <= 0) {
-        alert('Game Over! Your population did not survive.');
-        resetGame();
+        gameState.isGameOver = true;
+        playGameOver();
+        showGameOver();
+        deleteSave();
     }
 }
 
 function resetGame() {
-    resetState();
+    const config = getConfig();
+
+    document.getElementById('puzzle-popup').style.display = 'none';
+
+    clearCraftingInterval();
+    clearActiveIntervals();
+    resetActiveEvents();
+    resetGathering();
+
+    Object.assign(gameState, config.initialState, {
+        unlockedFeatures: [],
+        craftedItems: {},
+        automationAssignments: {},
+        currentWork: null,
+        craftingQueue: [],
+        isGameOver: false,
+        maxKnowledge: 0,
+        gameStarted: true,
+        gatheringEfficiency: 1,
+        gatheringModifiers: [],
+        unlockedResources: ['food', 'water'],
+        studyGate: null,
+        // Phase 2
+        currentSeason: 'spring',
+        currentWeather: 'clear',
+        seenMilestones: [],
+        // Phase 3
+        currency: 0,
+        traderVisits: [],
+        activeTrades: [],
+        // Phase 4
+        explorations: [],
+        activeQuests: [],
+        completedQuests: [],
+        achievements: [],
+        stats: { totalCrafted: 0, totalGathered: 0, totalStudied: 0, totalTraded: 0, totalExplored: 0 },
+        // Phase 5
+        difficulty: gameState.difficulty || 'normal',
+        populationMembers: [],
+        // Phase 6
+        prestigePoints: 0,
+        prestigeBonuses: {},
+        sandboxMode: false,
+        // Phase 7
+        factions: [],
+        saveVersion: 1
+    });
+    gameState.availableWorkers = gameState.population;
+
+    initializePopulationMembers();
+
+    clearEventLog();
+    computeUnlockedResources();
+    updateGatheringVisibility();
     updateDisplay();
     updateCraftableItems();
     updateAutomationControls();
+    updateDayNightCycle();
+    updateTradingSection();
+    updateExplorationSection();
+    updateQuestsSection();
+    updateAchievementsSection();
+    updatePopulationSection();
+    updateFactionsSection();
+    checkQuestAvailability();
+    deleteSave();
 }
 
-let lastLoop = 0;
+// ---------------------------------------------------------------------------
+// Phase 6: Prestige helpers
+// ---------------------------------------------------------------------------
 
-function isGameActive() {
-    return (
-        gameState.currentWork ||
-        hasActiveAutomation() ||
-        hasActiveEvents() ||
-        hasExpeditions()
-    );
+/**
+ * Calculate how many prestige points the player earns on victory restart.
+ * Formula: floor(craftedItems / 5) * globalPrestigeMultiplier, minimum 1.
+ *
+ * @returns {number} Prestige points to award.
+ */
+function calculatePrestigeGain() {
+    const basePts      = Math.floor(Object.keys(gameState.craftedItems).length / 5);
+    const prestigeMult = getEffect('globalPrestigeMultiplier');
+    return Math.max(1, Math.floor(basePts * (prestigeMult || 1)));
 }
 
-function getUpdateInterval() {
-    return isGameActive() ? 1000 : 5000;
+/**
+ * Read accumulated prestige points from localStorage and apply passive bonuses
+ * to the fresh gameState.
+ *
+ * Each prestige point grants +5% gathering efficiency (stacks with
+ * item-based modifiers via gameState.gatheringEfficiency).
+ */
+function applyPrestigeBonuses() {
+    const stored = JSON.parse(localStorage.getItem('postapoc_prestige') || '{"points":0}');
+    if (stored.points > 0) {
+        gameState.prestigePoints      = stored.points;
+        // Each prestige point improves starting gathering efficiency by 5 %
+        gameState.gatheringEfficiency = 1 + (stored.points * 0.05);
+        logEvent(`Prestige bonus active: x${gameState.gatheringEfficiency.toFixed(2)} gathering efficiency from ${stored.points} prestige point${stored.points !== 1 ? 's' : ''}.`);
+    }
 }
 
-function gameLoopWrapper() {
-    const now = Date.now();
-    const delta = (now - lastLoop) / 1000;
-    lastLoop = now;
-    gameLoop(delta);
-    scheduleNextLoop();
-}
-
-function scheduleNextLoop() {
-    setTimeout(gameLoopWrapper, getUpdateInterval());
-}
-
-async function startGame() {
-    const loading = document.getElementById('loading-screen');
-    if (loading) loading.style.display = 'flex';
-    await initializeGame();
-    if (loading) loading.style.display = 'none';
-}
-
-// Initialize the game
-startGame();
+initializeGame();

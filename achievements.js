@@ -1,51 +1,84 @@
-import { gameState } from './gameState.js';
+import { gameState, getConfig } from './gameState.js';
 import { logEvent } from './ui.js';
 
-export const achievementsList = [
-    { id: 'gather_10', name: 'First Forager', type: 'gatherCount', target: 10, reward: '🏅', description: 'Gather resources 10 times.' },
-    { id: 'craft_5', name: 'Apprentice Crafter', type: 'craftCount', target: 5, reward: '🔨', description: 'Craft 5 items.' },
-    { id: 'study_5', name: 'Scholar', type: 'studyCount', target: 5, reward: '📖', description: 'Study 5 times.' },
-    { id: 'pop_5', name: 'Growing Settlement', type: 'population', target: 5, reward: '👥', description: 'Reach population of 5.' },
-    { id: 'afk_24h', name: 'Time Traveler', type: 'offlineSeconds', target: 86400, reward: '⏰', description: 'Accumulate 24 hours offline.' }
-];
-
-export function initAchievements() {
-    updateAchievementList();
-}
-
+/**
+ * Check achievements (called once per day to minimize overhead).
+ * Awards any newly earned achievements and applies their rewards.
+ */
 export function checkAchievements() {
-    let unlocked = false;
-    achievementsList.forEach(a => {
-        if (gameState.achievements[a.id]) return;
-        const progress = a.type === 'population' ? gameState.population : gameState[a.type] || 0;
-        if (progress >= a.target) {
-            gameState.achievements[a.id] = true;
-            logEvent(`Achievement unlocked: ${a.name}!`);
-            showAchievementPopup(a);
-            unlocked = true;
+    const config = getConfig();
+    const achievementDefs = config.achievements || [];
+
+    gameState.achievements = gameState.achievements || [];
+
+    achievementDefs.forEach(achievement => {
+        // Skip already earned
+        if (gameState.achievements.includes(achievement.id)) return;
+
+        let earned = false;
+
+        switch (achievement.type) {
+            case 'craft':
+                earned = !!gameState.craftedItems[achievement.target];
+                break;
+            case 'craftCount':
+                earned = Object.keys(gameState.craftedItems).length >= achievement.target;
+                break;
+            case 'population':
+                earned = gameState.population >= achievement.target;
+                break;
+            case 'day':
+                earned = gameState.day >= achievement.target;
+                break;
+            case 'knowledge':
+                earned = gameState.knowledge >= achievement.target;
+                break;
+            case 'gather':
+                earned = (gameState.stats?.totalGathered || 0) >= achievement.target;
+                break;
+            case 'explore':
+                earned = (gameState.stats?.totalExplored || 0) >= achievement.target;
+                break;
+            case 'trade':
+                earned = (gameState.stats?.totalTraded || 0) >= achievement.target;
+                break;
+            case 'quest':
+                earned = (gameState.completedQuests || []).length >= achievement.target;
+                break;
+            default:
+                // Unknown achievement type — ignore silently
+                break;
+        }
+
+        if (earned) {
+            gameState.achievements.push(achievement.id);
+            logEvent(`Achievement unlocked: ${achievement.name}!`);
+
+            // Apply reward if any
+            if (achievement.reward) {
+                Object.entries(achievement.reward).forEach(([key, value]) => {
+                    if (key === 'knowledge') {
+                        gameState.knowledge += value;
+                        gameState.maxKnowledge = Math.max(gameState.maxKnowledge, gameState.knowledge);
+                    } else if (key in gameState && typeof gameState[key] === 'number') {
+                        gameState[key] += value;
+                    }
+                });
+            }
         }
     });
-    if (unlocked) updateAchievementList();
 }
 
-export function updateAchievementList() {
-    const list = document.getElementById('achievement-list');
-    if (!list) return;
-    list.innerHTML = '';
-    achievementsList.forEach(a => {
-        const li = document.createElement('li');
-        li.className = gameState.achievements[a.id] ? 'achievement-unlocked' : '';
-        const progress = a.type === 'population' ? gameState.population : gameState[a.type] || 0;
-        li.innerHTML = `<span class="achievement-name">${a.reward} ${a.name}</span> <span class="achievement-progress">${Math.min(progress, a.target)}/${a.target}</span>`;
-        list.appendChild(li);
-    });
-}
+/**
+ * Get all achievement definitions decorated with their earned status.
+ * @returns {Array} Achievement objects with an added `earned` boolean.
+ */
+export function getAchievementStatus() {
+    const config = getConfig();
+    const achievementDefs = config.achievements || [];
 
-function showAchievementPopup(a) {
-    const popup = document.getElementById('achievement-popup');
-    if (!popup) return;
-    popup.textContent = `${a.reward} Achievement unlocked: ${a.name}!`;
-    popup.style.display = 'block';
-    if (popup._timeout) clearTimeout(popup._timeout);
-    popup._timeout = setTimeout(() => { popup.style.display = 'none'; }, 3000);
+    return achievementDefs.map(a => ({
+        ...a,
+        earned: (gameState.achievements || []).includes(a.id)
+    }));
 }
