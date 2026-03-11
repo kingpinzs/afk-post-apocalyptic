@@ -2,14 +2,18 @@
   "name": "post-apocalyptic-game",
   "version": "1.0.0",
   "description": "",
-  "main": "automation.js",
+  "main": "game.js",
   "scripts": {
-    "start": "http-server -o" ,
+    "start": "http-server -o",
+    "build": "node scripts/build.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
     "http-server": "^14.1.1"
   }
 }

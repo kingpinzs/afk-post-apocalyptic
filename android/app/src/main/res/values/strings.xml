@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Post-Apocalyptic Survival</string>
+    <string name="title_activity_main">Post-Apocalyptic Survival</string>
+    <string name="package_name">com.postapocalyptic.game</string>
+    <string name="custom_url_scheme">com.postapocalyptic.game</string>
+</resources>

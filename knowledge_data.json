@@ -28,8 +28,29 @@
   "constants": {
     "DAY_LENGTH": 600,
     "DAY_PHASE": 300,
-    "POPULATION_THRESHOLD": 50
+    "POPULATION_THRESHOLD": 50,
+    "STUDY_GATE_AMOUNT": 5,
+    "MEAL_TICKS": [0, 150, 300]
   },
+  "resourceUnlocks": {
+    "food":  { "type": "always" },
+    "water": { "type": "always" },
+    "wood":  { "type": "feature", "requires": "crafting" },
+    "stone": { "type": "feature", "requires": "crafting" },
+    "fiber": { "type": "item", "requires": "axe" },
+    "ore":   { "type": "item", "requires": "pickaxe" },
+    "clay":  { "type": "item", "requires": "pickaxe" },
+    "herbs": { "type": "item", "requires": "knife" },
+    "fruit": { "type": "item", "requires": "farm" }
+  },
+  "resourceCapTiers": [
+    { "requires": "civilization_tier", "cap": 5000 },
+    { "requires": "town_tier", "cap": 2000 },
+    { "requires": "village_tier", "cap": 1000 },
+    { "requires": "settlement_tier", "cap": 500 },
+    { "requires": "crafting", "cap": 200 },
+    { "requires": null, "cap": 100 }
+  ],
   "gatheringTimes": {
     "wood": 5000,
     "stone": 7000,
@@ -46,19 +67,50 @@
       "id": "unlock_crafting",
       "puzzle": "I am the art of making, combining elements anew. What am I?",
       "answer": "crafting",
-      "unlocks": "crafting"
+      "unlocks": "crafting",
+      "knowledgeRequired": 1
     },
     {
       "id": "unlock_axe",
       "puzzle": "I have a head and a handle that fits, to chop and split I'm hard to beat. What am I?",
       "answer": "axe",
-      "unlocks": "axe"
+      "unlocks": "axe",
+      "knowledgeRequired": 3
     },
     {
       "id": "unlock_shelter",
       "puzzle": "I protect you from the elements, a haven from the storm. What am I?",
       "answer": "shelter",
-      "unlocks": "shelter"
+      "unlocks": "shelter",
+      "knowledgeRequired": 5
+    },
+    {
+      "id": "unlock_settlement",
+      "puzzle": "People gather, buildings rise, a community takes shape before your eyes. What is this place?",
+      "answer": "settlement",
+      "unlocks": "settlement_tier",
+      "knowledgeRequired": 10
+    },
+    {
+      "id": "unlock_village",
+      "puzzle": "Larger than a hamlet, smaller than a town, with trades and crafts of growing renown. What am I?",
+      "answer": "village",
+      "unlocks": "village_tier",
+      "knowledgeRequired": 25
+    },
+    {
+      "id": "unlock_town",
+      "puzzle": "Markets bustle, laws are made, culture flourishes in every trade. What have we become?",
+      "answer": "town",
+      "unlocks": "town_tier",
+      "knowledgeRequired": 60
+    },
+    {
+      "id": "unlock_civilization",
+      "puzzle": "Science, art, and industry combine, pushing humanity past every confine. What is this grand achievement?",
+      "answer": "civilization",
+      "unlocks": "civilization_tier",
+      "knowledgeRequired": 120
     }
   ],
   "events": [
@@ -111,6 +163,104 @@
       "probability": 0.06
     }
   ],
+  "weather": {
+    "types": ["clear", "cloudy", "rain", "storm", "drought", "snow"],
+    "seasons": ["spring", "summer", "autumn", "winter"],
+    "seasonLength": 30,
+    "effects": {
+      "clear": {},
+      "cloudy": { "gatheringEfficiency": 0.95 },
+      "rain": { "gatheringEfficiency": 0.8, "water": 5 },
+      "storm": { "gatheringEfficiency": 0.5, "food": -5 },
+      "drought": { "gatheringEfficiency": 0.9, "water": -10 },
+      "snow": { "gatheringEfficiency": 0.6, "food": -3 }
+    },
+    "seasonWeatherWeights": {
+      "spring": { "clear": 0.35, "cloudy": 0.25, "rain": 0.3, "storm": 0.05, "drought": 0, "snow": 0.05 },
+      "summer": { "clear": 0.5, "cloudy": 0.15, "rain": 0.1, "storm": 0.1, "drought": 0.15, "snow": 0 },
+      "autumn": { "clear": 0.25, "cloudy": 0.35, "rain": 0.25, "storm": 0.1, "drought": 0, "snow": 0.05 },
+      "winter": { "clear": 0.2, "cloudy": 0.2, "rain": 0.1, "storm": 0.15, "drought": 0, "snow": 0.35 }
+    }
+  },
+  "milestoneEvents": [
+    {
+      "id": "refugee_arrival",
+      "title": "Refugees Spotted",
+      "description": "A group of survivors has been spotted approaching your settlement. They look hungry and tired.",
+      "trigger": { "type": "population", "threshold": 3 },
+      "choices": [
+        { "label": "Welcome them", "description": "+2 population, -30 food", "effects": { "population": 2, "food": -30 } },
+        { "label": "Turn them away", "description": "No change", "effects": {} }
+      ]
+    },
+    {
+      "id": "ancient_cache",
+      "title": "Ancient Supply Cache",
+      "description": "Your workers discovered a pre-war supply cache while digging. How should we handle it?",
+      "trigger": { "type": "day", "threshold": 15 },
+      "choices": [
+        { "label": "Open it carefully", "description": "+20 food, +20 water, +10 wood", "effects": { "food": 20, "water": 20, "wood": 10 } },
+        { "label": "Study it first", "description": "+5 knowledge", "effects": { "knowledge": 5 } }
+      ]
+    },
+    {
+      "id": "merchant_caravan",
+      "title": "Merchant Caravan",
+      "description": "A caravan of traders arrives offering goods. They're willing to trade if you can spare resources.",
+      "trigger": { "type": "craftedItem", "item": "marketplace" },
+      "choices": [
+        { "label": "Trade food for tools", "description": "-40 food, +30 stone, +20 ore", "effects": { "food": -40, "stone": 30, "ore": 20 } },
+        { "label": "Trade water for knowledge", "description": "-30 water, +8 knowledge", "effects": { "water": -30, "knowledge": 8 } },
+        { "label": "Decline", "description": "No change", "effects": {} }
+      ]
+    },
+    {
+      "id": "disease_outbreak",
+      "title": "Disease Outbreak",
+      "description": "A mysterious illness is spreading through your settlement. Quick action is needed!",
+      "trigger": { "type": "population", "threshold": 6 },
+      "choices": [
+        { "label": "Quarantine the sick", "description": "-1 population, safe", "effects": { "population": -1 } },
+        { "label": "Use herbs to treat", "description": "-15 herbs, everyone survives", "effects": { "herbs": -15 } }
+      ]
+    },
+    {
+      "id": "territorial_dispute",
+      "title": "Territorial Dispute",
+      "description": "Neighboring survivors claim the nearby quarry belongs to them. How do you respond?",
+      "trigger": { "type": "craftedItem", "item": "quarry" },
+      "choices": [
+        { "label": "Negotiate sharing", "description": "+3 knowledge, -20 stone", "effects": { "knowledge": 3, "stone": -20 } },
+        { "label": "Defend your claim", "description": "Keep resources, -10 food (fortification costs)", "effects": { "food": -10 } }
+      ]
+    },
+    {
+      "id": "golden_age",
+      "title": "A Golden Age Begins",
+      "description": "Your civilization has reached a point of unprecedented prosperity. How will you celebrate?",
+      "trigger": { "type": "population", "threshold": 8 },
+      "choices": [
+        { "label": "Grand festival", "description": "-50 food, -30 water, +5 knowledge", "effects": { "food": -50, "water": -30, "knowledge": 5 } },
+        { "label": "Invest in infrastructure", "description": "+50 stone, +30 wood", "effects": { "stone": 50, "wood": 30 } }
+      ]
+    }
+  ],
+  "trading": {
+    "unlockItem": "marketplace",
+    "traders": [
+      { "id": "wandering_merchant", "name": "Wandering Merchant", "frequency": 5 },
+      { "id": "resource_trader", "name": "Resource Trader", "frequency": 7 },
+      { "id": "coastal_trader", "name": "Coastal Trader", "requiresItem": "shipyard", "frequency": 10 }
+    ],
+    "baseExchangeRates": [
+      { "give": "food", "giveAmount": 20, "receive": "wood", "receiveAmount": 10 },
+      { "give": "food", "giveAmount": 30, "receive": "stone", "receiveAmount": 15 },
+      { "give": "water", "giveAmount": 25, "receive": "herbs", "receiveAmount": 10 },
+      { "give": "wood", "giveAmount": 15, "receive": "ore", "receiveAmount": 8 },
+      { "give": "stone", "giveAmount": 20, "receive": "clay", "receiveAmount": 12 },
+      { "give": "ore", "giveAmount": 10, "receive": "food", "receiveAmount": 25 }
+    ]
+  },
   "items": [
     {
       "id": "knife",
@@ -127,7 +277,8 @@
       "effect": {
         "craftingEfficiencyMultiplier": 1.2
       },
-      "dependencies": []
+      "dependencies": [],
+      "knowledgeRequired": 1
     },
     {
       "id": "axe",
@@ -144,7 +295,8 @@
       "effect": {
         "woodGatheringMultiplier": 2
       },
-      "dependencies": []
+      "dependencies": [],
+      "knowledgeRequired": 3
     },
     {
       "id": "shelter",
@@ -161,7 +313,25 @@
       "effect": {
         "resourceConsumptionMultiplier": 0.5
       },
-      "dependencies": []
+      "dependencies": [],
+      "knowledgeRequired": 5
+    },
+    {
+      "id": "fishing_rod",
+      "name": "Fishing Rod",
+      "description": "Allows fishing, providing a new food source",
+      "requirements": {
+        "wood": 5,
+        "fiber": 3
+      },
+      "craftingTime": 45000,
+      "puzzle": "I'm long and thin, with a hook at the end, I help you catch dinner, I'm your aquatic friend.",
+      "puzzleAnswer": "fishing rod",
+      "effect": {
+        "foodGatheringMultiplier": 1.5
+      },
+      "dependencies": ["knife"],
+      "knowledgeRequired": 2
     },
     {
       "id": "pickaxe",
@@ -179,9 +349,8 @@
         "stoneGatheringMultiplier": 2,
         "oreGatheringMultiplier": 1.5
       },
-      "dependencies": [
-        "axe"
-      ]
+      "dependencies": ["axe"],
+      "knowledgeRequired": 4
     },
     {
       "id": "farm",
@@ -198,7 +367,8 @@
       "effect": {
         "foodProductionRate": 0.1
       },
-      "dependencies": []
+      "dependencies": ["shelter"],
+      "knowledgeRequired": 5
     },
     {
       "id": "well",
@@ -215,23 +385,8 @@
       "effect": {
         "waterProductionRate": 0.2
       },
-      "dependencies": []
-    },
-    {
-      "id": "fishing_rod",
-      "name": "Fishing Rod",
-      "description": "Allows fishing, providing a new food source",
-      "requirements": {
-        "wood": 5,
-        "fiber": 3
-      },
-      "craftingTime": 45000,
-      "puzzle": "I'm long and thin, with a hook at the end, I help you catch dinner, I'm your aquatic friend.",
-      "puzzleAnswer": "fishing rod",
-      "effect": {
-        "foodGatheringMultiplier": 1.5
-      },
-      "dependencies": []
+      "dependencies": ["pickaxe"],
+      "knowledgeRequired": 6
     },
     {
       "id": "kiln",
@@ -247,7 +402,8 @@
       "effect": {
         "clayProcessingRate": 0.2
       },
-      "dependencies": []
+      "dependencies": ["pickaxe"],
+      "knowledgeRequired": 7
     },
     {
       "id": "loom",
@@ -263,24 +419,8 @@
       "effect": {
         "fiberProcessingRate": 0.2
       },
-      "dependencies": []
-    },
-    {
-      "id": "forge",
-      "name": "Forge",
-      "description": "Allows metal working for advanced tools",
-      "requirements": {
-        "stone": 30,
-        "ore": 20,
-        "knowledge": 5
-      },
-      "craftingTime": 150000,
-      "puzzle": "Fire burns hot, metal bends to will, I shape the future, with hammer and skill.",
-      "puzzleAnswer": "forge",
-      "effect": {
-        "oreProcessingRate": 0.2
-      },
-      "dependencies": []
+      "dependencies": ["knife"],
+      "knowledgeRequired": 5
     },
     {
       "id": "herbalist_hut",
@@ -297,7 +437,8 @@
       "effect": {
         "medicineProductionRate": 0.1
       },
-      "dependencies": []
+      "dependencies": ["knife", "shelter"],
+      "knowledgeRequired": 6
     },
     {
       "id": "watchtower",
@@ -313,7 +454,8 @@
       "effect": {
         "resourceDiscoveryMultiplier": 1.5
       },
-      "dependencies": []
+      "dependencies": ["axe", "shelter"],
+      "knowledgeRequired": 7
     },
     {
       "id": "storehouse",
@@ -329,24 +471,8 @@
       "effect": {
         "storageCapacityMultiplier": 2
       },
-      "dependencies": []
-    },
-    {
-      "id": "orchard",
-      "name": "Orchard",
-      "description": "Produces fruit over time",
-      "requirements": {
-        "wood": 25,
-        "water": 20,
-        "fruit": 10
-      },
-      "craftingTime": 200000,
-      "puzzle": "Trees in rows, bearing sweet delight, I grow your food, from dawn to night.",
-      "puzzleAnswer": "orchard",
-      "effect": {
-        "fruitProductionRate": 0.2
-      },
-      "dependencies": []
+      "dependencies": ["axe", "shelter"],
+      "knowledgeRequired": 8
     },
     {
       "id": "tannery",
@@ -363,7 +489,44 @@
       "effect": {
         "leatherProductionRate": 0.1
       },
-      "dependencies": []
+      "dependencies": ["knife", "well"],
+      "knowledgeRequired": 8
+    },
+    {
+      "id": "forge",
+      "name": "Forge",
+      "description": "Allows metal working for advanced tools",
+      "requirements": {
+        "stone": 30,
+        "ore": 20,
+        "knowledge": 5
+      },
+      "craftingTime": 150000,
+      "puzzle": "Fire burns hot, metal bends to will, I shape the future, with hammer and skill.",
+      "puzzleAnswer": "forge",
+      "effect": {
+        "oreProcessingRate": 0.2
+      },
+      "dependencies": ["kiln", "pickaxe"],
+      "knowledgeRequired": 10
+    },
+    {
+      "id": "orchard",
+      "name": "Orchard",
+      "description": "Produces fruit over time",
+      "requirements": {
+        "wood": 25,
+        "water": 20,
+        "fruit": 10
+      },
+      "craftingTime": 200000,
+      "puzzle": "Trees in rows, bearing sweet delight, I grow your food, from dawn to night.",
+      "puzzleAnswer": "orchard",
+      "effect": {
+        "fruitProductionRate": 0.2
+      },
+      "dependencies": ["farm", "well"],
+      "knowledgeRequired": 9
     },
     {
       "id": "library",
@@ -380,7 +543,9 @@
       "effect": {
         "knowledgeGenerationMultiplier": 2
       },
-      "dependencies": []
+      "dependencies": ["shelter", "storehouse"],
+      "tier": "settlement",
+      "knowledgeRequired": 12
     },
     {
       "id": "pottery_workshop",
@@ -398,7 +563,9 @@
         "waterStorageMultiplier": 1.5,
         "tradeGoodsProductionRate": 0.1
       },
-      "dependencies": []
+      "dependencies": ["kiln"],
+      "tier": "settlement",
+      "knowledgeRequired": 10
     },
     {
       "id": "hunting_lodge",
@@ -415,7 +582,9 @@
       "effect": {
         "meatGatheringMultiplier": 2
       },
-      "dependencies": []
+      "dependencies": ["knife", "watchtower"],
+      "tier": "settlement",
+      "knowledgeRequired": 11
     },
     {
       "id": "quarry",
@@ -433,7 +602,9 @@
         "stoneProductionRate": 0.3,
         "oreProductionRate": 0.2
       },
-      "dependencies": []
+      "dependencies": ["pickaxe", "forge"],
+      "tier": "settlement",
+      "knowledgeRequired": 13
     },
     {
       "id": "weaving_mill",
@@ -450,25 +621,28 @@
       "effect": {
         "clothProductionRate": 0.4
       },
-      "dependencies": []
+      "dependencies": ["loom", "forge"],
+      "tier": "settlement",
+      "knowledgeRequired": 15
     },
     {
-      "id": "apothecary",
-      "name": "Apothecary",
-      "description": "Creates advanced medicines and increases population health",
+      "id": "sawmill",
+      "name": "Sawmill",
+      "description": "Dramatically increases wood production",
       "requirements": {
-        "wood": 25,
-        "herbs": 35,
-        "knowledge": 30
+        "wood": 50,
+        "stone": 30,
+        "ore": 20
       },
-      "craftingTime": 240000,
-      "puzzle": "Potions and tinctures, I brew with care, to cure the sick and health repair.",
-      "puzzleAnswer": "apothecary",
+      "craftingTime": 270000,
+      "puzzle": "Blades whir and timber falls, transforming trees to planks for walls.",
+      "puzzleAnswer": "sawmill",
       "effect": {
-        "medicineEffectivenessMultiplier": 2,
-        "populationHealthMultiplier": 1.5
+        "woodProductionMultiplier": 3
       },
-      "dependencies": []
+      "dependencies": ["axe", "forge"],
+      "tier": "settlement",
+      "knowledgeRequired": 14
     },
     {
       "id": "marketplace",
@@ -486,42 +660,9 @@
         "tradeEfficiencyMultiplier": 1.5,
         "resourceExchangeRate": 0.2
       },
-      "dependencies": []
-    },
-    {
-      "id": "sawmill",
-      "name": "Sawmill",
-      "description": "Dramatically increases wood production",
-      "requirements": {
-        "wood": 50,
-        "stone": 30,
-        "ore": 20
-      },
-      "craftingTime": 270000,
-      "puzzle": "Blades whir and timber falls, transforming trees to planks for walls.",
-      "puzzleAnswer": "sawmill",
-      "effect": {
-        "woodProductionMultiplier": 3
-      },
-      "dependencies": []
-    },
-    {
-      "id": "school",
-      "name": "School",
-      "description": "Increases knowledge generation and population skill",
-      "requirements": {
-        "wood": 40,
-        "stone": 40,
-        "knowledge": 50
-      },
-      "craftingTime": 360000,
-      "puzzle": "Young minds gather, to learn and grow, in this place of learning, knowledge to sow.",
-      "puzzleAnswer": "school",
-      "effect": {
-        "knowledgeGenerationMultiplier": 2.5,
-        "populationSkillMultiplier": 1.5
-      },
-      "dependencies": []
+      "dependencies": ["storehouse", "pottery_workshop"],
+      "tier": "settlement",
+      "knowledgeRequired": 16
     },
     {
       "id": "windmill",
@@ -539,43 +680,49 @@
         "foodProductionMultiplier": 2,
         "flourProductionRate": 0.3
       },
-      "dependencies": []
+      "dependencies": ["farm", "sawmill"],
+      "tier": "settlement",
+      "knowledgeRequired": 17
     },
     {
-      "id": "observatory",
-      "name": "Observatory",
-      "description": "Greatly enhances knowledge generation and unlocks advanced technologies",
+      "id": "apothecary",
+      "name": "Apothecary",
+      "description": "Creates advanced medicines and increases population health",
       "requirements": {
-        "stone": 60,
-        "ore": 40,
-        "knowledge": 75
+        "wood": 25,
+        "herbs": 35,
+        "knowledge": 30
       },
-      "craftingTime": 480000,
-      "puzzle": "Gazing at stars, secrets unfold, in this tower of science, discoveries bold.",
-      "puzzleAnswer": "observatory",
+      "craftingTime": 240000,
+      "puzzle": "Potions and tinctures, I brew with care, to cure the sick and health repair.",
+      "puzzleAnswer": "apothecary",
       "effect": {
-        "knowledgeGenerationMultiplier": 3,
-        "advancedTechUnlockRate": 0.1
+        "medicineEffectivenessMultiplier": 2,
+        "populationHealthMultiplier": 1.5
       },
-      "dependencies": []
+      "dependencies": ["herbalist_hut", "library"],
+      "tier": "settlement",
+      "knowledgeRequired": 18
     },
     {
-      "id": "glassworks",
-      "name": "Glassworks",
-      "description": "Produces glass for advanced construction and tools",
+      "id": "school",
+      "name": "School",
+      "description": "Increases knowledge generation and population skill",
       "requirements": {
-        "stone": 50,
-        "wood": 30,
-        "sand": 100
+        "wood": 40,
+        "stone": 40,
+        "knowledge": 50
       },
       "craftingTime": 360000,
-      "puzzle": "From sand to liquid, then cooled with care, I create clear panes beyond compare.",
-      "puzzleAnswer": "glassworks",
+      "puzzle": "Young minds gather, to learn and grow, in this place of learning, knowledge to sow.",
+      "puzzleAnswer": "school",
       "effect": {
-        "glassProductionRate": 0.2,
-        "advancedConstructionEfficiency": 1.3
+        "knowledgeGenerationMultiplier": 2.5,
+        "populationSkillMultiplier": 1.5
       },
-      "dependencies": []
+      "dependencies": ["library"],
+      "tier": "settlement",
+      "knowledgeRequired": 20
     },
     {
       "id": "brewery",
@@ -593,7 +740,29 @@
         "workerMoraleBoost": 1.2,
         "productivityMultiplier": 1.1
       },
-      "dependencies": []
+      "dependencies": ["farm", "well", "pottery_workshop"],
+      "tier": "village",
+      "knowledgeRequired": 25
+    },
+    {
+      "id": "glassworks",
+      "name": "Glassworks",
+      "description": "Produces glass for advanced construction and tools",
+      "requirements": {
+        "stone": 50,
+        "wood": 30,
+        "clay": 100
+      },
+      "craftingTime": 360000,
+      "puzzle": "From sand to liquid, then cooled with care, I create clear panes beyond compare.",
+      "puzzleAnswer": "glassworks",
+      "effect": {
+        "glassProductionRate": 0.2,
+        "advancedConstructionEfficiency": 1.3
+      },
+      "dependencies": ["kiln", "quarry"],
+      "tier": "village",
+      "knowledgeRequired": 28
     },
     {
       "id": "blacksmith",
@@ -611,7 +780,9 @@
         "toolEfficiencyMultiplier": 1.5,
         "weaponCraftingRate": 0.1
       },
-      "dependencies": []
+      "dependencies": ["forge", "quarry"],
+      "tier": "village",
+      "knowledgeRequired": 30
     },
     {
       "id": "granary",
@@ -629,115 +800,9 @@
         "foodStorageMultiplier": 2,
         "foodSpoilageReduction": 0.5
       },
-      "dependencies": []
-    },
-    {
-      "id": "textile_mill",
-      "name": "Textile Mill",
-      "description": "Mass-produces textiles for clothing and trade",
-      "requirements": {
-        "wood": 60,
-        "stone": 40,
-        "fiber": 100
-      },
-      "craftingTime": 450000,
-      "puzzle": "Spinning wheels and clattering looms, I weave fine cloth in many rooms.",
-      "puzzleAnswer": "textile mill",
-      "effect": {
-        "textileProductionRate": 0.5,
-        "clothingQualityMultiplier": 1.5
-      },
-      "dependencies": []
-    },
-    {
-      "id": "scriptorium",
-      "name": "Scriptorium",
-      "description": "Produces books, increasing knowledge generation and preservation",
-      "requirements": {
-        "wood": 50,
-        "leather": 30,
-        "knowledge": 80
-      },
-      "craftingTime": 480000,
-      "puzzle": "Quills scratch and pages turn, preserving knowledge for all to learn.",
-      "puzzleAnswer": "scriptorium",
-      "effect": {
-        "knowledgePreservationRate": 0.3,
-        "researchSpeedMultiplier": 1.4
-      },
-      "dependencies": []
-    },
-    {
-      "id": "alchemist_lab",
-      "name": "Alchemist's Laboratory",
-      "description": "Conducts experiments, unlocking new resources and technologies",
-      "requirements": {
-        "stone": 70,
-        "glass": 40,
-        "knowledge": 100
-      },
-      "craftingTime": 540000,
-      "puzzle": "Bubbling flasks and smoky air, I seek truths both dark and fair.",
-      "puzzleAnswer": "alchemist's laboratory",
-      "effect": {
-        "resourceDiscoveryRate": 0.1,
-        "technologyAdvancementMultiplier": 1.3
-      },
-      "dependencies": []
-    },
-    {
-      "id": "shipyard",
-      "name": "Shipyard",
-      "description": "Builds ships for fishing and trade, opening up new opportunities",
-      "requirements": {
-        "wood": 100,
-        "fiber": 60,
-        "ore": 40
-      },
-      "craftingTime": 600000,
-      "puzzle": "By river or sea, my creations sail free, bringing wealth from lands across the sea.",
-      "puzzleAnswer": "shipyard",
-      "effect": {
-        "fishingEfficiencyMultiplier": 2,
-        "tradeRouteCapacity": 3
-      },
-      "dependencies": []
-    },
-    {
-      "id": "university",
-      "name": "University",
-      "description": "Greatly accelerates research and unlocks advanced technologies",
-      "requirements": {
-        "stone": 120,
-        "wood": 80,
-        "knowledge": 150
-      },
-      "craftingTime": 720000,
-      "puzzle": "Halls of learning, minds alight, I push the boundaries of wrong and right.",
-      "puzzleAnswer": "university",
-      "effect": {
-        "researchSpeedMultiplier": 3,
-        "advancedTechUnlockRate": 0.2
-      },
-      "dependencies": []
-    },
-    {
-      "id": "monument",
-      "name": "Monument",
-      "description": "Increases population happiness and attracts new settlers",
-      "requirements": {
-        "stone": 200,
-        "ore": 100,
-        "knowledge": 120
-      },
-      "craftingTime": 900000,
-      "puzzle": "Towering high for all to see, I mark achievements of our society.",
-      "puzzleAnswer": "monument",
-      "effect": {
-        "populationHappinessMultiplier": 1.5,
-        "immigrationRate": 0.1
-      },
-      "dependencies": []
+      "dependencies": ["farm", "storehouse", "windmill"],
+      "tier": "village",
+      "knowledgeRequired": 27
     },
     {
       "id": "irrigation_system",
@@ -755,25 +820,29 @@
         "farmYieldMultiplier": 1.5,
         "waterEfficiencyMultiplier": 1.3
       },
-      "dependencies": []
+      "dependencies": ["well", "quarry", "farm"],
+      "tier": "village",
+      "knowledgeRequired": 30
     },
     {
-      "id": "lighthouse",
-      "name": "Lighthouse",
-      "description": "Improves fishing and trade ship safety",
+      "id": "textile_mill",
+      "name": "Textile Mill",
+      "description": "Mass-produces textiles for clothing and trade",
       "requirements": {
-        "stone": 150,
-        "glass": 50,
-        "knowledge": 70
+        "wood": 60,
+        "stone": 40,
+        "fiber": 100
       },
-      "craftingTime": 600000,
-      "puzzle": "Tall I stand by waters deep, guiding ships while others sleep.",
-      "puzzleAnswer": "lighthouse",
+      "craftingTime": 450000,
+      "puzzle": "Spinning wheels and clattering looms, I weave fine cloth in many rooms.",
+      "puzzleAnswer": "textile mill",
       "effect": {
-        "fishingSuccessRate": 1.4,
-        "tradeShipSafetyMultiplier": 1.5
+        "textileProductionRate": 0.5,
+        "clothingQualityMultiplier": 1.5
       },
-      "dependencies": []
+      "dependencies": ["weaving_mill", "sawmill"],
+      "tier": "village",
+      "knowledgeRequired": 32
     },
     {
       "id": "paper_mill",
@@ -791,7 +860,189 @@
         "paperProductionRate": 0.4,
         "knowledgeEfficiencyMultiplier": 1.2
       },
-      "dependencies": []
+      "dependencies": ["sawmill", "library"],
+      "tier": "village",
+      "knowledgeRequired": 33
+    },
+    {
+      "id": "music_hall",
+      "name": "Music Hall",
+      "description": "Enhances culture and provides entertainment",
+      "requirements": {
+        "wood": 120,
+        "stone": 80,
+        "fiber": 40
+      },
+      "craftingTime": 600000,
+      "puzzle": "Melodies and harmonies resound, bringing joy to all around.",
+      "puzzleAnswer": "music hall",
+      "effect": {
+        "culturalDevelopmentRate": 0.4,
+        "populationHappinessMultiplier": 1.3
+      },
+      "dependencies": ["school", "marketplace"],
+      "tier": "village",
+      "knowledgeRequired": 35
+    },
+    {
+      "id": "observatory",
+      "name": "Observatory",
+      "description": "Greatly enhances knowledge generation and unlocks advanced technologies",
+      "requirements": {
+        "stone": 60,
+        "ore": 40,
+        "knowledge": 75
+      },
+      "craftingTime": 480000,
+      "puzzle": "Gazing at stars, secrets unfold, in this tower of science, discoveries bold.",
+      "puzzleAnswer": "observatory",
+      "effect": {
+        "knowledgeGenerationMultiplier": 3,
+        "advancedTechUnlockRate": 0.1
+      },
+      "dependencies": ["library", "school"],
+      "tier": "village",
+      "knowledgeRequired": 35
+    },
+    {
+      "id": "shipyard",
+      "name": "Shipyard",
+      "description": "Builds ships for fishing and trade, opening up new opportunities",
+      "requirements": {
+        "wood": 100,
+        "fiber": 60,
+        "ore": 40
+      },
+      "craftingTime": 600000,
+      "puzzle": "By river or sea, my creations sail free, bringing wealth from lands across the sea.",
+      "puzzleAnswer": "shipyard",
+      "effect": {
+        "fishingEfficiencyMultiplier": 2,
+        "tradeRouteCapacity": 3
+      },
+      "dependencies": ["sawmill", "forge", "marketplace"],
+      "tier": "village",
+      "knowledgeRequired": 38
+    },
+    {
+      "id": "scriptorium",
+      "name": "Scriptorium",
+      "description": "Produces books, increasing knowledge generation and preservation",
+      "requirements": {
+        "wood": 50,
+        "fiber": 30,
+        "knowledge": 80
+      },
+      "craftingTime": 480000,
+      "puzzle": "Quills scratch and pages turn, preserving knowledge for all to learn.",
+      "puzzleAnswer": "scriptorium",
+      "effect": {
+        "knowledgePreservationRate": 0.3,
+        "researchSpeedMultiplier": 1.4
+      },
+      "dependencies": ["library", "school"],
+      "tier": "village",
+      "knowledgeRequired": 40
+    },
+    {
+      "id": "alchemist_lab",
+      "name": "Alchemist's Laboratory",
+      "description": "Conducts experiments, unlocking new resources and technologies",
+      "requirements": {
+        "stone": 70,
+        "clay": 40,
+        "knowledge": 100
+      },
+      "craftingTime": 540000,
+      "puzzle": "Bubbling flasks and smoky air, I seek truths both dark and fair.",
+      "puzzleAnswer": "alchemist's laboratory",
+      "effect": {
+        "resourceDiscoveryRate": 0.1,
+        "technologyAdvancementMultiplier": 1.3
+      },
+      "dependencies": ["apothecary", "glassworks"],
+      "tier": "village",
+      "knowledgeRequired": 45
+    },
+    {
+      "id": "monument",
+      "name": "Monument",
+      "description": "Increases population happiness and attracts new settlers",
+      "requirements": {
+        "stone": 200,
+        "ore": 100,
+        "knowledge": 120
+      },
+      "craftingTime": 900000,
+      "puzzle": "Towering high for all to see, I mark achievements of our society.",
+      "puzzleAnswer": "monument",
+      "effect": {
+        "populationHappinessMultiplier": 1.5,
+        "immigrationRate": 0.1
+      },
+      "dependencies": ["quarry", "blacksmith"],
+      "tier": "town",
+      "knowledgeRequired": 60
+    },
+    {
+      "id": "theater",
+      "name": "Theater",
+      "description": "Increases population happiness and cultural development",
+      "requirements": {
+        "wood": 150,
+        "stone": 100,
+        "fiber": 50
+      },
+      "craftingTime": 660000,
+      "puzzle": "On my stage, stories unfold, entertaining young and old.",
+      "puzzleAnswer": "theater",
+      "effect": {
+        "populationHappinessMultiplier": 1.4,
+        "culturalDevelopmentRate": 0.3
+      },
+      "dependencies": ["school", "music_hall"],
+      "tier": "town",
+      "knowledgeRequired": 65
+    },
+    {
+      "id": "lighthouse",
+      "name": "Lighthouse",
+      "description": "Improves fishing and trade ship safety",
+      "requirements": {
+        "stone": 150,
+        "clay": 50,
+        "knowledge": 70
+      },
+      "craftingTime": 600000,
+      "puzzle": "Tall I stand by waters deep, guiding ships while others sleep.",
+      "puzzleAnswer": "lighthouse",
+      "effect": {
+        "fishingSuccessRate": 1.4,
+        "tradeShipSafetyMultiplier": 1.5
+      },
+      "dependencies": ["glassworks", "shipyard"],
+      "tier": "town",
+      "knowledgeRequired": 65
+    },
+    {
+      "id": "university",
+      "name": "University",
+      "description": "Greatly accelerates research and unlocks advanced technologies",
+      "requirements": {
+        "stone": 120,
+        "wood": 80,
+        "knowledge": 150
+      },
+      "craftingTime": 720000,
+      "puzzle": "Halls of learning, minds alight, I push the boundaries of wrong and right.",
+      "puzzleAnswer": "university",
+      "effect": {
+        "researchSpeedMultiplier": 3,
+        "advancedTechUnlockRate": 0.2
+      },
+      "dependencies": ["school", "observatory", "scriptorium"],
+      "tier": "town",
+      "knowledgeRequired": 70
     },
     {
       "id": "mint",
@@ -809,7 +1060,9 @@
         "currencyProductionRate": 0.2,
         "tradeEfficiencyMultiplier": 1.5
       },
-      "dependencies": []
+      "dependencies": ["blacksmith", "marketplace"],
+      "tier": "town",
+      "knowledgeRequired": 70
     },
     {
       "id": "aqueduct",
@@ -827,25 +1080,9 @@
         "waterDistributionMultiplier": 2,
         "populationHealthMultiplier": 1.3
       },
-      "dependencies": []
-    },
-    {
-      "id": "theater",
-      "name": "Theater",
-      "description": "Increases population happiness and cultural development",
-      "requirements": {
-        "wood": 150,
-        "stone": 100,
-        "cloth": 50
-      },
-      "craftingTime": 660000,
-      "puzzle": "On my stage, stories unfold, entertaining young and old.",
-      "puzzleAnswer": "theater",
-      "effect": {
-        "populationHappinessMultiplier": 1.4,
-        "culturalDevelopmentRate": 0.3
-      },
-      "dependencies": []
+      "dependencies": ["quarry", "irrigation_system"],
+      "tier": "town",
+      "knowledgeRequired": 75
     },
     {
       "id": "telescope",
@@ -853,7 +1090,7 @@
       "description": "Enhances astronomical research and navigation",
       "requirements": {
         "wood": 50,
-        "glass": 80,
+        "clay": 80,
         "knowledge": 120
       },
       "craftingTime": 540000,
@@ -863,7 +1100,9 @@
         "astronomicalResearchRate": 0.5,
         "navigationEfficiencyMultiplier": 1.3
       },
-      "dependencies": []
+      "dependencies": ["observatory", "glassworks"],
+      "tier": "town",
+      "knowledgeRequired": 80
     },
     {
       "id": "printing_press",
@@ -881,25 +1120,9 @@
         "bookProductionRate": 1,
         "knowledgeSpreadMultiplier": 2
       },
-      "dependencies": []
-    },
-    {
-      "id": "music_hall",
-      "name": "Music Hall",
-      "description": "Enhances culture and provides entertainment",
-      "requirements": {
-        "wood": 120,
-        "stone": 80,
-        "cloth": 40
-      },
-      "craftingTime": 600000,
-      "puzzle": "Melodies and harmonies resound, bringing joy to all around.",
-      "puzzleAnswer": "music hall",
-      "effect": {
-        "culturalDevelopmentRate": 0.4,
-        "populationHappinessMultiplier": 1.3
-      },
-      "dependencies": []
+      "dependencies": ["paper_mill", "blacksmith"],
+      "tier": "town",
+      "knowledgeRequired": 85
     },
     {
       "id": "bank",
@@ -917,7 +1140,9 @@
         "currencyManagementEfficiency": 1.5,
         "loanAvailabilityRate": 0.2
       },
-      "dependencies": []
+      "dependencies": ["mint", "marketplace"],
+      "tier": "town",
+      "knowledgeRequired": 90
     },
     {
       "id": "courthouse",
@@ -935,7 +1160,9 @@
         "crimeReductionRate": 0.3,
         "populationStabilityMultiplier": 1.4
       },
-      "dependencies": []
+      "dependencies": ["university", "monument"],
+      "tier": "town",
+      "knowledgeRequired": 95
     },
     {
       "id": "factory",
@@ -953,7 +1180,9 @@
         "goodsProductionMultiplier": 3,
         "resourceConsumptionRate": 1.5
       },
-      "dependencies": []
+      "dependencies": ["blacksmith", "sawmill", "windmill"],
+      "tier": "civilization",
+      "knowledgeRequired": 120
     },
     {
       "id": "hospital",
@@ -971,25 +1200,9 @@
         "populationHealthMultiplier": 2,
         "lifespanIncreaseYears": 10
       },
-      "dependencies": []
-    },
-    {
-      "id": "power_plant",
-      "name": "Power Plant",
-      "description": "Generates energy for advanced buildings and technologies",
-      "requirements": {
-        "stone": 250,
-        "ore": 200,
-        "knowledge": 220
-      },
-      "craftingTime": 1500000,
-      "puzzle": "Turbines spin with mighty force, providing power from nature's source.",
-      "puzzleAnswer": "power plant",
-      "effect": {
-        "energyProductionRate": 1,
-        "advancedTechEfficiencyMultiplier": 1.5
-      },
-      "dependencies": []
+      "dependencies": ["university", "apothecary", "alchemist_lab"],
+      "tier": "civilization",
+      "knowledgeRequired": 140
     },
     {
       "id": "railway",
@@ -1007,7 +1220,29 @@
         "resourceDistributionMultiplier": 2,
         "tradeEfficiencyMultiplier": 1.6
       },
-      "dependencies": []
+      "dependencies": ["factory", "blacksmith", "quarry"],
+      "tier": "civilization",
+      "knowledgeRequired": 150
+    },
+    {
+      "id": "power_plant",
+      "name": "Power Plant",
+      "description": "Generates energy for advanced buildings and technologies",
+      "requirements": {
+        "stone": 250,
+        "ore": 200,
+        "knowledge": 220
+      },
+      "craftingTime": 1500000,
+      "puzzle": "Turbines spin with mighty force, providing power from nature's source.",
+      "puzzleAnswer": "power plant",
+      "effect": {
+        "energyProductionRate": 1,
+        "advancedTechEfficiencyMultiplier": 1.5
+      },
+      "dependencies": ["factory", "quarry"],
+      "tier": "civilization",
+      "knowledgeRequired": 160
     },
     {
       "id": "stock_exchange",
@@ -1015,7 +1250,7 @@
       "description": "Enables advanced economic transactions and investments",
       "requirements": {
         "stone": 280,
-        "glass": 150,
+        "clay": 150,
         "knowledge": 250
       },
       "craftingTime": 1620000,
@@ -1025,7 +1260,9 @@
         "economicGrowthRate": 0.5,
         "investmentReturnMultiplier": 1.4
       },
-      "dependencies": []
+      "dependencies": ["bank", "printing_press"],
+      "tier": "civilization",
+      "knowledgeRequired": 170
     },
     {
       "id": "assembly_line",
@@ -1043,7 +1280,9 @@
         "productionSpeedMultiplier": 3,
         "resourceEfficiencyMultiplier": 1.3
       },
-      "dependencies": []
+      "dependencies": ["factory", "printing_press"],
+      "tier": "civilization",
+      "knowledgeRequired": 190
     },
     {
       "id": "research_lab",
@@ -1051,7 +1290,7 @@
       "description": "Conducts advanced scientific research",
       "requirements": {
         "stone": 250,
-        "glass": 200,
+        "clay": 200,
         "knowledge": 300
       },
       "craftingTime": 1980000,
@@ -1061,7 +1300,9 @@
         "researchSpeedMultiplier": 2.5,
         "breakthroughDiscoveryChance": 0.1
       },
-      "dependencies": []
+      "dependencies": ["university", "telescope", "alchemist_lab"],
+      "tier": "civilization",
+      "knowledgeRequired": 200
     },
     {
       "id": "metropolis",
@@ -1080,7 +1321,9 @@
         "economicOutputMultiplier": 3,
         "culturalInfluenceMultiplier": 2
       },
-      "dependencies": []
+      "dependencies": ["aqueduct", "railway", "hospital", "courthouse"],
+      "tier": "civilization",
+      "knowledgeRequired": 230
     },
     {
       "id": "space_program",
@@ -1088,7 +1331,7 @@
       "description": "Enables space exploration and advanced scientific discoveries",
       "requirements": {
         "ore": 600,
-        "fuel": 400,
+        "wood": 400,
         "knowledge": 500
       },
       "craftingTime": 5400000,
@@ -1098,7 +1341,176 @@
         "scientificDiscoveryRate": 2,
         "resourceDiscoveryChance": 0.2,
         "globalPrestigeMultiplier": 2
-      }
+      },
+      "dependencies": ["research_lab", "factory", "power_plant", "university"],
+      "tier": "civilization",
+      "knowledgeRequired": 250
+    }
+  ],
+  "explorationLocations": [
+    {
+      "id": "abandoned_bunker",
+      "name": "Abandoned Bunker",
+      "description": "A pre-war military bunker partially buried in rubble",
+      "knowledgeRequired": 5,
+      "explorationTime": 3,
+      "rewards": { "food": 30, "water": 20, "knowledge": 2 },
+      "lore": "Inside you find preserved rations and a faded journal detailing the last days before the fall."
+    },
+    {
+      "id": "ruined_library",
+      "name": "Ruined Library",
+      "description": "The remains of a once-great library, its shelves mostly collapsed",
+      "knowledgeRequired": 10,
+      "explorationTime": 4,
+      "rewards": { "knowledge": 8, "fiber": 15 },
+      "lore": "Among the damaged books, you find several intact volumes on engineering and agriculture."
+    },
+    {
+      "id": "old_mine",
+      "name": "Old Mine Shaft",
+      "description": "A partially collapsed mine shaft that might still hold valuable minerals",
+      "knowledgeRequired": 15,
+      "requiresItem": "pickaxe",
+      "explorationTime": 5,
+      "rewards": { "ore": 40, "stone": 30, "clay": 20 },
+      "lore": "The mine still has rich veins of ore. Your people can harvest them carefully."
+    },
+    {
+      "id": "overgrown_farm",
+      "name": "Overgrown Farm",
+      "description": "A farm that nature has reclaimed, but some crops might still be salvageable",
+      "knowledgeRequired": 8,
+      "explorationTime": 3,
+      "rewards": { "food": 40, "fruit": 20, "herbs": 15 },
+      "lore": "Wild variants of pre-war crops have adapted and flourished here."
+    },
+    {
+      "id": "riverside_camp",
+      "name": "Riverside Camp",
+      "description": "Remains of a riverside survivor camp with useful supplies",
+      "knowledgeRequired": 12,
+      "explorationTime": 4,
+      "rewards": { "water": 30, "wood": 25, "fiber": 10 },
+      "lore": "The camp was well-organized. You find fishing nets and water purification notes."
+    },
+    {
+      "id": "radio_tower",
+      "name": "Radio Tower",
+      "description": "A tall communication tower that might still have working equipment",
+      "knowledgeRequired": 25,
+      "requiresItem": "observatory",
+      "explorationTime": 6,
+      "rewards": { "knowledge": 15, "ore": 20 },
+      "lore": "The tower's logs reveal there may be other settlements out there, broadcasting on old frequencies."
+    },
+    {
+      "id": "sunken_warehouse",
+      "name": "Sunken Warehouse",
+      "description": "A partially flooded warehouse in the old commercial district",
+      "knowledgeRequired": 20,
+      "requiresItem": "forge",
+      "explorationTime": 5,
+      "rewards": { "wood": 50, "stone": 30, "ore": 25, "clay": 15 },
+      "lore": "Construction materials aplenty. This warehouse served a now-forgotten building company."
+    },
+    {
+      "id": "hidden_laboratory",
+      "name": "Hidden Laboratory",
+      "description": "A secret underground research facility",
+      "knowledgeRequired": 50,
+      "requiresItem": "research_lab",
+      "hidden": true,
+      "explorationTime": 8,
+      "rewards": { "knowledge": 30, "herbs": 20 },
+      "lore": "Advanced research notes on genetics and medicine. This could accelerate your civilization's progress dramatically."
+    }
+  ],
+  "quests": [
+    { "id": "first_craft", "name": "First Steps", "description": "Craft your first item", "type": "build", "target": { "amount": 1 }, "reward": { "food": 10, "water": 10 } },
+    { "id": "shelter_builder", "name": "Shelter Builder", "description": "Build a shelter for your people", "type": "craft", "target": { "item": "shelter" }, "reward": { "knowledge": 2 } },
+    { "id": "growing_community", "name": "Growing Community", "description": "Reach a population of 3", "type": "population", "target": { "amount": 3 }, "reward": { "food": 30, "water": 20 } },
+    { "id": "knowledge_seeker", "name": "Knowledge Seeker", "description": "Gain 10 knowledge", "type": "knowledge", "target": { "amount": 10 }, "reward": { "wood": 20 } },
+    { "id": "resource_gatherer", "name": "Resource Gatherer", "description": "Gather resources 20 times", "type": "gather", "target": { "amount": 20 }, "reward": { "knowledge": 3 } },
+    { "id": "industrious", "name": "Industrious Builder", "description": "Build 5 structures", "type": "build", "target": { "amount": 5 }, "reward": { "stone": 30, "ore": 15 } },
+    { "id": "food_production", "name": "Food Security", "description": "Build a farm to secure food supply", "type": "craft", "target": { "item": "farm" }, "reward": { "food": 50 } },
+    { "id": "water_supply", "name": "Water Works", "description": "Build a well for reliable water", "type": "craft", "target": { "item": "well" }, "reward": { "water": 50 } },
+    { "id": "explorer", "name": "Explorer", "description": "Complete 1 exploration", "type": "explore", "target": { "amount": 1 }, "reward": { "knowledge": 5 }, "prerequisite": { "item": "watchtower" } },
+    { "id": "veteran_explorer", "name": "Veteran Explorer", "description": "Complete 5 explorations", "type": "explore", "target": { "amount": 5 }, "reward": { "knowledge": 15 }, "prerequisite": { "quest": "explorer" } },
+    { "id": "scholar", "name": "Scholar", "description": "Gain 50 knowledge", "type": "knowledge", "target": { "amount": 50 }, "reward": { "wood": 50, "stone": 50 } },
+    { "id": "village_leader", "name": "Village Leader", "description": "Reach population 5", "type": "population", "target": { "amount": 5 }, "reward": { "knowledge": 10 } },
+    { "id": "master_builder", "name": "Master Builder", "description": "Build 15 structures", "type": "build", "target": { "amount": 15 }, "reward": { "ore": 50, "clay": 30 } },
+    { "id": "first_trade", "name": "First Trade", "description": "Complete a trade with a merchant", "type": "trade", "target": { "amount": 1 }, "reward": { "food": 20, "water": 20 }, "prerequisite": { "item": "marketplace" } },
+    { "id": "trader", "name": "Experienced Trader", "description": "Complete 5 trades", "type": "trade", "target": { "amount": 5 }, "reward": { "knowledge": 8 }, "prerequisite": { "quest": "first_trade" } },
+    { "id": "survivor_30", "name": "Month of Survival", "description": "Survive 30 days", "type": "day", "target": { "amount": 30 }, "reward": { "food": 20, "water": 20 } },
+    { "id": "survivor_100", "name": "Centurion", "description": "Survive 100 days", "type": "day", "target": { "amount": 100 }, "reward": { "knowledge": 20 }, "prerequisite": { "quest": "survivor_30" } },
+    { "id": "grand_knowledge", "name": "Enlightenment", "description": "Gain 200 knowledge", "type": "knowledge", "target": { "amount": 200 }, "reward": { "ore": 100 } },
+    { "id": "city_builder", "name": "City Builder", "description": "Build 30 structures", "type": "build", "target": { "amount": 30 }, "reward": { "knowledge": 25, "food": 100 } },
+    { "id": "metropolis_quest", "name": "The Grand City", "description": "Build the Metropolis", "type": "craft", "target": { "item": "metropolis" }, "reward": { "knowledge": 50 } }
+  ],
+  "achievements": [
+    { "id": "first_tool", "name": "Tool Time", "description": "Craft your first tool", "type": "craft", "target": "knife" },
+    { "id": "survivalist", "name": "Survivalist", "description": "Survive 10 days", "type": "day", "target": 10 },
+    { "id": "gatherer", "name": "Gatherer", "description": "Gather 50 resources", "type": "gather", "target": 50 },
+    { "id": "builder_5", "name": "Budding Builder", "description": "Build 5 structures", "type": "craftCount", "target": 5 },
+    { "id": "builder_10", "name": "Established Builder", "description": "Build 10 structures", "type": "craftCount", "target": 10 },
+    { "id": "builder_25", "name": "Master Architect", "description": "Build 25 structures", "type": "craftCount", "target": 25 },
+    { "id": "builder_50", "name": "Wonder Builder", "description": "Build all 50+ structures", "type": "craftCount", "target": 50 },
+    { "id": "pop_3", "name": "Small Group", "description": "Reach 3 population", "type": "population", "target": 3 },
+    { "id": "pop_5", "name": "Growing Settlement", "description": "Reach 5 population", "type": "population", "target": 5 },
+    { "id": "pop_10", "name": "Thriving Community", "description": "Reach 10 population", "type": "population", "target": 10 },
+    { "id": "knowledge_10", "name": "Apprentice Scholar", "description": "Gain 10 knowledge", "type": "knowledge", "target": 10 },
+    { "id": "knowledge_50", "name": "Learned Scholar", "description": "Gain 50 knowledge", "type": "knowledge", "target": 50 },
+    { "id": "knowledge_200", "name": "Grand Sage", "description": "Gain 200 knowledge", "type": "knowledge", "target": 200 },
+    { "id": "survivor_30", "name": "Month Survivor", "description": "Survive 30 days", "type": "day", "target": 30 },
+    { "id": "survivor_100", "name": "Century Survivor", "description": "Survive 100 days", "type": "day", "target": 100 },
+    { "id": "first_explore", "name": "Pioneer", "description": "Complete an exploration", "type": "explore", "target": 1 },
+    { "id": "explorer_5", "name": "Adventurer", "description": "Complete 5 explorations", "type": "explore", "target": 5 },
+    { "id": "first_trade_ach", "name": "Merchant", "description": "Complete a trade", "type": "trade", "target": 1 },
+    { "id": "trader_10", "name": "Trade Baron", "description": "Complete 10 trades", "type": "trade", "target": 10 },
+    { "id": "quest_5", "name": "Adventurer's Path", "description": "Complete 5 quests", "type": "quest", "target": 5 },
+    { "id": "quest_15", "name": "Legendary Hero", "description": "Complete 15 quests", "type": "quest", "target": 15 },
+    { "id": "farm_built", "name": "Farmer", "description": "Build a farm", "type": "craft", "target": "farm" },
+    { "id": "factory_built", "name": "Industrialist", "description": "Build a factory", "type": "craft", "target": "factory" },
+    { "id": "space_winner", "name": "To The Stars", "description": "Build the Space Program", "type": "craft", "target": "space_program" },
+    { "id": "gatherer_200", "name": "Master Gatherer", "description": "Gather 200 resources", "type": "gather", "target": 200 }
+  ],
+  "difficultyPresets": {
+    "easy": { "consumptionMultiplier": 0.5, "eventSeverity": 0.5, "gatheringBonus": 1.5, "label": "Easy", "description": "Reduced consumption, more resources" },
+    "normal": { "consumptionMultiplier": 1.0, "eventSeverity": 1.0, "gatheringBonus": 1.0, "label": "Normal", "description": "Standard experience" },
+    "hard": { "consumptionMultiplier": 1.5, "eventSeverity": 1.5, "gatheringBonus": 0.7, "label": "Hard", "description": "Increased consumption, scarcer resources" },
+    "apocalypse": { "consumptionMultiplier": 2.0, "eventSeverity": 2.0, "gatheringBonus": 0.5, "label": "Apocalypse", "description": "Extreme difficulty" }
+  },
+  "factions": [
+    {
+      "id": "riverside_commune",
+      "name": "Riverside Commune",
+      "description": "A peaceful farming community by the river",
+      "trigger": { "type": "population", "threshold": 4 }
+    },
+    {
+      "id": "iron_brotherhood",
+      "name": "Iron Brotherhood",
+      "description": "A militaristic group skilled in metalwork",
+      "trigger": { "type": "craftedItem", "item": "forge" }
+    },
+    {
+      "id": "scholars_guild",
+      "name": "Scholar's Guild",
+      "description": "Keepers of pre-war knowledge and technology",
+      "trigger": { "type": "knowledge", "threshold": 50 }
+    },
+    {
+      "id": "merchant_league",
+      "name": "Merchant League",
+      "description": "A confederation of traders and merchants",
+      "trigger": { "type": "craftedItem", "item": "marketplace" }
+    },
+    {
+      "id": "wasteland_raiders",
+      "name": "Wasteland Raiders",
+      "description": "Dangerous nomads who take what they want",
+      "trigger": { "type": "day", "threshold": 60 }
     }
   ]
 }
