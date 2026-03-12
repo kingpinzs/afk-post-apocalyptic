@@ -6,6 +6,8 @@ import { playGather, playStudy, playUnlock } from './audio.js';
 import { getEffect } from './effects.js';
 
 let activeIntervals = [];
+// Tracks how many workers are actively gathering each resource
+const gatherWorkers = new Map();
 
 function trackInterval(id) {
     activeIntervals.push(id);
@@ -18,9 +20,15 @@ function untrackInterval(id) {
 export function clearActiveIntervals() {
     activeIntervals.forEach(id => clearInterval(id));
     activeIntervals = [];
+    gatherWorkers.clear();
+}
+
+export function getGatherCount(resource) {
+    return gatherWorkers.get(resource) || 0;
 }
 
 export function resetGathering() {
+    gatherWorkers.clear();
     const config = getConfig();
     config.resources.forEach(resource => {
         const button = document.getElementById(`gather-${resource}`);
@@ -28,10 +36,20 @@ export function resetGathering() {
             button.disabled = false;
             delete button.dataset.gathering;
         }
-        const bar = document.getElementById(`${resource}-progress-bar`);
-        if (bar) bar.style.width = '0%';
+        const barsContainer = document.getElementById(`${resource}-bars`);
+        if (barsContainer) {
+            while (barsContainer.firstChild) barsContainer.removeChild(barsContainer.firstChild);
+        }
     });
 }
+
+// Worker bar colors — distinct, visible on dark backgrounds
+const WORKER_COLORS = [
+    '#00ffff', '#ff6b35', '#39ff14', '#ff3cac',
+    '#ffe66d', '#7b68ee', '#ff4757', '#2ed573',
+    '#1e90ff', '#ffa502'
+];
+let workerColorIndex = 0;
 
 export function gatherResource(resource) {
     if (gameState.availableWorkers <= 0) {
@@ -39,20 +57,35 @@ export function gatherResource(resource) {
         return;
     }
 
-    const button = document.getElementById(`gather-${resource}`);
-    const progressBar = document.getElementById(`${resource}-progress-bar`);
-
-    if (button.disabled) return;
-
     // Don't gather if resource is already at cap
     if (gameState[resource] >= getResourceCap(resource)) return;
 
-    button.disabled = true;
-    button.dataset.gathering = 'true';
+    const button = document.getElementById(`gather-${resource}`);
+
+    // Assign worker
     gameState.availableWorkers--;
-    gameState.currentWork = { type: 'gathering', resource: resource };
+    gatherWorkers.set(resource, (gatherWorkers.get(resource) || 0) + 1);
+    gameState.activeWork.push({ type: 'gathering', resource: resource });
     updateWorkingSection();
+
+    // Disable button only if no more idle workers or resource capped
+    if (gameState.availableWorkers <= 0 || gameState[resource] >= getResourceCap(resource)) {
+        button.disabled = true;
+    }
     updateDisplay();
+
+    // Create individual progress bar for this worker (z-stacked / overlapping)
+    const color = WORKER_COLORS[workerColorIndex % WORKER_COLORS.length];
+    workerColorIndex++;
+    const barContainer = document.getElementById(`${resource}-bars`);
+    // Ensure container is set up for stacking
+    if (!barContainer.dataset.stacked) {
+        barContainer.style.cssText += 'position:relative;height:8px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden;';
+        barContainer.dataset.stacked = '1';
+    }
+    const fill = document.createElement('div');
+    fill.style.cssText = `position:absolute;top:0;left:0;height:100%;width:0%;border-radius:4px;background:${color};opacity:0.7;transition:width 0.1s linear;`;
+    barContainer.appendChild(fill);
 
     let progress = 0;
     const interval = 100;
@@ -63,31 +96,35 @@ export function gatherResource(resource) {
         if (gameState.isGameOver) {
             clearInterval(progressInterval);
             untrackInterval(progressInterval);
-            progressBar.style.width = '0%';
-            delete button.dataset.gathering;
+            _returnGatherWorker(resource);
+            fill.remove();
             button.disabled = true;
-            gameState.availableWorkers++;
-            gameState.currentWork = null;
             updateWorkingSection();
             return;
         }
 
         progress += interval;
-        const percentage = (progress / duration) * 100;
-        progressBar.style.width = `${percentage}%`;
+        const percentage = Math.min(100, (progress / duration) * 100);
+        fill.style.width = `${percentage}%`;
 
         if (progress >= duration) {
             clearInterval(progressInterval);
             untrackInterval(progressInterval);
+            _returnGatherWorker(resource);
+            fill.remove();
             completeGathering(resource);
-            progressBar.style.width = '0%';
-            delete button.dataset.gathering;
-            // Re-enable unless resource is at cap
-            const cap = getResourceCap(resource);
-            button.disabled = (gameState[resource] >= cap);
         }
     }, interval);
     trackInterval(progressInterval);
+}
+
+function _returnGatherWorker(resource) {
+    const count = gatherWorkers.get(resource) || 1;
+    if (count <= 1) {
+        gatherWorkers.delete(resource);
+    } else {
+        gatherWorkers.set(resource, count - 1);
+    }
 }
 
 function getGatheringTime(resource) {
@@ -150,7 +187,10 @@ function completeGathering(resource) {
     gameState.stats.totalGathered = (gameState.stats.totalGathered || 0) + amount;
 
     gameState.availableWorkers++;
-    gameState.currentWork = null;
+
+    // Remove ONE matching entry from activeWork (not all)
+    const idx = gameState.activeWork.findIndex(w => w.type === 'gathering' && w.resource === resource);
+    if (idx !== -1) gameState.activeWork.splice(idx, 1);
 
     updateDisplay();
     updateCraftableItems();
@@ -286,7 +326,7 @@ export function study() {
     }
 
     gameState.availableWorkers--;
-    gameState.currentWork = { type: 'studying' };
+    gameState.activeWork.push({ type: 'studying' });
     updateWorkingSection();
     updateDisplay();
 
@@ -306,7 +346,7 @@ export function study() {
 
     const studyInterval = setInterval(() => {
         progress += interval;
-        updateWorkingSection(progress / duration);
+        updateWorkingSection();
 
         if (progress >= duration) {
             clearInterval(studyInterval);
@@ -333,7 +373,7 @@ export function study() {
             gameState.stats.totalStudied = (gameState.stats.totalStudied || 0) + knowledgeGained;
 
             gameState.availableWorkers++;
-            gameState.currentWork = null;
+            gameState.activeWork = gameState.activeWork.filter(w => w.type !== 'studying');
             updateDisplay();
             updateWorkingSection();
 

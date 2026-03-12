@@ -329,16 +329,12 @@ function createGatheringActions(resources) {
             gatherResource(resource);
         });
 
-        const progressBarContainer = document.createElement('div');
-        progressBarContainer.className = 'progress-bar-container';
+        const barsContainer = document.createElement('div');
+        barsContainer.id = `${resource}-bars`;
+        barsContainer.style.cssText = 'flex:1;min-width:0;';
 
-        const progressBar = document.createElement('div');
-        progressBar.id = `${resource}-progress-bar`;
-        progressBar.className = 'progress-bar';
-
-        progressBarContainer.appendChild(progressBar);
         gatherAction.appendChild(button);
-        gatherAction.appendChild(progressBarContainer);
+        gatherAction.appendChild(barsContainer);
         actionsContainer.appendChild(gatherAction);
     });
 
@@ -427,7 +423,7 @@ function resetGame() {
         unlockedFeatures: [],
         craftedItems: {},
         automationAssignments: {},
-        currentWork: null,
+        activeWork: [],
         craftingQueue: [],
         isGameOver: false,
         maxKnowledge: 0,

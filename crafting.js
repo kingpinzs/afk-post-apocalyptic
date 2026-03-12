@@ -257,7 +257,7 @@ export function processQueue() {
 
     craftingInProgress = true;
     const currentCraft = gameState.craftingQueue[0];
-    gameState.currentWork = { type: 'crafting', item: currentCraft.item };
+    gameState.activeWork.push({ type: 'crafting', item: currentCraft.item });
     updateWorkingSection();
 
     craftingIntervalId = setInterval(() => {
@@ -266,11 +266,11 @@ export function processQueue() {
             craftingIntervalId = null;
             craftingInProgress = false;
             gameState.availableWorkers++;
-            gameState.currentWork = null;
+            gameState.activeWork = gameState.activeWork.filter(w => w.type !== 'crafting');
             return;
         }
         currentCraft.progress += 100;
-        updateWorkingSection(currentCraft.progress / currentCraft.duration);
+        updateWorkingSection();
         updateCraftingQueueDisplay();
 
         if (currentCraft.progress >= currentCraft.duration) {
@@ -352,7 +352,7 @@ function completeCrafting(item) {
     gameState.stats.totalCrafted = (gameState.stats.totalCrafted || 0) + 1;
 
     gameState.availableWorkers++;
-    gameState.currentWork = null;
+    gameState.activeWork = gameState.activeWork.filter(w => w.type !== 'crafting');
     gameState.craftingQueue.shift();
 
     const newlyUnlocked = computeUnlockedResources();

@@ -1,6 +1,6 @@
 import { gameState, getConfig, computeUnlockedResources } from './gameState.js';
 import { updateCraftableItems } from './crafting.js';
-import { getResourceCap } from './resources.js';
+import { getResourceCap, getGatherCount } from './resources.js';
 import { playUnlock } from './audio.js';
 
 const EFFECT_LABELS = {
@@ -192,14 +192,14 @@ export function updateDisplay() {
         if (currencyItem) currencyItem.style.display = gameState.currency > 0 ? '' : 'none';
     }
 
-    // Disable/enable gather buttons for all capped resources
+    // Disable/enable gather buttons based on workers and caps
     config.resources.forEach(resource => {
         const button = document.getElementById(`gather-${resource}`);
         if (!button) return;
         const rCap = getResourceCap(resource);
-        if (gameState[resource] >= rCap) {
+        if (gameState[resource] >= rCap || gameState.availableWorkers <= 0) {
             button.disabled = true;
-        } else if (!button.dataset.gathering) {
+        } else {
             button.disabled = false;
         }
     });
@@ -226,7 +226,7 @@ export function updateDisplay() {
                 .map(([r, amt]) => `${Math.max(0, amt - Math.floor(gameState[r]))} ${r}`)
                 .join(', ');
             studyBtn.textContent = `Study the Book (need ${remaining})`;
-        } else if (gameState.currentWork?.type === 'studying') {
+        } else if (gameState.activeWork.some(w => w.type === 'studying')) {
             studyBtn.disabled = true;
             studyBtn.textContent = 'Studying...';
         } else {
@@ -243,25 +243,50 @@ export function updateDisplay() {
     updateWeatherDisplay();
 }
 
-export function updateWorkingSection(progress = 0) {
-    const currentWorkElement = document.getElementById('current-work');
+export function updateWorkingSection() {
+    const container = document.getElementById('current-work');
     const workProgressContainer = document.getElementById('work-progress-container');
-    const workProgressBar = document.getElementById('work-progress-bar');
 
-    if (gameState.currentWork) {
-        if (gameState.currentWork.type === 'gathering') {
-            currentWorkElement.textContent = `Gathering ${gameState.currentWork.resource}`;
-        } else if (gameState.currentWork.type === 'crafting') {
-            currentWorkElement.textContent = `Crafting ${gameState.currentWork.item.name}`;
-        } else if (gameState.currentWork.type === 'studying') {
-            currentWorkElement.textContent = 'Studying the book...';
-        }
-        workProgressContainer.style.display = 'block';
-        workProgressBar.style.width = `${progress * 100}%`;
-    } else {
-        currentWorkElement.textContent = 'Not working';
-        workProgressContainer.style.display = 'none';
+    // Clear previous entries
+    while (container.firstChild) container.removeChild(container.firstChild);
+    workProgressContainer.style.display = 'none';
+
+    if (gameState.activeWork.length === 0) {
+        container.textContent = 'All workers idle';
+        return;
     }
+
+    // Group gathering workers by resource to show counts
+    const gatherCounts = {};
+    const otherWork = [];
+    gameState.activeWork.forEach(w => {
+        if (w.type === 'gathering') {
+            gatherCounts[w.resource] = (gatherCounts[w.resource] || 0) + 1;
+        } else {
+            otherWork.push(w);
+        }
+    });
+
+    // Render grouped gathering lines
+    for (const [resource, count] of Object.entries(gatherCounts)) {
+        const span = document.createElement('span');
+        span.style.cssText = 'display:block;font-size:0.75em;margin:2px 0;opacity:0.9;';
+        span.textContent = count > 1
+            ? `Gathering ${resource} (${count} workers)`
+            : `Gathering ${resource}`;
+        container.appendChild(span);
+    }
+
+    // Render other work (crafting, studying)
+    otherWork.forEach(w => {
+        const label = w.type === 'crafting' ? `Crafting ${w.item?.name || '...'}`
+            : w.type === 'studying' ? 'Studying the book'
+            : w.type;
+        const span = document.createElement('span');
+        span.style.cssText = 'display:block;font-size:0.75em;margin:2px 0;opacity:0.9;';
+        span.textContent = label;
+        container.appendChild(span);
+    });
 }
 
 export function updateTimeDisplay() {

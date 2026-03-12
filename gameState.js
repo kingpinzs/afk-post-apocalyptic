@@ -4,7 +4,7 @@ export const gameState = {
     unlockedFeatures: [],
     craftedItems: {},
     automationAssignments: {},
-    currentWork: null,
+    activeWork: [],
     craftingQueue: [],
     isGameOver: false,
     maxKnowledge: 0,

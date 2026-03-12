@@ -175,8 +175,8 @@ function _buildPayload() {
             duration: entry.duration
         })),
 
-        // currentWork: store type + relevant fields, or null.
-        currentWork: _serializeCurrentWork(),
+        // activeWork: store each worker's task; item refs replaced with IDs.
+        activeWork: _serializeActiveWork(),
 
         // activeEvents: store event snapshots with remaining duration.
         activeEvents: _getActiveEvents(),
@@ -385,8 +385,8 @@ function _applyPayload(payload) {
         });
     }
 
-    // --- Re-link currentWork ---
-    gameState.currentWork = _deserializeCurrentWork(payload.currentWork, findItem);
+    // --- Re-link activeWork ---
+    gameState.activeWork = _deserializeActiveWork(payload.activeWork ?? payload.currentWork, findItem);
 
     // --- Re-link activeEvents ---
     if (Array.isArray(payload.activeEvents)) {
@@ -395,56 +395,59 @@ function _applyPayload(payload) {
 }
 
 /**
- * Serialises currentWork based on its type.
- * - 'crafting': stores { type, itemId }
- * - 'gathering': stores { type, resource }
- * - 'studying': stores { type }
+ * Serialises the activeWork array. Item refs are replaced with IDs.
  */
-function _serializeCurrentWork() {
-    const cw = gameState.currentWork;
-    if (!cw) return null;
-
-    switch (cw.type) {
-        case 'crafting':
-            return { type: 'crafting', itemId: cw.item ? cw.item.id : null };
-        case 'gathering':
-            return { type: 'gathering', resource: cw.resource };
-        case 'studying':
-            return { type: 'studying' };
-        default:
-            return { type: cw.type };
-    }
+function _serializeActiveWork() {
+    return gameState.activeWork.map(w => {
+        switch (w.type) {
+            case 'crafting':
+                return { type: 'crafting', itemId: w.item ? w.item.id : null };
+            case 'gathering':
+                return { type: 'gathering', resource: w.resource };
+            case 'studying':
+                return { type: 'studying' };
+            default:
+                return { type: w.type };
+        }
+    });
 }
 
 /**
- * Deserialises currentWork, re-linking item objects where needed.
- * On load, gathering/studying work is cleared (their intervals can't be
- * restored), and the worker is returned to the available pool.
+ * Deserialises activeWork, re-linking item objects where needed.
+ * On load, gathering/studying intervals can't be restored so those workers
+ * are returned to the available pool. Crafting work is kept for the queue.
+ *
+ * Also handles legacy saves that stored a single currentWork object.
  */
-function _deserializeCurrentWork(saved, findItem) {
-    if (!saved || !saved.type) return null;
-
-    switch (saved.type) {
-        case 'crafting': {
-            if (!saved.itemId) return null;
-            const item = findItem(saved.itemId);
-            if (!item) {
-                console.warn('[save] loadGame: currentWork item id "%s" not found — reset to null.', saved.itemId);
-                return null;
-            }
-            return { type: 'crafting', item: item };
-        }
-        case 'gathering':
-            // Interval can't be restored; return worker
-            gameState.availableWorkers++;
-            return null;
-        case 'studying':
-            // Interval can't be restored; return worker
-            gameState.availableWorkers++;
-            return null;
-        default:
-            return null;
+function _deserializeActiveWork(saved, findItem) {
+    // Legacy single-object save: wrap into array
+    if (saved && !Array.isArray(saved)) {
+        saved = saved.type ? [saved] : [];
     }
+    if (!Array.isArray(saved)) return [];
+
+    const result = [];
+    for (const entry of saved) {
+        if (!entry || !entry.type) continue;
+        switch (entry.type) {
+            case 'crafting': {
+                if (!entry.itemId) break;
+                const item = findItem(entry.itemId);
+                if (!item) {
+                    console.warn('[save] loadGame: activeWork item id "%s" not found — skipped.', entry.itemId);
+                    break;
+                }
+                result.push({ type: 'crafting', item: item });
+                break;
+            }
+            case 'gathering':
+            case 'studying':
+                // Intervals can't be restored; return worker to pool
+                gameState.availableWorkers++;
+                break;
+        }
+    }
+    return result;
 }
 
 /**
