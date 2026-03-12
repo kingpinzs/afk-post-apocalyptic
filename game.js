@@ -167,11 +167,6 @@ async function initializeGame() {
             );
             if (pendingPuzzle) {
                 showUnlockPuzzle(pendingPuzzle);
-            } else {
-                const nextItem = findNextItemUnlock(config);
-                if (nextItem) {
-                    showItemUnlockPuzzle(nextItem);
-                }
             }
         }
     });

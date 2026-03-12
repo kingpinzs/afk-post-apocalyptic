@@ -681,7 +681,8 @@ export function updateExplorationSection() {
             const div = document.createElement('div');
             div.style.marginBottom = '10px';
             const p = document.createElement('p');
-            p.textContent = `Exploring ${loc.name}... (${exploration.daysRemaining} days remaining)`;
+            const workersOut = exploration.workersOut || 1;
+            p.textContent = `Exploring ${loc.name}... (${exploration.daysRemaining} days remaining, ${workersOut} worker${workersOut > 1 ? 's' : ''})`;
             p.style.color = '#f39c12';
             div.appendChild(p);
             activeDiv.appendChild(div);
@@ -689,14 +690,15 @@ export function updateExplorationSection() {
         }
 
         // Render a start button for available locations
+        const workersNeeded = loc.workersRequired || 1;
         const btn = document.createElement('button');
-        btn.textContent = `Explore: ${loc.name}`;
+        btn.textContent = `Explore: ${loc.name} (${workersNeeded} worker${workersNeeded > 1 ? 's' : ''})`;
         btn.title = loc.description;
         btn.style.display = 'block';
         btn.style.width = '100%';
         btn.style.marginBottom = '8px';
         btn.style.fontSize = '12px';
-        btn.disabled = gameState.availableWorkers <= 0;
+        btn.disabled = gameState.availableWorkers < workersNeeded;
         btn.dataset.locationId = loc.id;
         locationsDiv.appendChild(btn);
     });

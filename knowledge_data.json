@@ -1353,6 +1353,7 @@
       "name": "Abandoned Bunker",
       "description": "A pre-war military bunker partially buried in rubble",
       "knowledgeRequired": 5,
+      "workersRequired": 2,
       "explorationTime": 3,
       "rewards": { "food": 30, "water": 20, "knowledge": 2 },
       "lore": "Inside you find preserved rations and a faded journal detailing the last days before the fall."
@@ -1362,6 +1363,7 @@
       "name": "Ruined Library",
       "description": "The remains of a once-great library, its shelves mostly collapsed",
       "knowledgeRequired": 10,
+      "workersRequired": 2,
       "explorationTime": 4,
       "rewards": { "knowledge": 8, "fiber": 15 },
       "lore": "Among the damaged books, you find several intact volumes on engineering and agriculture."
@@ -1372,6 +1374,7 @@
       "description": "A partially collapsed mine shaft that might still hold valuable minerals",
       "knowledgeRequired": 15,
       "requiresItem": "pickaxe",
+      "workersRequired": 3,
       "explorationTime": 5,
       "rewards": { "ore": 40, "stone": 30, "clay": 20 },
       "lore": "The mine still has rich veins of ore. Your people can harvest them carefully."
@@ -1381,6 +1384,7 @@
       "name": "Overgrown Farm",
       "description": "A farm that nature has reclaimed, but some crops might still be salvageable",
       "knowledgeRequired": 8,
+      "workersRequired": 2,
       "explorationTime": 3,
       "rewards": { "food": 40, "fruit": 20, "herbs": 15 },
       "lore": "Wild variants of pre-war crops have adapted and flourished here."
@@ -1390,6 +1394,7 @@
       "name": "Riverside Camp",
       "description": "Remains of a riverside survivor camp with useful supplies",
       "knowledgeRequired": 12,
+      "workersRequired": 2,
       "explorationTime": 4,
       "rewards": { "water": 30, "wood": 25, "fiber": 10 },
       "lore": "The camp was well-organized. You find fishing nets and water purification notes."
@@ -1400,6 +1405,7 @@
       "description": "A tall communication tower that might still have working equipment",
       "knowledgeRequired": 25,
       "requiresItem": "observatory",
+      "workersRequired": 3,
       "explorationTime": 6,
       "rewards": { "knowledge": 15, "ore": 20 },
       "lore": "The tower's logs reveal there may be other settlements out there, broadcasting on old frequencies."
@@ -1410,6 +1416,7 @@
       "description": "A partially flooded warehouse in the old commercial district",
       "knowledgeRequired": 20,
       "requiresItem": "forge",
+      "workersRequired": 3,
       "explorationTime": 5,
       "rewards": { "wood": 50, "stone": 30, "ore": 25, "clay": 15 },
       "lore": "Construction materials aplenty. This warehouse served a now-forgotten building company."
@@ -1421,6 +1428,7 @@
       "knowledgeRequired": 50,
       "requiresItem": "research_lab",
       "hidden": true,
+      "workersRequired": 4,
       "explorationTime": 8,
       "rewards": { "knowledge": 30, "herbs": 20 },
       "lore": "Advanced research notes on genetics and medicine. This could accelerate your civilization's progress dramatically."

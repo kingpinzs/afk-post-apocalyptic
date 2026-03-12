@@ -2,6 +2,7 @@ import { gameState, getConfig } from './gameState.js';
 import { logEvent, updateDisplay } from './ui.js';
 import { addResource } from './resources.js';
 import { getEffect } from './effects.js';
+import { removePopulationMember } from './population.js';
 
 /**
  * Check if exploration is unlocked (watchtower is built).
@@ -47,14 +48,16 @@ export function getAvailableLocations() {
  * @returns {boolean} True if exploration started successfully.
  */
 export function startExploration(locationId) {
-    if (gameState.availableWorkers <= 0) {
-        logEvent("No available workers for exploration.");
-        return false;
-    }
-
     const config = getConfig();
     const location = (config.explorationLocations || []).find(l => l.id === locationId);
     if (!location) return false;
+
+    const workersNeeded = location.workersRequired || 1;
+
+    if (gameState.availableWorkers < workersNeeded) {
+        logEvent(`Need ${workersNeeded} workers for this exploration. Only ${gameState.availableWorkers} available.`);
+        return false;
+    }
 
     // Check if already exploring this location
     const existing = (gameState.explorations || []).find(e => e.id === locationId);
@@ -63,7 +66,7 @@ export function startExploration(locationId) {
         return false;
     }
 
-    gameState.availableWorkers--;
+    gameState.availableWorkers -= workersNeeded;
 
     // navigationEfficiencyMultiplier (telescope) reduces exploration time
     let duration = location.explorationTime;
@@ -76,7 +79,8 @@ export function startExploration(locationId) {
         inProgress: true,
         completed: false,
         daysRemaining: duration,
-        startDay: gameState.day
+        startDay: gameState.day,
+        workersOut: workersNeeded
     };
 
     gameState.explorations = gameState.explorations || [];
@@ -88,7 +92,7 @@ export function startExploration(locationId) {
         gameState.explorations.push(exploration);
     }
 
-    logEvent(`Started exploring ${location.name}. Estimated ${duration} days.`);
+    logEvent(`Sent ${workersNeeded} workers to explore ${location.name}. Estimated ${duration} days.`);
     updateDisplay();
     return true;
 }
@@ -111,32 +115,87 @@ export function updateExplorations() {
         if (exploration.daysRemaining <= 0) {
             exploration.inProgress = false;
             exploration.completed = true;
-            gameState.availableWorkers++;
 
             const location = locations.find(l => l.id === exploration.id);
             if (location) {
-                completeExploration(location);
+                completeExploration(location, exploration);
+            } else {
+                // Fallback: return workers if location config missing
+                gameState.availableWorkers += (exploration.workersOut || 1);
             }
         }
     });
 }
 
 /**
- * Apply the rewards for a completed exploration.
+ * Apply the rewards for a completed exploration and roll for hazards.
  * Uses resourceDiscoveryMultiplier (watchtower) to scale rewards
  * and resourceDiscoveryRate (alchemist_lab) for bonus rolls.
  * @param {Object} location - The location config object.
+ * @param {Object} exploration - The exploration state object.
  */
-function completeExploration(location) {
-    logEvent(`Exploration of ${location.name} complete!`);
+function completeExploration(location, exploration) {
+    const workersOut = exploration.workersOut || 1;
+    const healthMult = getEffect('populationHealthMultiplier');
 
+    // --- Exploration hazards ---
+    // Each worker has a chance of dying or getting sick.
+    // Longer/harder explorations are more dangerous.
+    const dangerScale = location.explorationTime / 3; // baseline 3 days = 1x
+    let workersLost = 0;
+    let workersSickened = 0;
+
+    for (let i = 0; i < workersOut; i++) {
+        // Death chance: 5% base, scaled by danger, reduced by health upgrades
+        const deathChance = 0.05 * dangerScale / Math.max(1, healthMult);
+        if (Math.random() < deathChance) {
+            workersLost++;
+            continue;
+        }
+        // Sickness chance: 20% base, reduced by health upgrades
+        const sickChance = 0.20 / Math.max(1, healthMult);
+        if (Math.random() < sickChance) {
+            workersSickened++;
+        }
+    }
+
+    // Apply deaths
+    for (let i = 0; i < workersLost; i++) {
+        gameState.population = Math.max(1, gameState.population - 1);
+        removePopulationMember();
+    }
+
+    // Apply sickness to random healthy members
+    const healthyMembers = (gameState.populationMembers || []).filter(m => !m.sick);
+    for (let i = 0; i < workersSickened && i < healthyMembers.length; i++) {
+        healthyMembers[i].sick = true;
+        healthyMembers[i].sickDaysRemaining = 3 + Math.floor(Math.random() * 3);
+    }
+
+    // Return surviving healthy workers (sick ones stay unavailable until recovered)
+    const healthyReturning = workersOut - workersLost - workersSickened;
+    gameState.availableWorkers += Math.max(0, healthyReturning);
+
+    // Log results
+    logEvent(`Exploration of ${location.name} complete!`);
+    if (workersLost > 0) {
+        logEvent(`${workersLost} worker${workersLost > 1 ? 's' : ''} did not return from ${location.name}.`);
+    }
+    if (workersSickened > 0) {
+        const sickNames = healthyMembers.slice(0, workersSickened).map(m => m.name).join(', ');
+        logEvent(`${sickNames} returned from exploration feeling ill.`);
+    }
+    if (returning > 0 && workersLost === 0 && workersSickened === 0) {
+        logEvent(`All ${returning} workers returned safely.`);
+    }
+
+    // --- Apply rewards ---
     // resourceDiscoveryMultiplier (watchtower) increases reward amounts
     const discoveryMult = getEffect('resourceDiscoveryMultiplier');
 
     // resourceDiscoveryRate (alchemist_lab) chance for bonus resources
     const discoveryRate = getEffect('resourceDiscoveryRate');
 
-    // Apply rewards
     if (location.rewards) {
         Object.entries(location.rewards).forEach(([resource, amount]) => {
             let finalAmount = Math.ceil(amount * discoveryMult);

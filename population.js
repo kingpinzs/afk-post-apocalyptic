@@ -105,6 +105,7 @@ export function updatePopulation() {
         if (!member.sick && Math.random() < (0.02 * eventSeverity / Math.max(1, healthMult))) {
             member.sick = true;
             member.sickDaysRemaining = Math.ceil(3 + Math.random() * 3);
+            if (gameState.availableWorkers > 0) gameState.availableWorkers--;
             logEvent(`${member.name} has fallen ill!`);
         }
 
@@ -118,6 +119,7 @@ export function updatePopulation() {
                 member.sick = false;
                 member.sickDaysRemaining = 0;
                 member.health = Math.min(100, member.health + 20);
+                gameState.availableWorkers++;
                 logEvent(`${member.name} has recovered!`);
             } else {
                 member.health = Math.max(10, member.health - 5);
@@ -148,6 +150,7 @@ export function updatePopulation() {
         if (victim) {
             victim.sick = true;
             victim.sickDaysRemaining = 2;
+            if (gameState.availableWorkers > 0) gameState.availableWorkers--;
             logEvent(`${victim.name} got food poisoning!`);
         }
     }
