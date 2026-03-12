@@ -1,5 +1,5 @@
 import { gameState, loadGameConfig, getConfig, computeUnlockedResources } from './gameState.js';
-import { updateDisplay, updateTimeDisplay, updateTimeEmoji, updateDayNightCycle, logEvent, submitUnlockPuzzleAnswer, submitItemUnlockPuzzleAnswer, showGameOver, clearEventLog, updateGatheringVisibility, updateTradingSection, updateExplorationSection, updateQuestsSection, updateAchievementsSection, updatePopulationSection, updateFactionsSection } from './ui.js';
+import { updateDisplay, updateTimeDisplay, updateTimeEmoji, updateDayNightCycle, logEvent, submitUnlockPuzzleAnswer, submitItemUnlockPuzzleAnswer, showGameOver, clearEventLog, updateGatheringVisibility, updateTradingSection, updateExplorationSection, updateQuestsSection, updateAchievementsSection, updatePopulationSection, updateFactionsSection, updateStatsSection, getShareableStats } from './ui.js';
 import { updateTrading, executeTrade } from './trading.js';
 import { gatherResource, consumeResources, capResources, checkPopulationGrowth, study, clearActiveIntervals, resetGathering } from './resources.js';
 import { updateCraftableItems, processQueue, clearCraftingInterval } from './crafting.js';
@@ -77,7 +77,30 @@ async function initializeGame() {
     });
 
     document.getElementById('skip-puzzle').addEventListener('click', () => {
-        document.getElementById('puzzle-popup').style.display = 'none';
+        const popup = document.getElementById('puzzle-popup');
+        const type = popup.dataset.puzzleType;
+        // Save pending puzzle so it re-shows on next study
+        if (type === 'unlock') {
+            gameState.pendingPuzzle = { type: 'unlock', puzzleId: popup.dataset.puzzleId };
+        } else if (type === 'item_unlock') {
+            gameState.pendingPuzzle = { type: 'item_unlock', itemId: popup.dataset.itemId };
+        }
+        popup.style.display = 'none';
+    });
+
+    document.getElementById('hint-puzzle').addEventListener('click', () => {
+        const hintEl = document.getElementById('puzzle-hint');
+        if (hintEl.style.display === 'block') return; // already showing
+        const popup = document.getElementById('puzzle-popup');
+        const answer = popup.dataset.puzzleAnswer || '';
+        if (answer.length > 0) {
+            const firstLetter = answer.charAt(0).toUpperCase();
+            const blanks = '_'.repeat(answer.length - 1);
+            hintEl.textContent = `Hint: ${firstLetter}${blanks} (${answer.length} letters)`;
+        } else {
+            hintEl.textContent = 'No hint available.';
+        }
+        hintEl.style.display = 'block';
     });
 
     document.getElementById('restart-game').addEventListener('click', () => {
@@ -155,10 +178,24 @@ async function initializeGame() {
             updateQuestsSection();
             updateAchievementsSection();
             updateFactionsSection();
+            updateStatsSection();
             checkQuestAvailability();
             startAutoSave();
             logEvent('Game loaded.');
         }
+    });
+
+    // Share stats button
+    document.getElementById('share-stats-btn')?.addEventListener('click', () => {
+        const text = getShareableStats();
+        navigator.clipboard.writeText(text).then(() => {
+            logEvent('Stats copied to clipboard!');
+            const btn = document.getElementById('share-stats-btn');
+            btn.textContent = 'Copied!';
+            setTimeout(() => { btn.textContent = 'Copy Stats to Clipboard'; }, 2000);
+        }).catch(() => {
+            logEvent('Could not copy stats. Try manually.');
+        });
     });
 
     // Study button
@@ -386,6 +423,7 @@ function gameLoop() {
     updateAchievementsSection();
     updatePopulationSection();
     updateFactionsSection();
+    updateStatsSection();
     processQueue();
 }
 
@@ -432,6 +470,7 @@ function resetGame() {
         gatheringModifiers: [],
         unlockedResources: ['food', 'water'],
         studyGate: null,
+        pendingPuzzle: null,
         // Phase 2
         currentSeason: 'spring',
         currentWeather: 'clear',

@@ -89,6 +89,28 @@ export function checkFactionAppearance() {
  *
  * Should be called once per day-start, after checkFactionAppearance().
  */
+/**
+ * Update a faction's relationship state based on current trust level.
+ */
+function updateFactionState(faction) {
+    if (faction.trust >= 80) {
+        if (faction.state !== 'allied') {
+            faction.state = 'allied';
+            logEvent(`${faction.name} has become your ally!`);
+        }
+    } else if (faction.trust >= 60) {
+        if (faction.state === 'neutral' || faction.state === 'hostile') {
+            faction.state = 'friendly';
+            logEvent(`Relations with ${faction.name} have improved.`);
+        }
+    } else if (faction.trust <= 20) {
+        if (faction.state !== 'hostile') {
+            faction.state = 'hostile';
+            logEvent(`${faction.name} has become hostile!`);
+        }
+    }
+}
+
 export function updateFactions() {
     if (!gameState.factions || gameState.factions.length === 0) return;
 
@@ -104,22 +126,7 @@ export function updateFactions() {
         }
 
         // --- State transitions based on trust level ---
-        if (faction.trust >= 80) {
-            if (faction.state !== 'allied') {
-                faction.state = 'allied';
-                logEvent(`${faction.name} has become your ally!`);
-            }
-        } else if (faction.trust >= 60) {
-            if (faction.state === 'neutral' || faction.state === 'hostile') {
-                faction.state = 'friendly';
-                logEvent(`Relations with ${faction.name} have improved.`);
-            }
-        } else if (faction.trust <= 20) {
-            if (faction.state !== 'hostile') {
-                faction.state = 'hostile';
-                logEvent(`${faction.name} has become hostile!`);
-            }
-        }
+        updateFactionState(faction);
 
         // --- Allied trade bonuses ---
         // Allied factions with an active trade agreement send a small random
@@ -169,6 +176,11 @@ export function sendGift(factionId, resource, amount) {
     const faction = (gameState.factions || []).find(f => f.id === factionId);
     if (!faction) return false;
 
+    if (faction.trust >= 100) {
+        logEvent(`${faction.name} already trusts you fully.`);
+        return false;
+    }
+
     if ((gameState[resource] || 0) < amount) {
         logEvent(`Not enough ${resource} for a gift.`);
         return false;
@@ -180,6 +192,9 @@ export function sendGift(factionId, resource, amount) {
     faction.lastInteraction = gameState.day;
 
     logEvent(`Sent ${amount} ${resource} to ${faction.name}. Trust improved by ${trustGain}.`);
+
+    // Update state immediately after trust change
+    updateFactionState(faction);
     updateDisplay();
     return true;
 }

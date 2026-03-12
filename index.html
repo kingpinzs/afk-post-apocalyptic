@@ -1371,6 +1371,25 @@
                 </div>
             </div>
 
+            <!-- Stats panel -->
+            <div id="stats-section" class="game-card">
+                <div class="section-header" data-toggle="stats-content">
+                    <h3>Survivor Stats</h3>
+                    <span class="collapse-arrow">&#9660;</span>
+                </div>
+                <div class="section-content" id="stats-content">
+                    <div id="survivor-score" style="text-align:center; padding:10px 0; border-bottom:1px solid rgba(0,255,255,0.15); margin-bottom:10px;">
+                        <div style="font-size:0.7em; color:#7f8c8d; text-transform:uppercase; letter-spacing:2px;">Survivor Score</div>
+                        <div id="score-value" style="font-size:2em; font-weight:bold; color:#00ffff;">0</div>
+                        <div id="score-rank" style="font-size:0.75em; color:#e2b714;"></div>
+                    </div>
+                    <div id="stats-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.75em;"></div>
+                    <div style="margin-top:12px; text-align:center;">
+                        <button id="share-stats-btn" style="font-size:0.7em; padding:6px 16px; min-height:36px;">Copy Stats to Clipboard</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Settings panel -->
             <div class="game-card">
                 <h3>Settings</h3>
@@ -1423,9 +1442,13 @@
     <div id="puzzle-popup" class="popup">
         <h2 id="puzzle-title"></h2>
         <p id="puzzle-description"></p>
+        <p id="puzzle-hint" style="font-size:0.75em; color:#e2b714; font-style:italic; display:none;"></p>
         <input type="text" id="puzzle-answer" placeholder="Enter your answer">
-        <button id="submit-puzzle">Submit Answer</button>
-        <button id="skip-puzzle">Skip</button>
+        <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+            <button id="submit-puzzle">Submit Answer</button>
+            <button id="hint-puzzle" style="background:rgba(226,183,20,0.15); border-color:rgba(226,183,20,0.4); color:#e2b714;">Hint</button>
+            <button id="skip-puzzle">Skip</button>
+        </div>
     </div>
 
     <div id="game-over-popup" class="popup">

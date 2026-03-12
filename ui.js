@@ -2,6 +2,7 @@ import { gameState, getConfig, computeUnlockedResources } from './gameState.js';
 import { updateCraftableItems } from './crafting.js';
 import { getResourceCap, getGatherCount } from './resources.js';
 import { playUnlock } from './audio.js';
+import { renderTechTree } from './techtree.js';
 
 const EFFECT_LABELS = {
     // Production rates
@@ -204,31 +205,32 @@ export function updateDisplay() {
         }
     });
 
-    // Check study gate — clear when all required resources are met
-    if (gameState.studyGate) {
-        const met = Object.entries(gameState.studyGate).every(
-            ([resource, amount]) => gameState[resource] >= amount
-        );
-        if (met) {
-            gameState.studyGate = null;
-            playUnlock();
-            logEvent('Study is available again!');
-        }
-    }
-
-    // Disable study button when gate is active or studying in progress
+    // Study button — reflects study gate, studying progress, puzzle, and worker availability
     const studyBtn = document.getElementById('study');
     if (studyBtn) {
-        if (gameState.studyGate) {
+        if (document.getElementById('puzzle-popup').style.display === 'block') {
             studyBtn.disabled = true;
+            studyBtn.textContent = 'Answer the puzzle...';
+        } else if (gameState.studyGate) {
             const remaining = Object.entries(gameState.studyGate)
-                .filter(([r, amt]) => gameState[r] < amt)
-                .map(([r, amt]) => `${Math.max(0, amt - Math.floor(gameState[r]))} ${r}`)
+                .filter(([r, amt]) => (gameState[r] || 0) < amt)
+                .map(([r, amt]) => `${Math.max(0, amt - Math.floor(gameState[r] || 0))} ${r}`)
                 .join(', ');
-            studyBtn.textContent = `Study the Book (need ${remaining})`;
+            if (remaining) {
+                studyBtn.disabled = true;
+                studyBtn.textContent = `Study the Book (need ${remaining})`;
+            } else {
+                // Gate satisfied but not yet cleared — clear it now
+                gameState.studyGate = null;
+                studyBtn.disabled = false;
+                studyBtn.textContent = 'Study the Book';
+            }
         } else if (gameState.activeWork.some(w => w.type === 'studying')) {
             studyBtn.disabled = true;
             studyBtn.textContent = 'Studying...';
+        } else if (gameState.availableWorkers <= 0) {
+            studyBtn.disabled = true;
+            studyBtn.textContent = 'Study the Book (no workers)';
         } else {
             studyBtn.disabled = false;
             studyBtn.textContent = 'Study the Book';
@@ -241,6 +243,12 @@ export function updateDisplay() {
 
     updateBuiltItems();
     updateWeatherDisplay();
+
+    // Re-render tech tree if it's currently visible
+    const techTreeContainer = document.getElementById('tech-tree-container');
+    if (techTreeContainer && techTreeContainer.style.display === 'block') {
+        renderTechTree('tech-tree-canvas');
+    }
 }
 
 export function updateWorkingSection() {
@@ -323,9 +331,11 @@ export function showUnlockPuzzle(puzzle) {
     document.getElementById('puzzle-title').textContent = 'Unlock New Feature';
     document.getElementById('puzzle-description').textContent = puzzle.puzzle;
     document.getElementById('puzzle-answer').value = '';
+    document.getElementById('puzzle-hint').style.display = 'none';
     puzzlePopup.style.display = 'block';
     puzzlePopup.dataset.puzzleId = puzzle.id;
     puzzlePopup.dataset.puzzleType = 'unlock';
+    puzzlePopup.dataset.puzzleAnswer = puzzle.answer;
 }
 
 export function submitUnlockPuzzleAnswer() {
@@ -338,30 +348,25 @@ export function submitUnlockPuzzleAnswer() {
     const answer = document.getElementById('puzzle-answer').value.toLowerCase();
 
     if (answer === puzzle.answer.toLowerCase()) {
+        // Grant knowledge for correct answer
+        gameState.knowledge += 1;
+        gameState.maxKnowledge = Math.max(gameState.maxKnowledge, gameState.knowledge);
+        gameState.stats.totalStudied = (gameState.stats.totalStudied || 0) + 1;
+
         gameState.unlockedFeatures.push(puzzle.unlocks);
-        logEvent(`Unlocked: ${puzzle.unlocks}!`);
+        gameState.pendingPuzzle = null;
+        logEvent(`Correct! +1 knowledge. Unlocked: ${puzzle.unlocks}!`);
+        playUnlock();
         puzzlePopup.style.display = 'none';
         updateCraftableItems();
 
         const newlyUnlocked = computeUnlockedResources();
         updateGatheringVisibility();
-        if (newlyUnlocked.length > 0) {
-            playUnlock();
-        }
         newlyUnlocked.forEach(r => {
             logEvent(`New resource available: ${r.charAt(0).toUpperCase() + r.slice(1)}!`);
         });
 
-        // Merge newly unlocked resources into existing study gate
-        if (newlyUnlocked.length > 0) {
-            const gateAmount = config.constants.STUDY_GATE_AMOUNT || 5;
-            if (!gameState.studyGate) gameState.studyGate = {};
-            newlyUnlocked.forEach(r => { gameState.studyGate[r] = gateAmount; });
-            const names = newlyUnlocked.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ');
-            logEvent(`Gather ${gateAmount} of each new resource (${names}) before studying again.`);
-        }
-
-        // No chaining — next puzzle requires another study action
+        updateDisplay();
     } else {
         logEvent('Incorrect answer. Try again!');
     }
@@ -381,9 +386,11 @@ export function showItemUnlockPuzzle(item) {
     document.getElementById('puzzle-title').textContent = 'Unlock New Item';
     document.getElementById('puzzle-description').textContent = item.puzzle;
     document.getElementById('puzzle-answer').value = '';
+    document.getElementById('puzzle-hint').style.display = 'none';
     puzzlePopup.style.display = 'block';
     puzzlePopup.dataset.puzzleType = 'item_unlock';
     puzzlePopup.dataset.itemId = item.id;
+    puzzlePopup.dataset.puzzleAnswer = item.puzzleAnswer;
 }
 
 export function submitItemUnlockPuzzleAnswer() {
@@ -402,10 +409,18 @@ export function submitItemUnlockPuzzleAnswer() {
     const answer = document.getElementById('puzzle-answer').value.trim().toLowerCase();
 
     if (answer === item.puzzleAnswer.toLowerCase()) {
+        // Grant knowledge for correct answer
+        gameState.knowledge += 1;
+        gameState.maxKnowledge = Math.max(gameState.maxKnowledge, gameState.knowledge);
+        gameState.stats.totalStudied = (gameState.stats.totalStudied || 0) + 1;
+
         gameState.unlockedFeatures.push(item.id);
-        logEvent(`Unlocked: ${item.name}!`);
+        gameState.pendingPuzzle = null;
+        logEvent(`Correct! +1 knowledge. Unlocked: ${item.name}!`);
+        playUnlock();
         puzzlePopup.style.display = 'none';
         updateCraftableItems();
+        updateDisplay();
     } else {
         logEvent('Incorrect answer. Try again!');
     }
@@ -491,10 +506,12 @@ export function showMilestoneEvent(milestone, onChoiceSelected) {
     document.getElementById('puzzle-title').textContent = milestone.title;
     document.getElementById('puzzle-description').textContent = milestone.description;
 
-    // Hide the answer input and submit/skip buttons
+    // Hide the answer input and submit/skip/hint buttons
     document.getElementById('puzzle-answer').style.display = 'none';
     document.getElementById('submit-puzzle').style.display = 'none';
     document.getElementById('skip-puzzle').style.display = 'none';
+    document.getElementById('hint-puzzle').style.display = 'none';
+    document.getElementById('puzzle-hint').style.display = 'none';
 
     // Create choice buttons container (reuse if already exists)
     let choicesContainer = document.getElementById('milestone-choices');
@@ -507,28 +524,43 @@ export function showMilestoneEvent(milestone, onChoiceSelected) {
     while (choicesContainer.firstChild) choicesContainer.removeChild(choicesContainer.firstChild);
 
     milestone.choices.forEach(choice => {
+        // Check if player can afford this choice's costs
+        const canAfford = Object.entries(choice.effects || {}).every(([key, value]) => {
+            if (value >= 0) return true; // gains are always affordable
+            if (key === 'population') return gameState.population + value >= 1;
+            if (key === 'knowledge') return gameState.knowledge + value >= 0;
+            return (gameState[key] || 0) + value >= 0;
+        });
+
         const btn = document.createElement('button');
         btn.textContent = choice.label;
         btn.title = choice.description;
         btn.style.display = 'block';
         btn.style.width = '100%';
         btn.style.marginBottom = '8px';
-        btn.addEventListener('click', () => {
-            if (onChoiceSelected) onChoiceSelected(choice);
-            // Restore popup elements for puzzle use
-            document.getElementById('puzzle-answer').style.display = '';
-            document.getElementById('submit-puzzle').style.display = '';
-            document.getElementById('skip-puzzle').style.display = '';
-            while (choicesContainer.firstChild) choicesContainer.removeChild(choicesContainer.firstChild);
-            popup.style.display = 'none';
-        });
+
+        if (!canAfford) {
+            btn.disabled = true;
+            btn.classList.add('locked-item');
+        } else {
+            btn.addEventListener('click', () => {
+                if (onChoiceSelected) onChoiceSelected(choice);
+                // Restore popup elements for puzzle use
+                document.getElementById('puzzle-answer').style.display = '';
+                document.getElementById('submit-puzzle').style.display = '';
+                document.getElementById('skip-puzzle').style.display = '';
+                document.getElementById('hint-puzzle').style.display = '';
+                while (choicesContainer.firstChild) choicesContainer.removeChild(choicesContainer.firstChild);
+                popup.style.display = 'none';
+            });
+        }
         choicesContainer.appendChild(btn);
 
         // Show description below button
         const desc = document.createElement('p');
-        desc.textContent = choice.description;
+        desc.textContent = choice.description + (!canAfford ? ' (not enough resources)' : '');
         desc.style.fontSize = '0.7em';
-        desc.style.color = '#7f8c8d';
+        desc.style.color = canAfford ? '#7f8c8d' : '#e74c3c';
         desc.style.marginTop = '-5px';
         desc.style.marginBottom = '10px';
         choicesContainer.appendChild(desc);
@@ -983,4 +1015,131 @@ export function updateAchievementsSection() {
 
         list.appendChild(div);
     });
+}
+
+// ---------------------------------------------------------------------------
+// Stats Section
+// ---------------------------------------------------------------------------
+
+/**
+ * Calculate a survivor score based on overall progress.
+ */
+function calculateSurvivorScore() {
+    const config = getConfig();
+    const crafted = Object.keys(gameState.craftedItems).length;
+    const achEarned = (gameState.achievements || []).length;
+    const questsDone = (gameState.completedQuests || []).length;
+
+    let score = 0;
+    score += (gameState.maxKnowledge || 0) * 2;
+    score += crafted * 10;
+    score += gameState.day * 1;
+    score += (gameState.stats.peakPopulation || gameState.population || 1) * 5;
+    score += achEarned * 15;
+    score += questsDone * 10;
+    score += (gameState.stats.totalExplored || 0) * 5;
+    score += (gameState.stats.totalTraded || 0) * 3;
+
+    const diffMult = { easy: 0.75, normal: 1, hard: 1.5, apocalypse: 2 };
+    score = Math.floor(score * (diffMult[gameState.difficulty] || 1));
+
+    return score;
+}
+
+function getSurvivorRank(score) {
+    if (score >= 5000) return 'Legendary Survivor';
+    if (score >= 3000) return 'Master Survivor';
+    if (score >= 1500) return 'Expert Survivor';
+    if (score >= 800)  return 'Seasoned Survivor';
+    if (score >= 400)  return 'Capable Survivor';
+    if (score >= 150)  return 'Emerging Survivor';
+    if (score >= 50)   return 'Novice Survivor';
+    return 'Stranded';
+}
+
+export function updateStatsSection() {
+    const grid = document.getElementById('stats-grid');
+    if (!grid) return;
+
+    const config = getConfig();
+    const score = calculateSurvivorScore();
+    const rank = getSurvivorRank(score);
+
+    const scoreEl = document.getElementById('score-value');
+    const rankEl = document.getElementById('score-rank');
+    if (scoreEl) scoreEl.textContent = score.toLocaleString();
+    if (rankEl) rankEl.textContent = rank;
+
+    const crafted = Object.keys(gameState.craftedItems).length;
+    const totalItems = config.items.length;
+    const unlocked = (gameState.unlockedFeatures || []).filter(f =>
+        config.items.some(i => i.id === f)
+    ).length;
+    const achEarned = (gameState.achievements || []).length;
+    const totalAch = (config.achievements || []).length;
+    const questsDone = (gameState.completedQuests || []).length;
+    const totalQuests = (config.quests || []).length;
+
+    const stats = [
+        { label: 'Days Survived', value: gameState.day },
+        { label: 'Difficulty', value: (gameState.difficulty || 'normal').charAt(0).toUpperCase() + (gameState.difficulty || 'normal').slice(1) },
+        { label: 'Knowledge (Current)', value: gameState.knowledge },
+        { label: 'Knowledge (Peak)', value: gameState.maxKnowledge || 0 },
+        { label: 'Items Unlocked', value: `${unlocked} / ${totalItems}` },
+        { label: 'Items Crafted', value: `${crafted} / ${totalItems}` },
+        { label: 'Population', value: gameState.population },
+        { label: 'Peak Population', value: gameState.stats.peakPopulation || gameState.population },
+        { label: 'Workers Lost', value: gameState.stats.workersLost || 0 },
+        { label: 'Quests Done', value: `${questsDone} / ${totalQuests}` },
+        { label: 'Achievements', value: `${achEarned} / ${totalAch}` },
+        { label: 'Explorations', value: gameState.stats.totalExplored || 0 },
+        { label: 'Resources Gathered', value: gameState.stats.totalGathered || 0 },
+        { label: 'Trades Completed', value: gameState.stats.totalTraded || 0 },
+        { label: 'Total Studied', value: gameState.stats.totalStudied || 0 },
+        { label: 'Season', value: (gameState.currentSeason || 'spring').charAt(0).toUpperCase() + (gameState.currentSeason || 'spring').slice(1) },
+    ];
+
+    while (grid.firstChild) grid.removeChild(grid.firstChild);
+
+    stats.forEach(({ label, value }) => {
+        const cell = document.createElement('div');
+        cell.style.cssText = 'padding:4px 8px; border-radius:4px; background:rgba(0,255,255,0.04);';
+
+        const labelSpan = document.createElement('div');
+        labelSpan.style.cssText = 'color:#7f8c8d; font-size:0.85em;';
+        labelSpan.textContent = label;
+
+        const valueSpan = document.createElement('div');
+        valueSpan.style.cssText = 'color:#e0e0e0; font-weight:bold;';
+        valueSpan.textContent = value;
+
+        cell.appendChild(labelSpan);
+        cell.appendChild(valueSpan);
+        grid.appendChild(cell);
+    });
+}
+
+export function getShareableStats() {
+    const config = getConfig();
+    const score = calculateSurvivorScore();
+    const rank = getSurvivorRank(score);
+    const crafted = Object.keys(gameState.craftedItems).length;
+    const totalItems = config.items.length;
+    const achEarned = (gameState.achievements || []).length;
+    const totalAch = (config.achievements || []).length;
+    const questsDone = (gameState.completedQuests || []).length;
+    const totalQuests = (config.quests || []).length;
+    const diff = (gameState.difficulty || 'normal').charAt(0).toUpperCase() + (gameState.difficulty || 'normal').slice(1);
+
+    return [
+        `--- Post-Apocalyptic Survivor ---`,
+        `Score: ${score.toLocaleString()} (${rank})`,
+        `Difficulty: ${diff}`,
+        `Day ${gameState.day} | Pop ${gameState.population} (peak ${gameState.stats.peakPopulation || gameState.population})`,
+        `Knowledge: ${gameState.knowledge} (peak ${gameState.maxKnowledge || 0})`,
+        `Crafted: ${crafted}/${totalItems} | Quests: ${questsDone}/${totalQuests} | Achievements: ${achEarned}/${totalAch}`,
+        `Explored: ${gameState.stats.totalExplored || 0} | Traded: ${gameState.stats.totalTraded || 0}`,
+        `Workers Lost: ${gameState.stats.workersLost || 0}`,
+        `--- Can you beat my score? ---`,
+    ].join('\n');
 }

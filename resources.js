@@ -2,7 +2,7 @@ import { gameState, getConfig } from './gameState.js';
 import { logEvent, updateDisplay, updateWorkingSection, showUnlockPuzzle, showItemUnlockPuzzle, findNextItemUnlock } from './ui.js';
 import { updateAutomationControls } from './automation.js';
 import { updateCraftableItems } from './crafting.js';
-import { playGather, playStudy, playUnlock } from './audio.js';
+import { playGather, playUnlock } from './audio.js';
 import { getEffect } from './effects.js';
 
 let activeIntervals = [];
@@ -186,6 +186,17 @@ function completeGathering(resource) {
     // Track stats for achievements
     gameState.stats.totalGathered = (gameState.stats.totalGathered || 0) + amount;
 
+    // Check if study gate is satisfied
+    if (gameState.studyGate) {
+        const allMet = Object.entries(gameState.studyGate).every(
+            ([r, amt]) => (gameState[r] || 0) >= amt
+        );
+        if (allMet) {
+            gameState.studyGate = null;
+            logEvent("Resources gathered! You can study again.");
+        }
+    }
+
     gameState.availableWorkers++;
 
     // Remove ONE matching entry from activeWork (not all)
@@ -293,6 +304,7 @@ export function checkPopulationGrowth() {
     if (immigrationRate > 0 && Math.random() < immigrationRate && gameState.population < maxPop) {
         gameState.population += 1;
         gameState.availableWorkers += 1;
+        gameState.stats.peakPopulation = Math.max(gameState.stats.peakPopulation || 0, gameState.population);
         logEvent("A new settler has arrived, attracted by your settlement!");
         updateAutomationControls();
     }
@@ -308,6 +320,7 @@ export function checkPopulationGrowth() {
 
         gameState.population += 1;
         gameState.availableWorkers += 1;
+        gameState.stats.peakPopulation = Math.max(gameState.stats.peakPopulation || 0, gameState.population);
         gameState.food -= threshold;
         gameState.water -= threshold;
         logEvent("The population has grown! You have a new available worker.");
@@ -316,6 +329,27 @@ export function checkPopulationGrowth() {
 }
 
 export function study() {
+    const config = getConfig();
+
+    // If there's a skipped puzzle, re-show it
+    if (gameState.pendingPuzzle) {
+        const pending = gameState.pendingPuzzle;
+        if (pending.type === 'unlock') {
+            const puzzle = config.unlockPuzzles.find(p => p.id === pending.puzzleId);
+            if (puzzle && !gameState.unlockedFeatures.includes(puzzle.unlocks)) {
+                showUnlockPuzzle(puzzle);
+                return;
+            }
+        } else if (pending.type === 'item_unlock') {
+            const item = config.items.find(i => i.id === pending.itemId);
+            if (item && !gameState.unlockedFeatures.includes(item.id)) {
+                showItemUnlockPuzzle(item);
+                return;
+            }
+        }
+        gameState.pendingPuzzle = null;
+    }
+
     if (gameState.studyGate) {
         logEvent("Gather the new resources before studying again.");
         return;
@@ -334,7 +368,7 @@ export function study() {
     const interval = 100;
     let duration = 5000;
 
-    // knowledgeGenerationMultiplier (library, school, observatory)
+    // knowledgeGenerationMultiplier (library, school, observatory) — speeds up study
     const knowledgeMult = getEffect('knowledgeGenerationMultiplier');
     if (knowledgeMult > 1) duration /= knowledgeMult;
 
@@ -342,7 +376,7 @@ export function study() {
     const researchSpeed = getEffect('researchSpeedMultiplier');
     if (researchSpeed > 1) duration /= researchSpeed;
 
-    duration = Math.max(200, duration); // Minimum 0.2s study time
+    duration = Math.max(200, duration);
 
     const studyInterval = setInterval(() => {
         progress += interval;
@@ -352,35 +386,12 @@ export function study() {
             clearInterval(studyInterval);
             untrackInterval(studyInterval);
 
-            let knowledgeGained = 1;
-
-            // knowledgeSpreadMultiplier (printing_press) — multiplies knowledge gained
-            const spreadMult = getEffect('knowledgeSpreadMultiplier');
-            if (spreadMult > 1) knowledgeGained = Math.round(knowledgeGained * spreadMult);
-
-            // knowledgeEfficiencyMultiplier (paper_mill) — chance for +1 bonus
-            const efficiencyMult = getEffect('knowledgeEfficiencyMultiplier');
-            if (efficiencyMult > 1 && Math.random() < (efficiencyMult - 1)) {
-                knowledgeGained += 1;
-            }
-
-            gameState.knowledge += knowledgeGained;
-            gameState.maxKnowledge = Math.max(gameState.maxKnowledge, gameState.knowledge);
-            logEvent(`Studied the book. Gained ${knowledgeGained} knowledge point${knowledgeGained > 1 ? 's' : ''}.`);
-            playStudy();
-
-            // Track stats for achievements
-            gameState.stats.totalStudied = (gameState.stats.totalStudied || 0) + knowledgeGained;
-
             gameState.availableWorkers++;
             gameState.activeWork = gameState.activeWork.filter(w => w.type !== 'studying');
             updateDisplay();
             updateWorkingSection();
 
-            const config = getConfig();
-
-            // Set study gate on currently unlocked gathering resources
-            // (skips naturally on first study since only food/water are unlocked)
+            // Set study gate on unlocked gathering resources
             const gatherableResources = (gameState.unlockedResources || [])
                 .filter(r => r !== 'food' && r !== 'water');
             if (gatherableResources.length > 0) {
@@ -392,8 +403,7 @@ export function study() {
                 logEvent(`Gather ${gateAmount} of each resource (${names}) before studying again.`);
             }
 
-            updateDisplay();
-
+            // Show puzzle — knowledge is granted on correct answer
             const nextUnlock = config.unlockPuzzles.find(puzzle =>
                 !gameState.unlockedFeatures.includes(puzzle.unlocks) &&
                 gameState.knowledge >= puzzle.knowledgeRequired
@@ -406,6 +416,13 @@ export function study() {
                 if (nextItem) {
                     playUnlock();
                     showItemUnlockPuzzle(nextItem);
+                } else {
+                    // No puzzle available — still grant knowledge for studying
+                    gameState.knowledge += 1;
+                    gameState.maxKnowledge = Math.max(gameState.maxKnowledge, gameState.knowledge);
+                    gameState.stats.totalStudied = (gameState.stats.totalStudied || 0) + 1;
+                    logEvent('Studied the book. +1 knowledge.');
+                    updateDisplay();
                 }
             }
         }

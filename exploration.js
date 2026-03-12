@@ -164,6 +164,7 @@ function completeExploration(location, exploration) {
         gameState.population = Math.max(1, gameState.population - 1);
         removePopulationMember();
     }
+    gameState.stats.workersLost = (gameState.stats.workersLost || 0) + workersLost;
 
     // Apply sickness to random healthy members
     const healthyMembers = (gameState.populationMembers || []).filter(m => !m.sick);

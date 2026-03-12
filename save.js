@@ -181,8 +181,9 @@ function _buildPayload() {
         // activeEvents: store event snapshots with remaining duration.
         activeEvents: _getActiveEvents(),
 
-        // Study gate
+        // Study gate & pending puzzle
         studyGate: gameState.studyGate ? { ...gameState.studyGate } : null,
+        pendingPuzzle: gameState.pendingPuzzle ? { ...gameState.pendingPuzzle } : null,
 
         // Phase 2: Weather & Seasons
         currentSeason:   gameState.currentSeason,
@@ -272,8 +273,9 @@ function _applyPayload(payload) {
         ? payload.gatheringModifiers.map(m => ({ ...m }))
         : gameState.gatheringModifiers;
 
-    // --- Study gate ---
+    // --- Study gate & pending puzzle ---
     gameState.studyGate = payload.studyGate ?? null;
+    gameState.pendingPuzzle = payload.pendingPuzzle ?? null;
 
     // --- Phase 2: Weather & Seasons ---
     gameState.currentSeason   = payload.currentSeason   ?? 'spring';
