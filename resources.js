@@ -1,5 +1,5 @@
 import { gameState, getConfig } from './gameState.js';
-import { logEvent, updateDisplay, updateWorkingSection, showUnlockPuzzle } from './ui.js';
+import { logEvent, updateDisplay, updateWorkingSection, showUnlockPuzzle, showItemUnlockPuzzle, findNextItemUnlock } from './ui.js';
 import { updateAutomationControls } from './automation.js';
 import { updateCraftableItems } from './crafting.js';
 import { playGather, playStudy, playUnlock } from './audio.js';
@@ -401,6 +401,12 @@ export function study() {
             if (nextUnlock) {
                 playUnlock();
                 showUnlockPuzzle(nextUnlock);
+            } else {
+                const nextItem = findNextItemUnlock(config);
+                if (nextItem) {
+                    playUnlock();
+                    showItemUnlockPuzzle(nextItem);
+                }
             }
         }
     }, interval);

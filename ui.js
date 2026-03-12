@@ -375,6 +375,51 @@ export function submitUnlockPuzzleAnswer() {
     }
 }
 
+export function findNextItemUnlock(config) {
+    return config.items.find(item =>
+        item.puzzle && item.puzzleAnswer &&
+        !gameState.unlockedFeatures.includes(item.id) &&
+        !config.unlockPuzzles.some(p => p.unlocks === item.id) &&
+        gameState.knowledge >= (item.knowledgeRequired || 0) &&
+        item.dependencies.every(depId => gameState.craftedItems[depId])
+    );
+}
+
+export function showItemUnlockPuzzle(item) {
+    const puzzlePopup = document.getElementById('puzzle-popup');
+    document.getElementById('puzzle-title').textContent = 'Unlock New Item';
+    document.getElementById('puzzle-description').textContent = item.puzzle;
+    document.getElementById('puzzle-answer').value = '';
+    puzzlePopup.style.display = 'block';
+    puzzlePopup.dataset.puzzleType = 'item_unlock';
+    puzzlePopup.dataset.itemId = item.id;
+}
+
+export function submitItemUnlockPuzzleAnswer() {
+    if (gameState.isGameOver) return;
+
+    const config = getConfig();
+    const puzzlePopup = document.getElementById('puzzle-popup');
+    const itemId = puzzlePopup.dataset.itemId;
+    const item = config.items.find(i => i.id === itemId);
+
+    if (!item) {
+        logEvent('Error: item not found. Close and try again.');
+        return;
+    }
+
+    const answer = document.getElementById('puzzle-answer').value.trim().toLowerCase();
+
+    if (answer === item.puzzleAnswer.toLowerCase()) {
+        gameState.unlockedFeatures.push(item.id);
+        logEvent(`Unlocked: ${item.name}!`);
+        puzzlePopup.style.display = 'none';
+        updateCraftableItems();
+    } else {
+        logEvent('Incorrect answer. Try again!');
+    }
+}
+
 export function showGameOver() {
     document.getElementById('puzzle-popup').style.display = 'none';
     document.getElementById('game-over-popup').style.display = 'block';

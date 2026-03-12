@@ -1,8 +1,8 @@
 import { gameState, loadGameConfig, getConfig, computeUnlockedResources } from './gameState.js';
-import { updateDisplay, updateTimeDisplay, updateTimeEmoji, updateDayNightCycle, logEvent, submitUnlockPuzzleAnswer, showUnlockPuzzle, showGameOver, clearEventLog, updateGatheringVisibility, updateTradingSection, updateExplorationSection, updateQuestsSection, updateAchievementsSection, updatePopulationSection, updateFactionsSection } from './ui.js';
+import { updateDisplay, updateTimeDisplay, updateTimeEmoji, updateDayNightCycle, logEvent, submitUnlockPuzzleAnswer, submitItemUnlockPuzzleAnswer, showUnlockPuzzle, showItemUnlockPuzzle, findNextItemUnlock, showGameOver, clearEventLog, updateGatheringVisibility, updateTradingSection, updateExplorationSection, updateQuestsSection, updateAchievementsSection, updatePopulationSection, updateFactionsSection } from './ui.js';
 import { updateTrading, executeTrade } from './trading.js';
 import { gatherResource, consumeResources, capResources, checkPopulationGrowth, study, clearActiveIntervals, resetGathering } from './resources.js';
-import { updateCraftableItems, processQueue, clearCraftingInterval, submitCraftingPuzzleAnswer } from './crafting.js';
+import { updateCraftableItems, processQueue, clearCraftingInterval } from './crafting.js';
 import { updateAutomationControls, runAutomation } from './automation.js';
 import { checkForEvents, updateActiveEvents, resetActiveEvents, updateWeather, checkMilestoneEvents } from './events.js';
 import { saveGame, loadGame, hasSave, deleteSave } from './save.js';
@@ -66,7 +66,7 @@ async function initializeGame() {
     document.getElementById('submit-puzzle').addEventListener('click', () => {
         initAudio();
         const type = document.getElementById('puzzle-popup').dataset.puzzleType;
-        if (type === 'crafting') submitCraftingPuzzleAnswer();
+        if (type === 'item_unlock') submitItemUnlockPuzzleAnswer();
         else submitUnlockPuzzleAnswer();
     });
 
@@ -167,6 +167,11 @@ async function initializeGame() {
             );
             if (pendingPuzzle) {
                 showUnlockPuzzle(pendingPuzzle);
+            } else {
+                const nextItem = findNextItemUnlock(config);
+                if (nextItem) {
+                    showItemUnlockPuzzle(nextItem);
+                }
             }
         }
     });

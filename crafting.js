@@ -83,7 +83,8 @@ export function updateCraftableItems() {
     const tierGate = { settlement: 'settlement_tier', village: 'village_tier', town: 'town_tier', civilization: 'civilization_tier' };
 
     config.items.forEach(item => {
-        const hasSpecificLock = config.unlockPuzzles.some(p => p.unlocks === item.id);
+        const hasSpecificLock = config.unlockPuzzles.some(p => p.unlocks === item.id)
+            || !!item.puzzle; // items with puzzles now need unlock via study
         const isUnlocked = !hasSpecificLock || gameState.unlockedFeatures.includes(item.id);
         // If item was explicitly unlocked via puzzle, skip knowledge gate — the puzzle
         // already required knowledge to appear, so the item should stay visible.
@@ -147,7 +148,7 @@ export function updateCraftableItems() {
                 .join(', ');
             button.textContent = `Craft ${item.name} (${reqText})`;
             button.disabled = !canCraft || gameState.availableWorkers === 0;
-            button.addEventListener('click', () => showCraftingPuzzle(item));
+            button.addEventListener('click', () => startCrafting(item));
 
             // Tooltip
             const tooltip = document.createElement('div');
@@ -419,33 +420,6 @@ function updateCraftingQueueDisplay() {
         div.appendChild(barContainer);
         queueContainer.appendChild(div);
     });
-}
-
-function showCraftingPuzzle(item) {
-    const puzzlePopup = document.getElementById('puzzle-popup');
-    document.getElementById('puzzle-title').textContent = `Craft ${item.name}`;
-    document.getElementById('puzzle-description').textContent = item.puzzle;
-    document.getElementById('puzzle-answer').value = '';
-    puzzlePopup.style.display = 'block';
-    puzzlePopup.dataset.puzzleType = 'crafting';
-    puzzlePopup.dataset.itemId = item.id;
-}
-
-export function submitCraftingPuzzleAnswer() {
-    if (gameState.isGameOver) return;
-
-    const config = getConfig();
-    const puzzlePopup = document.getElementById('puzzle-popup');
-    const itemId = puzzlePopup.dataset.itemId;
-    const item = config.items.find(i => i.id === itemId);
-    const answer = document.getElementById('puzzle-answer').value.toLowerCase();
-
-    if (answer === item.puzzleAnswer.toLowerCase()) {
-        startCrafting(item);
-        puzzlePopup.style.display = 'none';
-    } else {
-        logEvent('Incorrect answer. Try again!');
-    }
 }
 
 export function clearCraftingInterval() {
