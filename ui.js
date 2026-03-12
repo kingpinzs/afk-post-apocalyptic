@@ -212,7 +212,7 @@ export function updateDisplay() {
                 .map(([r, amt]) => `${Math.max(0, amt - Math.floor(gameState[r] || 0))} ${r}`)
                 .join(', ');
             if (remaining) {
-                studyBtn.disabled = true;
+                studyBtn.disabled = false;
                 studyBtn.textContent = `Study the Book (need ${remaining})`;
             } else {
                 // Gate satisfied but not yet cleared — clear it now
