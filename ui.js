@@ -193,16 +193,11 @@ export function updateDisplay() {
         if (currencyItem) currencyItem.style.display = gameState.currency > 0 ? '' : 'none';
     }
 
-    // Disable/enable gather buttons based on workers and caps
+    // Disable/enable gather buttons based on workers only
     config.resources.forEach(resource => {
         const button = document.getElementById(`gather-${resource}`);
         if (!button) return;
-        const rCap = getResourceCap(resource);
-        if (gameState[resource] >= rCap || gameState.availableWorkers <= 0) {
-            button.disabled = true;
-        } else {
-            button.disabled = false;
-        }
+        button.disabled = gameState.availableWorkers <= 0;
     });
 
     // Study button — reflects study gate, studying progress, puzzle, and worker availability

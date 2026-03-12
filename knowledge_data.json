@@ -11,8 +11,8 @@
     "fruit"
   ],
   "initialState": {
-    "food": 50,
-    "water": 50,
+    "food": 100,
+    "water": 100,
     "wood": 0,
     "stone": 0,
     "clay": 0,

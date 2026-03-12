@@ -58,7 +58,10 @@ export function gatherResource(resource) {
     }
 
     // Don't gather if resource is already at cap
-    if (gameState[resource] >= getResourceCap(resource)) return;
+    if (gameState[resource] >= getResourceCap(resource)) {
+        logEvent(`${resource.charAt(0).toUpperCase() + resource.slice(1)} storage is full.`);
+        return;
+    }
 
     const button = document.getElementById(`gather-${resource}`);
 
