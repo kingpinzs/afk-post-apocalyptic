@@ -154,6 +154,10 @@ async function initializeGame() {
         gameState.gameStarted = true;
         initializePopulationMembers();
         initializeFactions();
+        computeUnlockedResources();
+        updateGatheringVisibility();
+        updateDisplay();
+        updateCraftableItems();
         checkQuestAvailability();
         startAutoSave();
     });
