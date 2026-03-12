@@ -360,6 +360,16 @@ export function submitUnlockPuzzleAnswer() {
             const names = newlyUnlocked.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ');
             logEvent(`Gather ${gateAmount} of each new resource (${names}) before studying again.`);
         }
+
+        // Chain: show next pending unlock puzzle if knowledge already qualifies
+        const nextUnlock = config.unlockPuzzles.find(p =>
+            !gameState.unlockedFeatures.includes(p.unlocks) &&
+            gameState.knowledge >= p.knowledgeRequired
+        );
+        if (nextUnlock) {
+            playUnlock();
+            showUnlockPuzzle(nextUnlock);
+        }
     } else {
         logEvent('Incorrect answer. Try again!');
     }
