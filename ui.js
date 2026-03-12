@@ -212,8 +212,14 @@ export function updateDisplay() {
                 .map(([r, amt]) => `${Math.max(0, amt - Math.floor(gameState[r] || 0))} ${r}`)
                 .join(', ');
             if (remaining) {
-                studyBtn.disabled = false;
-                studyBtn.textContent = `Study the Book (need ${remaining})`;
+                studyBtn.disabled = true;
+                studyBtn.textContent = '';
+                studyBtn.appendChild(document.createTextNode('Study the Book ('));
+                const reqSpan = document.createElement('span');
+                reqSpan.style.color = '#ff6b6b';
+                reqSpan.textContent = remaining;
+                studyBtn.appendChild(reqSpan);
+                studyBtn.appendChild(document.createTextNode(')'));
             } else {
                 // Gate satisfied but not yet cleared — clear it now
                 gameState.studyGate = null;
