@@ -361,15 +361,7 @@ export function submitUnlockPuzzleAnswer() {
             logEvent(`Gather ${gateAmount} of each new resource (${names}) before studying again.`);
         }
 
-        // Chain: show next pending unlock puzzle if knowledge already qualifies
-        const nextUnlock = config.unlockPuzzles.find(p =>
-            !gameState.unlockedFeatures.includes(p.unlocks) &&
-            gameState.knowledge >= p.knowledgeRequired
-        );
-        if (nextUnlock) {
-            playUnlock();
-            showUnlockPuzzle(nextUnlock);
-        }
+        // No chaining — next puzzle requires another study action
     } else {
         logEvent('Incorrect answer. Try again!');
     }
