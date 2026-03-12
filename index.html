@@ -113,10 +113,10 @@
             backdrop-filter: blur(12px);
             color: #00ffff;
             font-family: 'Orbitron', sans-serif;
-            padding: 10px 14px;
-            padding-top: calc(10px + env(safe-area-inset-top, 0px));
+            padding: 8px 14px;
+            padding-top: calc(8px + env(safe-area-inset-top, 0px));
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
         }
 
         .hud-row {
@@ -127,51 +127,49 @@
             flex-wrap: wrap;
         }
 
-        #day-time {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            justify-content: center;
-        }
-
-        #day-time p {
-            margin: 0;
-            font-size: 0.95em;
+        .hud-row span {
+            font-size: 0.8em;
             white-space: nowrap;
         }
 
-        #resources-population {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .resource-item {
+        .resource-bar {
             display: flex;
             align-items: center;
             gap: 6px;
         }
 
-        .resource-item p {
-            margin: 0;
-            font-size: 0.9em;
-            white-space: nowrap;
+        .resource-bar label {
+            font-size: 0.75em;
+            color: #7f8c8d;
+            min-width: 30px;
+            text-align: right;
         }
 
-        .population-item p {
-            margin: 0;
-            font-size: 0.9em;
-            white-space: nowrap;
+        .resource-bar span {
+            font-size: 0.75em;
+            min-width: 50px;
         }
 
+        #day-display {
+            color: #f39c12;
+            font-weight: 700;
+        }
+
+        #season-display {
+            color: #7f8c8d;
+        }
+
+        #weather-display {
+            color: #7f8c8d;
+        }
+
+        /* Progress bars */
         progress {
-            width: 90px;
-            height: 14px;
+            width: 80px;
+            height: 12px;
             background-color: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(0, 255, 255, 0.2);
-            border-radius: 7px;
+            border-radius: 6px;
             flex-shrink: 0;
         }
 
@@ -198,8 +196,13 @@
             background: linear-gradient(135deg, #3498db, #1abc9c);
         }
 
-        .population-item span {
-            animation: pulseGlow 1.5s infinite;
+        #study-progress::-webkit-progress-value {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            border-radius: 5px;
+        }
+
+        #study-progress::-moz-progress-bar {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
         }
 
         @keyframes pulseGlow {
@@ -208,71 +211,8 @@
             100% { text-shadow: 0 0 5px #00ffff; }
         }
 
-        /* ================================================================
-           INVENTORY STRIP (below HUD)
-           ================================================================ */
-        #inventory {
-            display: none;
-            position: fixed;
-            top: 0; /* positioned dynamically by JS */
-            left: 0;
-            right: 0;
-            z-index: 99;
-            background: rgba(6, 10, 20, 0.88);
-            border-bottom: 1px solid rgba(0, 255, 255, 0.15);
-            backdrop-filter: blur(8px);
-            padding: 8px 12px;
-            overflow-x: auto;
-            overflow-y: hidden;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-        }
-
-        #inventory::-webkit-scrollbar {
-            display: none;
-        }
-
-        #inventory h2 {
-            display: none; /* hide the heading in compact mode */
-        }
-
-        #inventory-items {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            flex-wrap: nowrap;
-            min-width: max-content;
-            justify-content: center;
-        }
-
-        #inventory-items p {
-            margin: 0;
-            font-size: 0.85em;
-            white-space: nowrap;
-            color: #00ffff;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            flex-shrink: 0;
-        }
-
-        #inventory-items img {
-            width: 26px;
-            height: 26px;
-            vertical-align: middle;
-            filter: drop-shadow(0 0 4px #00ffff);
-        }
-
-        #inventory-items i {
-            margin-right: 4px;
-            font-size: 1em;
-            filter: drop-shadow(0 0 3px #00ffff);
-        }
-
-        #inventory p:hover {
-            color: #ffffff;
-            text-shadow: 0 0 10px #ffffff, 0 0 15px #00ffff;
-            transition: 0.3s ease;
+        #population-display {
+            animation: pulseGlow 1.5s infinite;
         }
 
         /* ================================================================
@@ -292,16 +232,14 @@
         }
 
         /* Center content within tabs */
-        .tab-page {
+        .tab-panel {
             max-width: 600px;
             margin: 0 auto;
+            display: none;
         }
 
-        /* ================================================================
-           TAB PAGES
-           ================================================================ */
-        .tab-page:not(.active) {
-            display: none;
+        .tab-panel.active {
+            display: block;
         }
 
         /* ================================================================
@@ -360,7 +298,7 @@
         }
 
         .nav-icon {
-            font-size: 26px;
+            font-size: 22px;
             line-height: 1;
             margin-bottom: 3px;
         }
@@ -368,6 +306,79 @@
         .nav-label {
             font-size: 10px;
             letter-spacing: 0.5px;
+        }
+
+        /* Desktop-only / Mobile-only responsive classes */
+        .desktop-only {
+            display: none;
+        }
+
+        .mobile-only {
+            display: flex;
+        }
+
+        @media (min-width: 769px) {
+            .desktop-only {
+                display: flex;
+            }
+            .mobile-only {
+                display: none;
+            }
+        }
+
+        /* More drawer (mobile) */
+        #more-drawer {
+            position: fixed;
+            bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+            left: 0;
+            right: 0;
+            z-index: 99;
+            background: rgba(6, 10, 20, 0.97);
+            border-top: 1px solid rgba(0, 255, 255, 0.3);
+            backdrop-filter: blur(12px);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        #more-drawer.open {
+            transform: translateY(0);
+        }
+
+        .drawer-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            color: #7f8c8d;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            padding: 8px 16px;
+            cursor: pointer;
+            min-height: 48px;
+            text-transform: uppercase;
+            transition: color 0.2s;
+        }
+
+        .drawer-btn:hover {
+            color: #00ffff;
+            background: none;
+            border: none;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .drawer-icon {
+            font-size: 22px;
+            margin-bottom: 3px;
+        }
+
+        .drawer-label {
+            font-size: 10px;
         }
 
         /* ================================================================
@@ -385,11 +396,7 @@
         }
 
         /* Override old hover scale - bad on mobile */
-        #resources:hover, #actions:hover, #crafting:hover, #knowledge:hover,
-        #population:hover, #automation:hover, #log:hover, #working-section:hover,
-        #built-items:hover, #trading:hover, #exploration:hover, #quests-section:hover,
-        #achievements-section:hover, #population-section:hover, #factions-section:hover,
-        #tech-tree-section:hover {
+        .game-card:hover {
             transform: none;
         }
 
@@ -444,8 +451,14 @@
             pointer-events: none;
         }
 
+        .action-btn {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 14px;
+        }
+
         /* ================================================================
-           WORKING SECTION
+           WORKING SECTION / PROGRESS BARS
            ================================================================ */
         .progress-bar-container {
             flex-grow: 1;
@@ -465,22 +478,45 @@
             border-radius: 7px;
         }
 
-        #work-progress-container {
-            margin-top: 8px;
-        }
-
-        .gather-action {
+        /* ================================================================
+           GATHERING SECTION
+           ================================================================ */
+        .gather-row {
             display: flex;
             align-items: center;
             gap: 8px;
             margin-bottom: 6px;
         }
 
-        .gather-action button {
+        .gather-btn {
             flex-shrink: 0;
             font-size: 11px;
             padding: 8px 12px;
             min-height: 40px;
+            min-width: 100px;
+        }
+
+        .resource-count {
+            font-size: 0.75em;
+            min-width: 55px;
+            text-align: center;
+        }
+
+        .gather-progress-container {
+            flex-grow: 1;
+            height: 10px;
+            background: rgba(20, 30, 50, 0.6);
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 255, 0.1);
+        }
+
+        .gather-progress {
+            width: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #00aacc, #00ffff);
+            transition: width 0.1s linear;
+            border-radius: 5px;
         }
 
         /* ================================================================
@@ -499,27 +535,41 @@
             animation: craftingComplete 1s ease-out forwards;
         }
 
-        .crafting-item {
+        .queue-item {
             display: flex;
             align-items: center;
-            margin-bottom: 8px;
+            gap: 8px;
+            margin-bottom: 6px;
             font-size: 0.75em;
         }
 
-        .crafting-item .progress-bar-container {
+        .queue-item progress {
             flex-grow: 1;
-            height: 14px;
-            background-color: rgba(20, 30, 50, 0.6);
-            margin-left: 8px;
-            border-radius: 7px;
-            overflow: hidden;
+            height: 12px;
         }
 
-        .crafting-item .progress-bar {
-            width: 0;
-            height: 100%;
+        .queue-item progress::-webkit-progress-value {
             background: linear-gradient(90deg, #e67e22, #f39c12);
-            transition: width 0.1s linear;
+            border-radius: 5px;
+        }
+
+        .queue-item progress::-moz-progress-bar {
+            background: linear-gradient(90deg, #e67e22, #f39c12);
+        }
+
+        /* Category buttons */
+        .cat-btn {
+            font-size: 11px;
+            padding: 6px 12px;
+            min-height: 36px;
+            border-radius: 16px;
+            margin: 2px;
+        }
+
+        .cat-btn.active {
+            background-color: rgba(0, 255, 255, 0.2);
+            border-color: #00ffff;
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
         }
 
         /* Crafting tiers */
@@ -580,7 +630,7 @@
             transform: rotate(-90deg);
         }
 
-        /* Item tooltips — show on tap (toggle via JS) for mobile */
+        /* Item tooltips -- show on tap (toggle via JS) for mobile */
         .craft-btn-wrapper {
             position: relative;
             margin-bottom: 4px;
@@ -651,8 +701,25 @@
         }
 
         /* ================================================================
-           BUILT ITEMS
+           BUILT BUILDINGS / ITEMS
            ================================================================ */
+        .building-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            margin-bottom: 4px;
+            background: rgba(0, 255, 255, 0.04);
+            border: 1px solid rgba(0, 255, 255, 0.12);
+            border-radius: 6px;
+            font-size: 0.75em;
+        }
+
+        .building-card.tool {
+            border-color: rgba(243, 156, 18, 0.3);
+            color: #f39c12;
+        }
+
         .built-item {
             display: flex;
             justify-content: space-between;
@@ -681,7 +748,47 @@
         }
 
         /* ================================================================
-           AUTOMATION
+           BOOK / CHAPTERS
+           ================================================================ */
+        .chapter-btn {
+            font-size: 10px;
+            padding: 6px 10px;
+            min-height: 36px;
+            border-radius: 16px;
+            margin: 2px;
+        }
+
+        .chapter-btn.active {
+            background-color: rgba(155, 89, 182, 0.3);
+            border-color: #9b59b6;
+            color: #9b59b6;
+        }
+
+        .chapter-btn.locked {
+            opacity: 0.4;
+        }
+
+        .blueprint {
+            padding: 6px 10px;
+            margin-bottom: 4px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            border: 1px solid rgba(0, 255, 255, 0.08);
+        }
+
+        .blueprint.unlocked {
+            background: rgba(46, 204, 113, 0.08);
+            border-color: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+        }
+
+        .blueprint.locked {
+            background: rgba(40, 50, 65, 0.3);
+            color: #4a5568;
+        }
+
+        /* ================================================================
+           PRODUCTION / AUTOMATION
            ================================================================ */
         .automation-control {
             display: flex;
@@ -704,31 +811,39 @@
             margin-left: 4px;
         }
 
+        .worker-summary {
+            padding: 8px 12px;
+            background: rgba(0, 255, 255, 0.04);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 0.8em;
+        }
+
         /* ================================================================
            LOG
            ================================================================ */
-        #log {
-            max-height: none;
-            overflow-y: visible;
-        }
-
-        .log-scroll {
-            max-height: 180px;
-            overflow-y: auto;
-        }
-
         #event-log {
-            list-style-type: none;
+            max-height: 250px;
+            overflow-y: auto;
             padding: 0;
             margin: 0;
         }
 
-        #event-log li {
-            margin-bottom: 4px;
+        .log-entry {
+            margin-bottom: 2px;
             font-size: 0.7em;
             padding: 4px 6px;
             border-bottom: 1px solid rgba(0, 255, 255, 0.06);
+            line-height: 1.4;
         }
+
+        .log-info { color: #bdc3c7; }
+        .log-warning { color: #f39c12; }
+        .log-danger { color: #e74c3c; }
+        .log-success { color: #2ecc71; }
+        .log-milestone { color: #9b59b6; font-weight: 700; }
+        .log-event { color: #3498db; }
 
         /* ================================================================
            COLLAPSIBLE SECTIONS
@@ -773,6 +888,8 @@
            ================================================================ */
         .popup {
             display: none;
+            flex-direction: column;
+            align-items: stretch;
             position: fixed;
             top: 50%;
             left: 50%;
@@ -786,7 +903,7 @@
             backdrop-filter: blur(15px);
             color: #00ffff;
             width: calc(100% - 32px);
-            max-width: 380px;
+            max-width: 420px;
             text-align: center;
         }
 
@@ -800,8 +917,8 @@
 
         .popup input {
             width: 100%;
-            padding: 12px;
-            margin-top: 8px;
+            padding: 12px 14px;
+            margin: 10px 0;
             background: rgba(0, 0, 0, 0.4);
             border: 1px solid rgba(0, 255, 255, 0.3);
             border-radius: 8px;
@@ -809,7 +926,7 @@
             font-family: 'Orbitron', sans-serif;
             font-size: 14px;
             box-sizing: border-box;
-            min-height: 44px;
+            min-height: 48px;
         }
 
         .popup input:focus {
@@ -820,6 +937,13 @@
 
         .popup button {
             margin-top: 8px;
+        }
+
+        .hint {
+            font-size: 0.75em;
+            color: #e2b714;
+            font-style: italic;
+            margin: 4px 0;
         }
 
         /* ================================================================
@@ -964,7 +1088,7 @@
         }
 
         /* ================================================================
-           SOUND TOGGLE (moved into Camp tab settings)
+           SOUND TOGGLE
            ================================================================ */
         #sound-toggle {
             z-index: 50;
@@ -1008,7 +1132,7 @@
         }
 
         /* ================================================================
-           SETTINGS PANEL (in Camp tab)
+           SETTINGS PANEL
            ================================================================ */
         .settings-panel {
             display: flex;
@@ -1027,6 +1151,71 @@
             align-items: center;
             gap: 10px;
             flex-wrap: wrap;
+        }
+
+        /* ================================================================
+           QUICK STATS
+           ================================================================ */
+        .quick-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            font-size: 0.75em;
+            margin-top: 8px;
+        }
+
+        .stat-item {
+            padding: 4px 8px;
+            background: rgba(0, 255, 255, 0.04);
+            border: 1px solid rgba(0, 255, 255, 0.08);
+            border-radius: 4px;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.85em;
+        }
+
+        .stat-value {
+            color: #00ffff;
+            font-weight: 700;
+        }
+
+        /* ================================================================
+           DIM TEXT (placeholder / empty states)
+           ================================================================ */
+        .dim {
+            color: #7f8c8d;
+            font-size: 0.75em;
+            font-style: italic;
+        }
+
+        /* ================================================================
+           STUDY GATE INFO
+           ================================================================ */
+        #study-gate-info {
+            font-size: 0.75em;
+            color: #ff4444;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        /* ================================================================
+           DAY/NIGHT CYCLE
+           ================================================================ */
+        #day-night-cycle {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 0;
+            transition: background-color 2s ease;
+        }
+
+        #day-night-cycle.night {
+            background-color: rgba(0, 0, 20, 0.35);
         }
 
         /* ================================================================
@@ -1052,16 +1241,18 @@
                 border-radius: 16px 16px 0 0;
             }
 
+            #more-drawer {
+                max-width: 600px;
+                left: 50%;
+                transform: translateX(-50%) translateY(100%);
+            }
+
+            #more-drawer.open {
+                transform: translateX(-50%) translateY(0);
+            }
+
             progress {
                 width: 80px;
-            }
-
-            #day-time p {
-                font-size: 0.7em;
-            }
-
-            .resource-item p, .population-item p {
-                font-size: 0.7em;
             }
         }
 
@@ -1088,6 +1279,55 @@
             70% { opacity: 0.9; }
             90% { opacity: 0.5; }
         }
+
+        /* ================================================================
+           EXPLORATION
+           ================================================================ */
+        .exploration-location {
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            background: rgba(0, 255, 255, 0.04);
+            border: 1px solid rgba(0, 255, 255, 0.12);
+            border-radius: 6px;
+            font-size: 0.8em;
+        }
+
+        .active-expedition {
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 6px;
+            font-size: 0.8em;
+        }
+
+        /* ================================================================
+           FACTIONS / TRADING / QUESTS / ACHIEVEMENTS
+           ================================================================ */
+        .faction-card, .trade-card, .quest-card, .achievement-card {
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            background: rgba(0, 255, 255, 0.04);
+            border: 1px solid rgba(0, 255, 255, 0.12);
+            border-radius: 6px;
+            font-size: 0.8em;
+        }
+
+        /* ================================================================
+           NETWORK MAP (placeholder)
+           ================================================================ */
+        #network-map {
+            min-height: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            color: #4a5568;
+        }
     </style>
 </head>
 <body>
@@ -1101,7 +1341,7 @@
         <div id="difficulty-selector" style="margin-top:20px;">
             <p style="font-size:0.7em; color:#7f8c8d; margin-bottom:10px;">Difficulty:</p>
             <div id="difficulty-buttons" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
-                <button class="difficulty-btn" data-difficulty="easy" style="font-size:11px; padding:8px 14px;">Easy</button>
+                <button class="difficulty-btn" data-difficulty="casual" style="font-size:11px; padding:8px 14px;">Casual</button>
                 <button class="difficulty-btn selected" data-difficulty="normal" style="font-size:11px; padding:8px 14px;">Normal</button>
                 <button class="difficulty-btn" data-difficulty="hard" style="font-size:11px; padding:8px 14px;">Hard</button>
                 <button class="difficulty-btn" data-difficulty="apocalypse" style="font-size:11px; padding:8px 14px;">Apocalypse</button>
@@ -1152,227 +1392,167 @@
          TOP HUD
          ============================================================ -->
     <div id="hud">
-        <!-- Row 1: Day / Time / Weather / Season -->
+        <!-- Row 1: Day / Time / Season / Weather -->
         <div class="hud-row">
-            <div id="day-time">
-                <p>Day <span id="day-count">1</span></p>
-                <p><span id="time-emoji">🌅</span> <span id="time-display">00:00</span></p>
-                <p><span id="weather-emoji">☀️</span> <span id="weather-display">Clear</span></p>
-                <p style="color:#7f8c8d;"><span id="season-display">Spring</span></p>
+            <span id="time-emoji">&#x1F305;</span>
+            <span id="time-display">06:00</span>
+            <span id="day-display">Day 1</span>
+            <span style="color:#7f8c8d;">|</span>
+            <span id="season-display">Spring</span>
+            <span id="weather-display">Clear</span>
+        </div>
+        <!-- Row 2: Food / Water bars -->
+        <div class="hud-row">
+            <div class="resource-bar">
+                <label>Food</label>
+                <progress id="food-bar" value="50" max="100"></progress>
+                <span id="food-display">50/100</span>
+            </div>
+            <div class="resource-bar">
+                <label>Water</label>
+                <progress id="water-bar" value="50" max="100"></progress>
+                <span id="water-display">50/100</span>
             </div>
         </div>
-        <!-- Row 2: Food / Water / Pop -->
+        <!-- Row 3: Population / Workers / Settlement -->
         <div class="hud-row">
-            <div id="resources-population">
-                <div class="resource-item">
-                    <p>F: <span id="food">100</span>/<span id="food-max">100</span></p>
-                    <progress id="food-bar" value="100" max="100"></progress>
-                </div>
-                <div class="resource-item">
-                    <p>W: <span id="water">100</span>/<span id="water-max">100</span></p>
-                    <progress id="water-bar" value="100" max="100"></progress>
-                </div>
-                <div class="population-item">
-                    <p>Pop: <span id="population-count">1</span></p>
-                </div>
-                <div class="population-item">
-                    <p>Idle: <span id="available-workers">1</span></p>
-                </div>
-                <div class="population-item" id="currency-item" style="display:none;">
-                    <p>$<span id="currency-display">0</span></p>
-                </div>
-            </div>
+            <span id="population-display">Pop: 1/1</span>
+            <span id="workers-display">Workers: 1</span>
+            <span id="settlement-display">Camp (Forest)</span>
+        </div>
+        <!-- Row 4: Knowledge / Active events -->
+        <div class="hud-row">
+            <span id="knowledge-display">Knowledge: 0</span>
+            <span id="active-events-indicator"></span>
         </div>
     </div>
 
     <!-- ============================================================
-         INVENTORY STRIP
-         ============================================================ -->
-    <div id="inventory">
-        <h2>Inventory</h2>
-        <div id="inventory-items">
-            <p id="inventory-placeholder" style="color:#7f8c8d; font-size:0.7em;">Resources unlock as you progress</p>
-            <p data-resource="wood" style="display:none"><img src="assets/images/icons/wood_pile.png" alt="Wood"> <span id="wood">0</span></p>
-            <p data-resource="stone" style="display:none"><img src="assets/images/icons/bolder.png" alt="Stone"> <span id="stone">0</span></p>
-            <p><img src="assets/images/icons/book_knowledge.png" alt="Knowledge"> <span id="knowledge">0</span></p>
-            <p data-resource="clay" style="display:none"><i class="fas fa-mountain"></i> <span id="clay">0</span></p>
-            <p data-resource="fiber" style="display:none"><i class="fas fa-scroll"></i> <span id="fiber">0</span></p>
-            <p data-resource="ore" style="display:none"><i class="fas fa-gem"></i> <span id="ore">0</span></p>
-            <p data-resource="herbs" style="display:none"><i class="fas fa-leaf"></i> <span id="herbs">0</span></p>
-            <p data-resource="fruit" style="display:none"><i class="fas fa-apple-alt"></i> <span id="fruit">0</span></p>
-        </div>
-    </div>
-
-    <!-- ============================================================
-         GAME CONTAINER (holds all tab pages)
+         GAME CONTAINER (holds all tab panels)
          ============================================================ -->
     <div id="game-container">
 
         <!-- ========================================================
-             TAB 1: HOME
+             TAB 1: SETTLEMENT
              ======================================================== -->
-        <div class="tab-page active" data-tab="home">
-            <div id="working-section" class="game-card">
-                <h3>Current Work</h3>
-                <p id="current-work" style="font-size:0.75em; margin:4px 0;">Not working</p>
-                <div id="work-progress-container" class="progress-bar-container">
-                    <div id="work-progress-bar" class="progress-bar"></div>
-                </div>
+        <div id="tab-settlement" class="tab-panel active">
+            <div id="settlement-overview" class="game-card">
+                <h3>Settlement</h3>
+                <div id="built-buildings"></div>
+                <div id="quick-stats" class="quick-stats"></div>
             </div>
 
-            <div id="actions" class="game-card">
-                <div class="section-header" data-toggle="actions-content">
-                    <h3>Actions</h3>
-                    <span class="collapse-arrow">&#9660;</span>
-                </div>
-                <div class="section-content" id="actions-content">
-                    <button id="study">Study the Book</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========================================================
-             TAB 2: CRAFT
-             ======================================================== -->
-        <div class="tab-page" data-tab="craft">
-            <div id="crafting" class="game-card">
-                <div class="section-header" data-toggle="crafting-content">
-                    <h3>Crafting</h3>
-                    <span class="collapse-arrow">&#9660;</span>
-                </div>
-                <div class="section-content" id="crafting-content">
-                    <div id="craftable-items"></div>
-                </div>
-                <h3 style="margin-top:10px;">Crafting Queue</h3>
-                <div id="crafting-queue"></div>
+            <div id="gathering-section" class="game-card">
+                <h3>Gathering</h3>
+                <div id="gathering-buttons"></div>
             </div>
 
-            <div id="built-items" class="game-card" style="display:none;">
-                <div class="section-header" data-toggle="built-items-content">
-                    <h3>Built Items</h3>
-                    <span class="collapse-arrow">&#9660;</span>
-                </div>
-                <div class="section-content" id="built-items-content">
-                    <div id="built-items-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========================================================
-             TAB 3: WORLD
-             ======================================================== -->
-        <div class="tab-page" data-tab="world">
-            <div id="trading" class="game-card" style="display:none;">
-                <div class="section-header" data-toggle="trading-content">
-                    <h3>Trading Post</h3>
-                    <span class="collapse-arrow">&#9660;</span>
-                </div>
-                <div class="section-content" id="trading-content">
-                    <div id="trader-list"></div>
-                    <p id="no-traders" style="color:#7f8c8d; font-size:0.7em;">No traders currently visiting.</p>
-                </div>
-            </div>
-
-            <div id="exploration" class="game-card" style="display:none;">
-                <div class="section-header" data-toggle="exploration-content">
-                    <h3>Exploration</h3>
-                    <span class="collapse-arrow">&#9660;</span>
-                </div>
-                <div class="section-content" id="exploration-content">
-                    <div id="exploration-locations"></div>
-                    <div id="active-explorations"></div>
-                </div>
-            </div>
-
-            <div id="factions-section" class="game-card" style="display:none;">
-                <div class="section-header" data-toggle="factions-content">
-                    <h3>Diplomacy</h3>
-                    <span class="collapse-arrow">&#9660;</span>
-                </div>
-                <div class="section-content" id="factions-content">
-                    <div id="faction-list"></div>
-                </div>
-            </div>
-
-            <!-- Placeholder when no world features are unlocked yet -->
-            <div id="world-placeholder" class="game-card" style="text-align:center;">
-                <p style="font-size:0.7em; color:#7f8c8d; margin:8px 0;">Explore the wasteland by crafting a Watchtower and Marketplace.</p>
-            </div>
-        </div>
-
-        <!-- ========================================================
-             TAB 4: PROGRESS
-             ======================================================== -->
-        <div class="tab-page" data-tab="progress">
-            <div id="quests-section" class="game-card" style="display:none;">
-                <div class="section-header" data-toggle="quests-content">
-                    <h3>Quests</h3>
-                    <span class="collapse-arrow">&#9660;</span>
-                </div>
-                <div class="section-content" id="quests-content">
-                    <div id="quest-list"></div>
-                </div>
-            </div>
-
-            <div id="achievements-section" class="game-card" style="display:none;">
-                <div class="section-header" data-toggle="achievements-content">
-                    <h3>Achievements</h3>
-                    <span class="collapse-arrow">&#9660;</span>
-                </div>
-                <div class="section-content" id="achievements-content">
-                    <div id="achievement-list"></div>
-                </div>
-            </div>
-
-            <div id="tech-tree-section" class="game-card">
-                <button id="tech-tree-toggle" style="width:100%; margin-bottom:8px; font-size:12px;">Toggle Tech Tree</button>
-                <div id="tech-tree-container" style="display:none; overflow-x:auto; margin-bottom:10px; -webkit-overflow-scrolling: touch;">
-                    <canvas id="tech-tree-canvas" style="border: 1px solid rgba(0, 255, 255, 0.2); border-radius:8px; background: rgba(0,0,0,0.4);"></canvas>
-                </div>
-            </div>
-
-            <!-- Placeholder when nothing is active -->
-            <div id="progress-placeholder" class="game-card" style="text-align:center;">
-                <p style="font-size:0.7em; color:#7f8c8d; margin:8px 0;">Quests and achievements will appear as you progress.</p>
-            </div>
-        </div>
-
-        <!-- ========================================================
-             TAB 5: CAMP
-             ======================================================== -->
-        <div class="tab-page" data-tab="camp">
-            <div id="population-section" class="game-card" style="display:none;">
-                <div class="section-header" data-toggle="population-content">
-                    <h3>Population</h3>
-                    <span class="collapse-arrow">&#9660;</span>
-                </div>
-                <div class="section-content" id="population-content">
-                    <div id="population-list"></div>
-                </div>
-            </div>
-
-            <div id="automation" class="game-card">
-                <div class="section-header" data-toggle="automation-content">
-                    <h3>Automation</h3>
-                    <span class="collapse-arrow">&#9660;</span>
-                </div>
-                <div class="section-content" id="automation-content">
-                    <div id="automation-controls"></div>
-                </div>
-            </div>
-
-            <div id="log" class="game-card">
-                <div class="section-header" data-toggle="log-content">
+            <div id="event-log-section" class="game-card">
+                <div class="section-header" data-toggle="event-log">
                     <h3>Event Log</h3>
                     <span class="collapse-arrow">&#9660;</span>
                 </div>
-                <div class="section-content log-scroll" id="log-content">
-                    <ul id="event-log"></ul>
+                <div class="section-content">
+                    <div id="event-log"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ========================================================
+             TAB 2: BOOK
+             ======================================================== -->
+        <div id="tab-book" class="tab-panel">
+            <div class="game-card">
+                <h3>The Book</h3>
+                <div id="book-chapter-nav"></div>
+            </div>
+            <div class="game-card">
+                <div id="study-section">
+                    <button id="study-btn" class="action-btn">Study the Book</button>
+                    <progress id="study-progress" value="0" max="100" style="width:100%; margin-top:8px;"></progress>
+                    <div id="study-gate-info"></div>
+                </div>
+            </div>
+            <div class="game-card">
+                <div id="unlocked-blueprints"></div>
+            </div>
+        </div>
+
+        <!-- ========================================================
+             TAB 3: CRAFTING
+             ======================================================== -->
+        <div id="tab-crafting" class="tab-panel">
+            <div class="game-card">
+                <h3>Crafting</h3>
+                <div id="crafting-categories">
+                    <button class="cat-btn active" data-category="tools">Tools</button>
+                    <button class="cat-btn" data-category="buildings">Buildings</button>
+                    <button class="cat-btn" data-category="workstations">Workstations</button>
+                    <button class="cat-btn" data-category="workbench">Workbench</button>
+                </div>
+                <div id="crafting-items" style="margin-top:10px;"></div>
+            </div>
+            <div class="game-card">
+                <h3>Queue</h3>
+                <div id="queue-display"></div>
+            </div>
+        </div>
+
+        <!-- ========================================================
+             TAB 4: PRODUCTION
+             ======================================================== -->
+        <div id="tab-production" class="tab-panel">
+            <div class="game-card">
+                <h3>Production</h3>
+                <div id="worker-summary" class="worker-summary"></div>
+                <div id="production-assignments"></div>
+            </div>
+        </div>
+
+        <!-- ========================================================
+             TAB 5: EXPLORATION
+             ======================================================== -->
+        <div id="tab-exploration" class="tab-panel">
+            <div class="game-card">
+                <h3>Exploration</h3>
+                <div id="exploration-locations"></div>
+            </div>
+            <div class="game-card">
+                <h3>Active Expeditions</h3>
+                <div id="active-explorations"></div>
+            </div>
+        </div>
+
+        <!-- ========================================================
+             TAB 6: WORLD
+             ======================================================== -->
+        <div id="tab-world" class="tab-panel">
+            <div id="population-section" class="game-card">
+                <div class="section-header" data-toggle="population-list">
+                    <h3>Population</h3>
+                    <span class="collapse-arrow">&#9660;</span>
+                </div>
+                <div class="section-content" id="population-list"></div>
+            </div>
+            <div id="factions-section" class="game-card">
+                <h3>Factions</h3>
+                <div id="faction-list"></div>
+            </div>
+            <div id="trading-section" class="game-card">
+                <h3>Trading</h3>
+                <div id="trader-list"></div>
+            </div>
+            <div id="quests-section" class="game-card">
+                <h3>Quests</h3>
+                <div id="quest-list"></div>
+            </div>
+            <div id="achievements-section" class="game-card">
+                <h3>Achievements</h3>
+                <div id="achievement-list"></div>
             </div>
 
             <!-- Stats panel -->
-            <div id="stats-section" class="game-card">
+            <div class="game-card">
                 <div class="section-header" data-toggle="stats-content">
                     <h3>Survivor Stats</h3>
                     <span class="collapse-arrow">&#9660;</span>
@@ -1395,10 +1575,17 @@
                 <h3>Settings</h3>
                 <div class="settings-panel">
                     <div class="settings-row">
-                        <button id="sound-toggle" title="Toggle Sound">🔊</button>
+                        <button id="sound-toggle" title="Toggle Sound">&#x1f50a;</button>
                         <button id="manual-save-btn" style="font-size:11px;">Save Game</button>
+                        <button id="tech-tree-btn" style="font-size:11px;">Tech Tree</button>
                     </div>
-                    <div class="settings-row">
+                    <div class="settings-row" style="margin-top:8px;">
+                        <button id="export-save-btn" style="font-size:11px;">Export Save</button>
+                        <button id="import-save-btn" style="font-size:11px;">Import Save</button>
+                        <input type="file" id="import-save-file" accept=".json,.txt" style="display:none;">
+                    </div>
+                    <div id="export-save-status" style="font-size:0.65em; color:#2ecc71; margin-top:4px;"></div>
+                    <div class="settings-row" style="margin-top:8px;">
                         <label style="cursor:pointer;">
                             Load Mod: <input type="file" id="camp-mod-file" accept=".json" style="display:none;">
                             <span style="color:#00ffff; text-decoration:underline; font-size:0.9em;">Browse</span>
@@ -1408,46 +1595,103 @@
                 </div>
             </div>
         </div>
+
+        <!-- ========================================================
+             TAB 7: NETWORK (hidden until first settlement move)
+             ======================================================== -->
+        <div id="tab-network" class="tab-panel">
+            <div class="game-card">
+                <h3>Settlement Network</h3>
+                <div id="network-map">Network map will appear here</div>
+            </div>
+            <div class="game-card">
+                <h3>Supply Lines</h3>
+                <div id="supply-lines"></div>
+            </div>
+        </div>
     </div>
 
     <!-- ============================================================
          BOTTOM NAVIGATION
          ============================================================ -->
     <nav id="bottom-nav" style="display: none;">
-        <button class="nav-btn active" data-tab="home">
-            <span class="nav-icon">⚔️</span>
+        <button class="nav-btn active" data-tab="settlement">
+            <span class="nav-icon"><i class="fas fa-campground"></i></span>
             <span class="nav-label">Home</span>
         </button>
-        <button class="nav-btn" data-tab="craft">
-            <span class="nav-icon">🔨</span>
+        <button class="nav-btn" data-tab="book">
+            <span class="nav-icon"><i class="fas fa-book"></i></span>
+            <span class="nav-label">Book</span>
+        </button>
+        <button class="nav-btn" data-tab="crafting">
+            <span class="nav-icon"><i class="fas fa-hammer"></i></span>
             <span class="nav-label">Craft</span>
         </button>
-        <button class="nav-btn" data-tab="world">
-            <span class="nav-icon">🌍</span>
+        <button class="nav-btn" data-tab="production">
+            <span class="nav-icon"><i class="fas fa-industry"></i></span>
+            <span class="nav-label">Produce</span>
+        </button>
+        <!-- Desktop only: extra tabs -->
+        <button class="nav-btn desktop-only" data-tab="exploration">
+            <span class="nav-icon"><i class="fas fa-compass"></i></span>
+            <span class="nav-label">Explore</span>
+        </button>
+        <button class="nav-btn desktop-only" data-tab="world">
+            <span class="nav-icon"><i class="fas fa-globe"></i></span>
             <span class="nav-label">World</span>
         </button>
-        <button class="nav-btn" data-tab="progress">
-            <span class="nav-icon">⭐</span>
-            <span class="nav-label">Progress</span>
+        <button class="nav-btn desktop-only" data-tab="network">
+            <span class="nav-icon"><i class="fas fa-project-diagram"></i></span>
+            <span class="nav-label">Network</span>
         </button>
-        <button class="nav-btn" data-tab="camp">
-            <span class="nav-icon">⛺</span>
-            <span class="nav-label">Camp</span>
+        <!-- Mobile only: More button -->
+        <button class="nav-btn mobile-only" id="more-btn">
+            <span class="nav-icon"><i class="fas fa-ellipsis-h"></i></span>
+            <span class="nav-label">More</span>
         </button>
     </nav>
+
+    <!-- ============================================================
+         MORE DRAWER (mobile)
+         ============================================================ -->
+    <div id="more-drawer">
+        <button class="drawer-btn" data-tab="exploration">
+            <span class="drawer-icon"><i class="fas fa-compass"></i></span>
+            <span class="drawer-label">Explore</span>
+        </button>
+        <button class="drawer-btn" data-tab="world">
+            <span class="drawer-icon"><i class="fas fa-globe"></i></span>
+            <span class="drawer-label">World</span>
+        </button>
+        <button class="drawer-btn" data-tab="network">
+            <span class="drawer-icon"><i class="fas fa-project-diagram"></i></span>
+            <span class="drawer-label">Network</span>
+        </button>
+    </div>
+
+    <!-- ============================================================
+         TECH TREE OVERLAY
+         ============================================================ -->
+    <div id="tech-tree-container" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.92); overflow:auto;">
+        <div style="position:sticky; top:0; z-index:1; display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:rgba(0,0,0,0.8); border-bottom:1px solid #00ffff33;">
+            <h2 style="margin:0; font-size:1em; color:#00ffff; font-family:Orbitron,monospace;">Tech Tree</h2>
+            <button id="tech-tree-close" style="background:none; border:1px solid #ff4444; color:#ff4444; padding:4px 12px; cursor:pointer; font-family:Orbitron,monospace; font-size:0.8em;">Close</button>
+        </div>
+        <canvas id="tech-tree-canvas" style="display:block; margin:0 auto;"></canvas>
+    </div>
 
     <!-- ============================================================
          POPUPS (outside tab system)
          ============================================================ -->
     <div id="puzzle-popup" class="popup">
         <h2 id="puzzle-title"></h2>
-        <p id="puzzle-description"></p>
-        <p id="puzzle-hint" style="font-size:0.75em; color:#e2b714; font-style:italic; display:none;"></p>
-        <input type="text" id="puzzle-answer" placeholder="Enter your answer">
+        <p id="puzzle-question"></p>
+        <div id="puzzle-hints"></div>
+        <input type="text" id="puzzle-answer" placeholder="Your answer...">
         <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-            <button id="submit-puzzle">Submit Answer</button>
-            <button id="hint-puzzle" style="background:rgba(226,183,20,0.15); border-color:rgba(226,183,20,0.4); color:#e2b714;">Hint</button>
-            <button id="skip-puzzle">Skip</button>
+            <button id="puzzle-submit">Submit</button>
+            <button id="puzzle-hint" style="background:rgba(226,183,20,0.15); border-color:rgba(226,183,20,0.4); color:#e2b714;">Hint</button>
+            <button id="puzzle-skip">Skip</button>
         </div>
     </div>
 
@@ -1455,6 +1699,14 @@
         <h2>Game Over</h2>
         <p>Your population did not survive.</p>
         <button id="restart-game">Restart Game</button>
+    </div>
+
+    <div id="welcome-back-popup" class="popup" style="max-width:360px; text-align:left;">
+        <h2 style="text-align:center; margin-bottom:12px;">Welcome Back</h2>
+        <div id="welcome-back-content" style="font-size:0.8em; line-height:1.6;"></div>
+        <div style="text-align:center; margin-top:16px;">
+            <button id="welcome-back-dismiss">Continue</button>
+        </div>
     </div>
 
     <div id="victory-popup" class="popup">
@@ -1466,7 +1718,12 @@
     </div>
 
     <!-- ============================================================
-         INLINE SCRIPT: collapsible sections, tutorial, tab switching,
+         DAY/NIGHT CYCLE
+         ============================================================ -->
+    <div id="day-night-cycle"></div>
+
+    <!-- ============================================================
+         INLINE SCRIPT: collapsible sections, tutorial, layout,
          tooltip tap support
          ============================================================ -->
     <script>
@@ -1484,34 +1741,13 @@
             localStorage.setItem('postapoc_tutorial_seen', 'true');
         });
 
-        // Tab switching
-        document.querySelectorAll('.nav-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var tab = btn.dataset.tab;
-                document.querySelectorAll('.tab-page').forEach(function(p) {
-                    p.classList.remove('active');
-                });
-                document.querySelectorAll('.nav-btn').forEach(function(b) {
-                    b.classList.remove('active');
-                });
-                var targetPage = document.querySelector('.tab-page[data-tab="' + tab + '"]');
-                if (targetPage) targetPage.classList.add('active');
-                btn.classList.add('active');
-                // Scroll to top of content when switching tabs
-                document.getElementById('game-container').scrollTop = 0;
-            });
-        });
-
-        // Responsive layout: position inventory strip and game container based on actual HUD height
+        // Responsive layout: position game container based on actual HUD height
         function updateLayout() {
             var hud = document.getElementById('hud');
-            var inv = document.getElementById('inventory');
             var gc = document.getElementById('game-container');
             if (hud.style.display === 'none' || hud.style.display === '') return;
             var hudH = hud.offsetHeight;
-            var invH = inv.offsetHeight || 0;
-            inv.style.top = hudH + 'px';
-            gc.style.top = (hudH + invH) + 'px';
+            gc.style.top = hudH + 'px';
         }
         // Run on resize and periodically (for dynamic HUD changes)
         window.addEventListener('resize', updateLayout);
@@ -1535,8 +1771,6 @@
 
         // Manual save button wiring (delegated - game.js will handle the actual save)
         document.getElementById('manual-save-btn').addEventListener('click', function() {
-            // Dispatch a custom event that game.js can listen to, or just invoke save directly
-            // Since save.js is a module, we use a custom event
             window.dispatchEvent(new CustomEvent('manual-save'));
         });
     </script>

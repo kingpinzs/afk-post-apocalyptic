@@ -1,4 +1,4 @@
-import { gameState, getConfig } from './gameState.js';
+import { gameState, getConfig, isItemBuilt, getTotalCraftedCount } from './gameState.js';
 import { logEvent, updateDisplay } from './ui.js';
 import { addResource } from './resources.js';
 
@@ -22,7 +22,7 @@ export function checkQuestAvailability() {
         // Check prerequisites
         if (quest.prerequisite) {
             if (quest.prerequisite.quest && !gameState.completedQuests.includes(quest.prerequisite.quest)) return;
-            if (quest.prerequisite.item && !gameState.craftedItems[quest.prerequisite.item]) return;
+            if (quest.prerequisite.item && !isItemBuilt(quest.prerequisite.item)) return;
             if (quest.prerequisite.knowledge && gameState.knowledge < quest.prerequisite.knowledge) return;
             if (quest.prerequisite.day && gameState.day < quest.prerequisite.day) return;
         }
@@ -56,7 +56,7 @@ export function checkQuestCompletion() {
 
         switch (quest.type) {
             case 'craft':
-                progress = gameState.craftedItems[quest.target.item] ? 1 : 0;
+                progress = isItemBuilt(quest.target.item) ? 1 : 0;
                 target = 1;
                 break;
             case 'population':
@@ -76,7 +76,7 @@ export function checkQuestCompletion() {
                 target = quest.target.amount;
                 break;
             case 'build':
-                progress = Object.keys(gameState.craftedItems).length;
+                progress = getTotalCraftedCount();
                 target = quest.target.amount;
                 break;
             case 'knowledge':
@@ -109,7 +109,7 @@ export function checkQuestCompletion() {
                 if (key === 'knowledge') {
                     gameState.knowledge += value;
                     gameState.maxKnowledge = Math.max(gameState.maxKnowledge, gameState.knowledge);
-                } else if (key in gameState) {
+                } else if (key in gameState.resources) {
                     addResource(key, value);
                 }
             });

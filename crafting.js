@@ -1,457 +1,604 @@
-import { gameState, getConfig, computeUnlockedResources } from './gameState.js';
-import { logEvent, updateDisplay, updateWorkingSection, showVictory, updateGatheringVisibility } from './ui.js';
-import { updateAutomationControls } from './automation.js';
-import { playCraft, playVictory, playUnlock } from './audio.js';
+/**
+ * crafting.js
+ *
+ * Handles ONE-TIME CONSTRUCTION of buildings, tools, and upgrades.
+ * Does NOT handle continuous production (that's automation.js).
+ *
+ * Three-gate system:
+ *   1. Knowledge — blueprint unlocked via studying the Book
+ *   2. Workstation — workbench level or specialized station built
+ *   3. Resources — have the materials
+ *
+ * Supports SINGLE chains (build first level, upgrade in-place) and
+ * MULTIPLE chains (build new instances or upgrade existing ones).
+ *
+ * Quality system applies to tools/equipment only.
+ */
+
+import {
+  gameState,
+  getConfig,
+  hasWorkstation,
+  getWorkbenchLevel,
+  generateInstanceId,
+  getWorkbenchSpeedMultiplier
+} from './gameState.js';
 import { getEffect } from './effects.js';
 
+
+// ─── Module State ────────────────────────────────────────────────────────────
+
 let craftingInProgress = false;
-let craftingIntervalId = null;
+let craftingInterval = null;
 
-const TIERS = [
-    { name: 'Survival', maxCost: 50, cssClass: 'tier-1' },
-    { name: 'Settlement', maxCost: 100, cssClass: 'tier-2' },
-    { name: 'Village', maxCost: 250, cssClass: 'tier-3' },
-    { name: 'Town', maxCost: 500, cssClass: 'tier-4' },
-    { name: 'Civilization', maxCost: Infinity, cssClass: 'tier-5' }
-];
 
-function getItemTier(item) {
-    const totalCost = Object.values(item.requirements).reduce((a, b) => a + b, 0);
-    return TIERS.find(t => totalCost < t.maxCost);
+// ─── Chain ID Mapping ────────────────────────────────────────────────────────
+// The JSON config uses chain IDs like 'farming', 'hunting', 'fishing' but
+// gameState.multipleBuildings uses 'food_farming', 'food_hunting', 'food_fishing'.
+// This mapping resolves the mismatch for MULTIPLE chains.
+
+const CHAIN_TO_STATE_KEY = {
+  farming:  'food_farming',
+  hunting:  'food_hunting',
+  fishing:  'food_fishing'
+};
+
+/**
+ * Resolve a config chain ID to its gameState key.
+ * Most chains map 1:1; a few MULTIPLE chains have different state keys.
+ * @param {string} chainId - Chain ID from config (e.g. 'farming').
+ * @returns {string} The gameState key (e.g. 'food_farming').
+ */
+function resolveStateKey(chainId) {
+  return CHAIN_TO_STATE_KEY[chainId] || chainId;
 }
 
-function formatEffect(effect) {
-    const labels = {
-        foodProductionRate: 'Food production',
-        waterProductionRate: 'Water production',
-        woodGatheringMultiplier: 'Wood gathering',
-        stoneGatheringMultiplier: 'Stone gathering',
-        oreGatheringMultiplier: 'Ore gathering',
-        foodGatheringMultiplier: 'Food gathering',
-        resourceConsumptionMultiplier: 'Resource consumption',
-        storageCapacityMultiplier: 'Storage capacity',
-        craftingEfficiencyMultiplier: 'Crafting speed',
-        knowledgeGenerationMultiplier: 'Knowledge generation',
-        populationHappinessMultiplier: 'Population happiness',
-        researchSpeedMultiplier: 'Research speed',
-        tradeEfficiencyMultiplier: 'Trade efficiency',
-        populationHealthMultiplier: 'Population health',
-        goodsProductionMultiplier: 'Goods production',
-        productionSpeedMultiplier: 'Production speed'
-    };
-    return Object.entries(effect).map(([key, val]) => {
-        const label = labels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-        if (val < 1) return `${label}: ${(val * 100).toFixed(0)}%`;
-        if (val > 1 && val <= 5) return `${label}: ×${val}`;
-        return `${label}: +${val}`;
-    });
+
+// ─── Item Category Classification ────────────────────────────────────────────
+
+/** Processing chains that count as workstations in the UI. */
+const PROCESSING_CHAINS = new Set([
+  'kiln', 'forge', 'sawmill', 'loom', 'tannery',
+  'glassworks', 'charcoal_pit', 'herbalist_hut', 'paper_mill'
+]);
+
+/**
+ * Determine the UI category for an item based on its chain config.
+ * @param {object} item - Item from config.
+ * @returns {string} One of: 'tools', 'workstations', 'workbench', 'equipment', 'buildings'.
+ */
+function getItemCategory(item) {
+  const config = getConfig();
+  const chain = config.chains[item.chain];
+  if (!chain) return 'buildings';
+
+  if (chain.category === 'tools') return 'tools';
+  if (item.chain === 'workbench') return 'workbench';
+  if (chain.category === 'workstation' || PROCESSING_CHAINS.has(item.chain)) {
+    return 'workstations';
+  }
+  if (chain.category === 'equipment') return 'equipment';
+  return 'buildings';
 }
 
-function formatTime(ms) {
-    const seconds = Math.round(ms / 1000);
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.round(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-    return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+
+// ─── Resource Checks ─────────────────────────────────────────────────────────
+
+/**
+ * Check whether the player has enough of every resource in a requirements map.
+ * @param {object|null} requirements - { resource: amount, ... }
+ * @returns {boolean}
+ */
+function hasResources(requirements) {
+  if (!requirements) return true;
+  for (const [resource, amount] of Object.entries(requirements)) {
+    if ((gameState.resources[resource] || 0) < amount) return false;
+  }
+  return true;
 }
 
-export function updateCraftableItems() {
-    if (!gameState.unlockedFeatures.includes('crafting')) {
-        document.getElementById('crafting').style.display = 'none';
-        return;
+/**
+ * Get a per-resource breakdown of which requirements are met and which are not.
+ * Useful for UI coloring (green/red).
+ * @param {object|null} requirements - { resource: amount, ... }
+ * @returns {Array<{ resource: string, required: number, available: number, met: boolean }>}
+ */
+function getResourceBreakdown(requirements) {
+  if (!requirements) return [];
+  return Object.entries(requirements).map(([resource, amount]) => ({
+    resource,
+    required: amount,
+    available: gameState.resources[resource] || 0,
+    met: (gameState.resources[resource] || 0) >= amount
+  }));
+}
+
+
+// ─── Built-State Checks ─────────────────────────────────────────────────────
+
+/**
+ * Check whether a SINGLE item is already built at this level or higher.
+ * MULTIPLE items are never "already built" (you can always build another).
+ * @param {object} item - Item from config.
+ * @returns {boolean}
+ */
+function isAlreadyBuilt(item) {
+  const config = getConfig();
+  const chainConfig = config.chains[item.chain];
+  if (!chainConfig) return false;
+
+  if (chainConfig.type !== 'SINGLE') return false;
+
+  const stateKey = resolveStateKey(item.chain);
+
+  // Check tools
+  if (gameState.tools[stateKey]) {
+    return gameState.tools[stateKey].level >= item.level;
+  }
+
+  // Check buildings
+  if (gameState.buildings[stateKey]) {
+    return gameState.buildings[stateKey].level >= item.level;
+  }
+
+  return false;
+}
+
+/**
+ * For SINGLE upgrade chains, check whether the previous level is built.
+ * Level 1 items don't need a previous level.
+ * @param {object} item - Item from config.
+ * @returns {boolean}
+ */
+function hasPreviousLevel(item) {
+  if (item.level <= 1) return true;
+
+  const config = getConfig();
+  const chainConfig = config.chains[item.chain];
+  if (!chainConfig || chainConfig.type !== 'SINGLE') return true;
+
+  const stateKey = resolveStateKey(item.chain);
+
+  // Check tools
+  if (gameState.tools[stateKey]) {
+    return gameState.tools[stateKey].level >= item.level - 1;
+  }
+
+  // Check buildings
+  if (gameState.buildings[stateKey]) {
+    return gameState.buildings[stateKey].level >= item.level - 1;
+  }
+
+  return false;
+}
+
+
+// ─── Public API: Query Craftable Items ───────────────────────────────────────
+
+/**
+ * Get all craftable items grouped by category.
+ * Only shows items where the blueprint is unlocked.
+ * Items are marked with a status indicating what gate is blocking them (if any).
+ *
+ * @returns {object} { tools: [], buildings: [], workstations: [], workbench: [], equipment: [] }
+ */
+export function getCraftableItems() {
+  const config = getConfig();
+  if (!config || !config.items) return {};
+
+  const categories = {
+    tools: [],
+    buildings: [],
+    workstations: [],
+    workbench: [],
+    equipment: []
+  };
+
+  for (const item of config.items) {
+    // Gate 1: Must have blueprint unlocked
+    if (!gameState.unlockedBlueprints.includes(item.id)) continue;
+
+    // Determine category
+    const category = getItemCategory(item);
+    if (!categories[category]) continue;
+
+    // Gate 2: Workstation check
+    const workstationOk = hasWorkstation(item.workstationRequired);
+
+    // Gate 3: Resources check
+    const resourcesOk = hasResources(item.requirements);
+
+    // SINGLE chains: already built?
+    const alreadyBuilt = isAlreadyBuilt(item);
+
+    // SINGLE chains: has previous level in the chain?
+    const prevLevelOk = hasPreviousLevel(item);
+
+    // Missing workstation label (for UI)
+    let missingWorkstation = null;
+    if (!workstationOk && item.workstationRequired) {
+      missingWorkstation = item.workstationRequired;
     }
 
-    document.getElementById('crafting').style.display = 'block';
-    const config = getConfig();
-    const container = document.getElementById('craftable-items');
-
-    // P9: Capture collapsed tier state before rebuilding
-    const collapsedTiers = new Set();
-    container.querySelectorAll('.tier-group.collapsed').forEach(el => {
-        const h4 = el.querySelector('h4');
-        if (h4) collapsedTiers.add(h4.textContent);
-    });
-
-    while (container.firstChild) {
-        container.removeChild(container.firstChild);
-    }
-
-    // Collect available items grouped by tier
-    const tierGroups = new Map();
-    TIERS.forEach(t => tierGroups.set(t.name, { tier: t, items: [] }));
-
-    const tierGate = { settlement: 'settlement_tier', village: 'village_tier', town: 'town_tier', civilization: 'civilization_tier' };
-
-    config.items.forEach(item => {
-        if (gameState.craftedItems[item.id]) return;
-        if (gameState.craftingQueue.some(q => q.item.id === item.id)) return;
-
-        const isFeatureGate = config.unlockPuzzles.some(p => p.unlocks === item.id);
-        const hasPuzzleLock = !!item.puzzle && !isFeatureGate;
-        const isUnlocked = (!isFeatureGate && !hasPuzzleLock)
-            || gameState.unlockedFeatures.includes(item.id);
-        const meetsKnowledgeReq = !item.knowledgeRequired
-            || (gameState.maxKnowledge || gameState.knowledge) >= item.knowledgeRequired;
-        const tierUnlocked = !item.tier || gameState.unlockedFeatures.includes(tierGate[item.tier]);
-        const depsMet = areDependenciesMet(item);
-
-        // Feature gates (unlockPuzzles) stay fully hidden until unlocked
-        if (isFeatureGate && !gameState.unlockedFeatures.includes(item.id)) return;
-        if (!tierUnlocked || !depsMet) return;
-
-        const tier = getItemTier(item);
-        // Puzzle-locked items show grayed out; unlocked items show normally
-        const locked = hasPuzzleLock && !isUnlocked;
-        tierGroups.get(tier.name).items.push({ ...item, _locked: locked, _meetsKnowledge: meetsKnowledgeReq });
-    });
-
-    // Render each non-empty tier
-    tierGroups.forEach(({ tier, items }) => {
-        if (items.length === 0) return;
-
-        const group = document.createElement('div');
-        group.className = `tier-group ${tier.cssClass}`;
-
-        const header = document.createElement('div');
-        header.className = 'tier-header';
-        header.addEventListener('click', () => group.classList.toggle('collapsed'));
-
-        const titleRow = document.createElement('div');
-        titleRow.style.display = 'flex';
-        titleRow.style.alignItems = 'center';
-        titleRow.style.gap = '10px';
-
-        const h4 = document.createElement('h4');
-        h4.textContent = tier.name;
-        titleRow.appendChild(h4);
-
-        const badge = document.createElement('span');
-        badge.className = 'tier-badge';
-        const unlockedCount = items.filter(i => !i._locked).length;
-        const lockedCount = items.filter(i => i._locked).length;
-        badge.textContent = lockedCount > 0
-            ? `${unlockedCount} available, ${lockedCount} locked`
-            : `${unlockedCount} available`;
-        titleRow.appendChild(badge);
-
-        header.appendChild(titleRow);
-
-        const arrow = document.createElement('span');
-        arrow.className = 'collapse-arrow';
-        arrow.textContent = '▼';
-        header.appendChild(arrow);
-
-        group.appendChild(header);
-
-        const itemsContainer = document.createElement('div');
-        itemsContainer.className = 'tier-items';
-
-        items.forEach(item => {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'craft-btn-wrapper';
-
-            const button = document.createElement('button');
-
-            if (item._locked) {
-                // Locked item — grayed out, show requirements so player knows what to gather
-                const reqText = Object.entries(item.requirements)
-                    .map(([resource, amount]) => `${amount} ${resource}`)
-                    .join(', ');
-                const lockText = item._meetsKnowledge
-                    ? `${item.name} (${reqText}) — Study to unlock`
-                    : `${item.name} (${reqText}) — Requires ${item.knowledgeRequired} knowledge`;
-                button.textContent = lockText;
-                button.disabled = true;
-                button.classList.add('locked-item');
-            } else {
-                const canCraft = Object.entries(item.requirements).every(
-                    ([resource, amount]) => gameState[resource] >= amount
-                );
-                const reqText = Object.entries(item.requirements)
-                    .map(([resource, amount]) => `${amount} ${resource}`)
-                    .join(', ');
-                button.textContent = `Craft ${item.name} (${reqText})`;
-                button.disabled = !canCraft || gameState.availableWorkers === 0;
-                button.addEventListener('click', () => startCrafting(item));
-            }
-
-            // Tooltip
-            const tooltip = document.createElement('div');
-            tooltip.className = 'item-tooltip';
-
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'tooltip-name';
-            nameDiv.textContent = item.name;
-            tooltip.appendChild(nameDiv);
-
-            if (item.description) {
-                const descDiv = document.createElement('div');
-                descDiv.className = 'tooltip-desc';
-                descDiv.textContent = item.description;
-                tooltip.appendChild(descDiv);
-            }
-
-            if (item.effect) {
-                const effectDiv = document.createElement('div');
-                effectDiv.className = 'tooltip-effect';
-                formatEffect(item.effect).forEach(line => {
-                    const span = document.createElement('span');
-                    span.textContent = line;
-                    effectDiv.appendChild(span);
-                });
-                tooltip.appendChild(effectDiv);
-            }
-
-            const timeDiv = document.createElement('div');
-            timeDiv.className = 'tooltip-time';
-            timeDiv.textContent = `Craft time: ${formatTime(item.craftingTime)}`;
-            tooltip.appendChild(timeDiv);
-
-            wrapper.appendChild(tooltip);
-            wrapper.appendChild(button);
-            itemsContainer.appendChild(wrapper);
-        });
-
-        // P9: Restore collapsed state
-        if (collapsedTiers.has(tier.name)) group.classList.add('collapsed');
-
-        group.appendChild(itemsContainer);
-        container.appendChild(group);
-    });
-}
-
-function areDependenciesMet(item) {
-    return item.dependencies.every(depId => gameState.craftedItems[depId]);
-}
-
-function startCrafting(item) {
-    if (gameState.availableWorkers <= 0) {
-        logEvent("No available workers to start crafting.");
-        return;
-    }
-
-    // Re-check resources (they may have changed since the puzzle was shown)
-    const canAfford = Object.entries(item.requirements).every(
-        ([resource, amount]) => gameState[resource] >= amount
-    );
-    if (!canAfford) {
-        logEvent("Not enough resources to craft " + item.name + ".");
-        return;
-    }
-
-    // resourceEfficiencyMultiplier (assembly_line) — reduces crafting resource costs
-    const resEfficiency = getEffect('resourceEfficiencyMultiplier');
-    if (resEfficiency > 1) {
-        // Reduce costs but don't go below 1
-        Object.entries(item.requirements).forEach(([resource, amount]) => {
-            const reduced = Math.max(1, Math.ceil(amount / resEfficiency));
-            gameState[resource] -= reduced;
-        });
+    // Determine status
+    let status;
+    if (alreadyBuilt) {
+      status = 'already_built';
+    } else if (!prevLevelOk) {
+      status = 'missing_previous_level';
+    } else if (!workstationOk) {
+      status = 'missing_workstation';
+    } else if (!resourcesOk) {
+      status = 'missing_resources';
     } else {
-        Object.entries(item.requirements).forEach(([resource, amount]) => {
-            gameState[resource] -= amount;
-        });
+      status = 'craftable';
     }
 
-    gameState.availableWorkers--;
-    let effectiveDuration = item.craftingTime;
-
-    // craftingEfficiencyMultiplier (knife) — general crafting speed
-    const craftingEff = getEffect('craftingEfficiencyMultiplier');
-    if (craftingEff > 1) effectiveDuration /= craftingEff;
-
-    // advancedConstructionEfficiency (glassworks) — reduces crafting time for Town+ tier items
-    const tier = getItemTier(item);
-    if (tier && (tier.name === 'Town' || tier.name === 'Civilization')) {
-        const advEff = getEffect('advancedConstructionEfficiency', 1);
-        if (advEff > 1) effectiveDuration /= advEff;
-    }
-    gameState.craftingQueue.push({
-        item: item,
-        progress: 0,
-        duration: effectiveDuration
+    categories[category].push({
+      ...item,
+      status,
+      canCraft: status === 'craftable',
+      missingWorkstation,
+      resourceBreakdown: getResourceBreakdown(item.requirements)
     });
+  }
 
-    updateCraftingQueueDisplay();
-    updateCraftableItems();
-    updateDisplay();
-    processQueue();
+  return categories;
 }
 
-export function processQueue() {
-    if (gameState.craftingQueue.length === 0 || craftingInProgress) return;
 
-    craftingInProgress = true;
-    const currentCraft = gameState.craftingQueue[0];
-    gameState.activeWork.push({ type: 'crafting', item: currentCraft.item });
-    updateWorkingSection();
+// ─── Public API: Start Crafting ──────────────────────────────────────────────
 
-    craftingIntervalId = setInterval(() => {
-        if (gameState.isGameOver) {
-            clearInterval(craftingIntervalId);
-            craftingIntervalId = null;
-            craftingInProgress = false;
-            gameState.availableWorkers++;
-            gameState.activeWork = gameState.activeWork.filter(w => w.type !== 'crafting');
-            return;
-        }
-        currentCraft.progress += 100;
-        updateWorkingSection();
-        updateCraftingQueueDisplay();
+/**
+ * Start crafting an item. Validates gates, deducts resources, adds to queue.
+ *
+ * @param {string} itemId - The item ID to craft.
+ * @param {string|null} upgradeInstanceId - For MULTIPLE upgrades, which instance to upgrade.
+ * @returns {boolean} True if crafting was started successfully.
+ */
+export function startCrafting(itemId, upgradeInstanceId = null) {
+  const config = getConfig();
+  if (!config || !config.items) return false;
 
-        if (currentCraft.progress >= currentCraft.duration) {
-            clearInterval(craftingIntervalId);
-            craftingIntervalId = null;
-            completeCrafting(currentCraft.item);
-        }
-    }, 100);
+  const item = config.items.find(i => i.id === itemId);
+  if (!item) return false;
+
+  // Gate 1: Blueprint unlocked
+  if (!gameState.unlockedBlueprints.includes(item.id)) return false;
+
+  // Gate 2: Workstation
+  if (!hasWorkstation(item.workstationRequired)) return false;
+
+  // Gate 3: Resources
+  if (!hasResources(item.requirements)) return false;
+
+  // SINGLE chain: not already built at this level or higher
+  if (isAlreadyBuilt(item)) return false;
+
+  // SINGLE chain: must have previous level
+  if (!hasPreviousLevel(item)) return false;
+
+  // Check not already in the queue for the same item (for SINGLE chains)
+  const chainConfig = config.chains[item.chain];
+  if (chainConfig && chainConfig.type === 'SINGLE') {
+    const alreadyQueued = gameState.craftingQueue.some(q => q.chain === item.chain);
+    if (alreadyQueued) return false;
+  }
+
+  // ── Deduct resources ──────────────────────────────────────────────────
+  // Apply resourceEfficiencyMultiplier if available (reduces costs, min 1 each)
+  const resEfficiency = getEffect('resourceEfficiencyMultiplier', 1.0);
+  for (const [resource, amount] of Object.entries(item.requirements)) {
+    const cost = resEfficiency > 1
+      ? Math.max(1, Math.ceil(amount / resEfficiency))
+      : amount;
+    gameState.resources[resource] -= cost;
+  }
+
+  // ── Calculate crafting time ───────────────────────────────────────────
+  const workbenchSpeed = getWorkbenchSpeedMultiplier();
+  const constructionMult = getEffect('constructionSpeedMultiplier', 1.0);
+  const craftingMult = getEffect('craftingEfficiencyMultiplier', 1.0);
+
+  // Combine all speed factors
+  let speedFactor = workbenchSpeed;
+  if (constructionMult > 1) speedFactor *= constructionMult;
+  if (craftingMult > 1) speedFactor *= craftingMult;
+
+  const effectiveTime = item.craftingTime / speedFactor;
+
+  // ── Determine if this is an upgrade ───────────────────────────────────
+  const stateKey = resolveStateKey(item.chain);
+  const isUpgrade = upgradeInstanceId !== null
+    || (chainConfig?.type === 'SINGLE' && (
+      (gameState.buildings[stateKey]?.level > 0)
+      || (gameState.tools[stateKey]?.level > 0)
+    ));
+
+  // ── Add to queue ──────────────────────────────────────────────────────
+  gameState.craftingQueue.push({
+    itemId: item.id,
+    chain: item.chain,
+    level: item.level,
+    progress: 0,
+    duration: effectiveTime,
+    isUpgrade,
+    targetInstanceId: upgradeInstanceId || null
+  });
+
+  // Start processing if not already running
+  if (!craftingInProgress) {
+    startProcessingQueue();
+  }
+
+  return true;
 }
 
-function completeCrafting(item) {
-    craftingInProgress = false;
 
-    // -----------------------------------------------------------------------
-    // Phase 6C: Quality roll
-    // Weights are shifted toward higher tiers by clothingQualityMultiplier
-    // and weaponCraftingRate bonuses from already-built items.
-    // -----------------------------------------------------------------------
-    const qualityLevels = [
-        { name: 'Common',     multiplier: 1.0, weight: 0.60 },
-        { name: 'Fine',       multiplier: 1.2, weight: 0.25 },
-        { name: 'Superior',   multiplier: 1.5, weight: 0.10 },
-        { name: 'Masterwork', multiplier: 2.0, weight: 0.05 }
-    ];
+// ─── Queue Processing ────────────────────────────────────────────────────────
 
-    // Aggregate quality bonus from built items — each relevant effect shifts
-    // the roll "left" so higher-tier buckets become more likely.
-    let qualityBonus = 0;
-    for (const ci of Object.values(gameState.craftedItems)) {
-        if (ci?.effect?.clothingQualityMultiplier) qualityBonus += 0.1;
-        if (ci?.effect?.weaponCraftingRate)         qualityBonus += 0.05;
+/**
+ * Start processing the crafting queue on a 100ms interval.
+ * Guarded by craftingInProgress to prevent overlapping intervals.
+ */
+function startProcessingQueue() {
+  if (craftingInProgress) return;
+  if (gameState.craftingQueue.length === 0) return;
+
+  craftingInProgress = true;
+
+  craftingInterval = setInterval(() => {
+    // Stop if game is over
+    if (gameState.isGameOver) {
+      clearInterval(craftingInterval);
+      craftingInterval = null;
+      craftingInProgress = false;
+      return;
     }
 
-    // Shift the random roll toward 0 (higher weights), clamped at 0.
-    let roll = Math.max(0, Math.random() - qualityBonus);
-
-    let cumulative     = 0;
-    let selectedQuality = qualityLevels[0]; // default: Common
-    for (const q of qualityLevels) {
-        cumulative += q.weight;
-        if (roll <= cumulative) {
-            selectedQuality = q;
-            break;
-        }
+    // Stop if queue is empty
+    if (gameState.craftingQueue.length === 0) {
+      clearInterval(craftingInterval);
+      craftingInterval = null;
+      craftingInProgress = false;
+      return;
     }
 
-    // Build an enhanced copy of the item with quality-scaled effects.
-    // Multiplier-type effects are scaled from 1 (e.g. ×1.5 becomes ×1+0.5×qual).
-    // Rate/additive effects are scaled directly.
-    const scaledEffect = item.effect
-        ? Object.fromEntries(
-            Object.entries(item.effect).map(([k, v]) => {
-                if (typeof v === 'number' && v > 0) {
-                    const scaled = k.endsWith('Multiplier')
-                        ? 1 + (v - 1) * selectedQuality.multiplier
-                        : v * selectedQuality.multiplier;
-                    return [k, scaled];
-                }
-                return [k, v];
-            })
-        )
-        : undefined;
+    // Advance the first item in the queue
+    const current = gameState.craftingQueue[0];
+    current.progress += 100; // 100ms per tick
 
-    const enhancedItem = {
-        ...item,
-        quality:           selectedQuality.name,
-        qualityMultiplier: selectedQuality.multiplier,
-        effect:            scaledEffect
+    // Check completion
+    if (current.progress >= current.duration) {
+      completeCrafting(current);
+      gameState.craftingQueue.shift();
+
+      // If queue empty, stop interval
+      if (gameState.craftingQueue.length === 0) {
+        clearInterval(craftingInterval);
+        craftingInterval = null;
+        craftingInProgress = false;
+      }
+    }
+  }, 100);
+}
+
+
+// ─── Crafting Completion ─────────────────────────────────────────────────────
+
+/**
+ * Complete a crafted item — place it into the world state.
+ * Handles SINGLE buildings, tools, and MULTIPLE building instances.
+ *
+ * @param {object} queueItem - The queue entry being completed.
+ */
+function completeCrafting(queueItem) {
+  const config = getConfig();
+  if (!config) return;
+
+  const item = config.items.find(i => i.id === queueItem.itemId);
+  if (!item) return;
+
+  const chainConfig = config.chains[item.chain];
+  if (!chainConfig) return;
+
+  const stateKey = resolveStateKey(item.chain);
+
+  // ── Tools (SINGLE, portable) ──────────────────────────────────────────
+  if (chainConfig.category === 'tools' && gameState.tools[stateKey]) {
+    gameState.tools[stateKey].level = item.level;
+    gameState.tools[stateKey].itemId = item.id;
+
+    // Quality roll for tools
+    const quality = rollQuality();
+    gameState.tools[stateKey].quality = quality;
+
+    // Update toolLevels for the matching tool type
+    const toolTypeMap = {
+      cutting_tools: 'cutting',
+      chopping_tools: 'chopping',
+      mining_tools: 'mining',
+      construction_tools: 'construction',
+      farming_tools: 'farming',
+      fishing_tools: 'fishing',
+      hunting_tools: 'hunting'
     };
-
-    gameState.craftedItems[item.id] = enhancedItem;
-
-    // Quality-aware log: only mention tier above Common to avoid noise.
-    const qualityPrefix = selectedQuality.name !== 'Common' ? `${selectedQuality.name} ` : '';
-    logEvent(`Crafted ${qualityPrefix}${item.name}!`);
-    playCraft();
-
-    // Track stats for achievements
-    gameState.stats.totalCrafted = (gameState.stats.totalCrafted || 0) + 1;
-
-    gameState.availableWorkers++;
-    gameState.activeWork = gameState.activeWork.filter(w => w.type !== 'crafting');
-    gameState.craftingQueue.shift();
-
-    const newlyUnlocked = computeUnlockedResources();
-    updateGatheringVisibility();
-    if (newlyUnlocked.length > 0) {
-        playUnlock();
+    const toolType = toolTypeMap[stateKey];
+    if (toolType && gameState.toolLevels[toolType] !== undefined) {
+      gameState.toolLevels[toolType] = item.level;
     }
-    newlyUnlocked.forEach(r => {
-        logEvent(`New resource available: ${r.charAt(0).toUpperCase() + r.slice(1)}!`);
-    });
-
-    updateCraftingQueueDisplay();
-    updateCraftableItems();
-    updateDisplay();
-    updateWorkingSection();
-    updateAutomationControls();
-
-    // Crafting complete animation
-    const queueContainer = document.getElementById('crafting-queue');
-    const completeDiv = document.createElement('div');
-    completeDiv.className = 'crafting-item crafting-complete';
-    const completeSpan = document.createElement('span');
-    completeSpan.textContent = `${item.name} complete!`;
-    completeDiv.appendChild(completeSpan);
-    queueContainer.prepend(completeDiv);
-    setTimeout(() => {
-        if (completeDiv.parentNode) {
-            completeDiv.parentNode.removeChild(completeDiv);
+  }
+  // ── SINGLE buildings ──────────────────────────────────────────────────
+  else if (chainConfig.type === 'SINGLE' && gameState.buildings[stateKey]) {
+    gameState.buildings[stateKey].level = item.level;
+    gameState.buildings[stateKey].itemId = item.id;
+  }
+  // ── MULTIPLE buildings ────────────────────────────────────────────────
+  else if (chainConfig.type === 'MULTIPLE') {
+    if (queueItem.targetInstanceId) {
+      // Upgrade an existing instance
+      const instances = gameState.multipleBuildings[stateKey];
+      if (instances) {
+        const instance = instances.find(i => i.id === queueItem.targetInstanceId);
+        if (instance) {
+          instance.level = item.level;
+          instance.itemId = item.id;
         }
-    }, 1000);
-
-    // Victory check
-    if (item.id === 'space_program') {
-        playVictory();
-        showVictory();
+      }
+    } else {
+      // Build a new instance
+      const newInstance = {
+        id: generateInstanceId(),
+        level: item.level,
+        itemId: item.id,
+        workersAssigned: 0
+      };
+      if (!gameState.multipleBuildings[stateKey]) {
+        gameState.multipleBuildings[stateKey] = [];
+      }
+      gameState.multipleBuildings[stateKey].push(newInstance);
     }
+  }
 
-    if (gameState.craftingQueue.length > 0) {
-        processQueue();
-    }
+  // ── Update stats ──────────────────────────────────────────────────────
+  gameState.stats.totalCrafted = (gameState.stats.totalCrafted || 0) + 1;
 }
 
-function updateCraftingQueueDisplay() {
-    const queueContainer = document.getElementById('crafting-queue');
-    const existing = queueContainer.querySelectorAll('.crafting-item:not(.crafting-complete)');
-    existing.forEach(el => queueContainer.removeChild(el));
 
-    gameState.craftingQueue.forEach(craft => {
-        const div = document.createElement('div');
-        div.className = 'crafting-item';
+// ─── Quality System ──────────────────────────────────────────────────────────
 
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = craft.item.name;
-        div.appendChild(nameSpan);
+/**
+ * Quality roll for tools and equipment.
+ * Base: Common 60%, Fine 25%, Superior 10%, Masterwork 5%.
+ * Construction tools improve chances via qualityBonusMultiplier effect.
+ *
+ * @returns {string} Quality tier name.
+ */
+export function rollQuality() {
+  const constructionBonus = getEffect('qualityBonusMultiplier', 1.0);
+  const roll = Math.random() * 100;
 
-        const barContainer = document.createElement('div');
-        barContainer.className = 'progress-bar-container';
+  // Scale chances with construction bonus
+  const masterworkChance = 5 * constructionBonus;
+  const superiorChance = 10 * constructionBonus;
+  const fineChance = 25 * constructionBonus;
 
-        const bar = document.createElement('div');
-        bar.className = 'progress-bar';
-        bar.style.width = `${(craft.progress / craft.duration) * 100}%`;
-
-        barContainer.appendChild(bar);
-        div.appendChild(barContainer);
-        queueContainer.appendChild(div);
-    });
+  if (roll < masterworkChance) return 'masterwork';
+  if (roll < masterworkChance + superiorChance) return 'superior';
+  if (roll < masterworkChance + superiorChance + fineChance) return 'fine';
+  return 'common';
 }
 
+/**
+ * Quality multiplier applied to tool/equipment effects.
+ * @param {string} quality - Quality tier name.
+ * @returns {number} Effect multiplier.
+ */
+export function getQualityMultiplier(quality) {
+  const multipliers = {
+    common: 1.0,
+    fine: 1.2,
+    superior: 1.5,
+    masterwork: 2.0
+  };
+  return multipliers[quality] || 1.0;
+}
+
+
+// ─── MULTIPLE Chain Helpers ──────────────────────────────────────────────────
+
+/**
+ * Get items available for upgrading an existing MULTIPLE building instance.
+ * Returns the next-level item(s) in the chain that are unlocked and have
+ * their workstation requirement met.
+ *
+ * @param {string} chain - Chain ID from config (e.g. 'shelter').
+ * @param {string} instanceId - The specific instance to upgrade.
+ * @returns {Array<object>} Upgradeable item(s), each annotated with resource status.
+ */
+export function getUpgradeOptions(chain, instanceId) {
+  const config = getConfig();
+  if (!config) return [];
+
+  const stateKey = resolveStateKey(chain);
+  const instances = gameState.multipleBuildings[stateKey];
+  const instance = instances?.find(i => i.id === instanceId);
+  if (!instance) return [];
+
+  // Find next level items in this chain that are unlocked
+  return config.items
+    .filter(item => item.chain === chain && item.level === instance.level + 1)
+    .filter(item => gameState.unlockedBlueprints.includes(item.id))
+    .map(item => ({
+      ...item,
+      workstationOk: hasWorkstation(item.workstationRequired),
+      resourcesOk: hasResources(item.requirements),
+      resourceBreakdown: getResourceBreakdown(item.requirements),
+      canCraft: hasWorkstation(item.workstationRequired) && hasResources(item.requirements)
+    }));
+}
+
+/**
+ * Get a summary of all MULTIPLE building instances for a given chain.
+ * Used by the UI to show "Shelter (x3) [Build Another] [Upgrade]" etc.
+ *
+ * @param {string} chain - Chain ID from config (e.g. 'shelter').
+ * @returns {Array<object>} Instance summaries with level, name, workers, upgradeOptions.
+ */
+export function getMultipleChainSummary(chain) {
+  const config = getConfig();
+  if (!config) return [];
+
+  const stateKey = resolveStateKey(chain);
+  const instances = gameState.multipleBuildings[stateKey] || [];
+
+  return instances.map(inst => {
+    const item = inst.itemId
+      ? config.items.find(i => i.id === inst.itemId)
+      : null;
+
+    return {
+      instanceId: inst.id,
+      level: inst.level,
+      name: item?.name || `${chain} (level ${inst.level})`,
+      itemId: inst.itemId,
+      workersAssigned: inst.workersAssigned || 0,
+      upgradeOptions: getUpgradeOptions(chain, inst.id)
+    };
+  });
+}
+
+
+// ─── Cleanup ─────────────────────────────────────────────────────────────────
+
+/**
+ * Clear the crafting interval. Called on game reset or game over.
+ */
 export function clearCraftingInterval() {
-    if (craftingIntervalId) {
-        clearInterval(craftingIntervalId);
-        craftingIntervalId = null;
-    }
-    craftingInProgress = false;
-    updateCraftingQueueDisplay();
+  if (craftingInterval) {
+    clearInterval(craftingInterval);
+    craftingInterval = null;
+  }
+  craftingInProgress = false;
 }
+
+
+// ─── Queue Accessor ──────────────────────────────────────────────────────────
+
+/**
+ * Get the current crafting queue for UI rendering.
+ * @returns {Array<object>} The crafting queue entries.
+ */
+export function getCraftingQueue() {
+  return gameState.craftingQueue;
+}
+
+
+// ─── Chain-to-State Key Accessor ─────────────────────────────────────────────
+
+/**
+ * Expose the chain-to-state key resolver for other modules (e.g. automation).
+ * @param {string} chainId
+ * @returns {string}
+ */
+export { resolveStateKey };

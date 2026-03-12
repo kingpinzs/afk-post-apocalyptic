@@ -1,4 +1,4 @@
-import { gameState, getConfig } from './gameState.js';
+import { gameState, getConfig, isItemBuilt, getTotalCraftedCount } from './gameState.js';
 import { logEvent, showAchievementToast } from './ui.js';
 
 /**
@@ -19,10 +19,10 @@ export function checkAchievements() {
 
         switch (achievement.type) {
             case 'craft':
-                earned = !!gameState.craftedItems[achievement.target];
+                earned = isItemBuilt(achievement.target);
                 break;
             case 'craftCount':
-                earned = Object.keys(gameState.craftedItems).length >= achievement.target;
+                earned = getTotalCraftedCount() >= achievement.target;
                 break;
             case 'population':
                 earned = gameState.population >= achievement.target;
@@ -61,8 +61,8 @@ export function checkAchievements() {
                     if (key === 'knowledge') {
                         gameState.knowledge += value;
                         gameState.maxKnowledge = Math.max(gameState.maxKnowledge, gameState.knowledge);
-                    } else if (key in gameState && typeof gameState[key] === 'number') {
-                        gameState[key] += value;
+                    } else if (key in gameState.resources) {
+                        gameState.resources[key] += value;
                     }
                 });
             }

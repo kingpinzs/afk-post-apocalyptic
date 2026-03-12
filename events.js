@@ -1,12 +1,14 @@
 import { gameState, getConfig } from './gameState.js';
 import { logEvent, updateDisplay, showMilestoneEvent } from './ui.js';
 import { addResource } from './resources.js';
+import { getEffect, hasEffect } from './effects.js';
 
 let activeEvents = [];
 
 export function checkForEvents() {
     const config = getConfig();
-    config.events.forEach(event => {
+    const events = config.events || [];
+    events.forEach(event => {
         if (Math.random() < event.probability && !activeEvents.some(e => e.id === event.id)) {
             triggerEvent(event);
         }
@@ -16,13 +18,26 @@ export function checkForEvents() {
 function triggerEvent(event) {
     logEvent(`Event: ${event.name} - ${event.description}`);
 
+    // Difficulty eventSeverity scales negative effects (higher = harsher)
+    const config = getConfig();
+    const preset = config.difficultyPresets?.[gameState.difficulty];
+    const severity = preset?.eventSeverity || 1.0;
+
     Object.entries(event.effect).forEach(([key, value]) => {
+        // Scale negative resource effects by severity, leave positive effects unchanged
+        const scaledValue = (typeof value === 'number' && value < 0)
+            ? Math.floor(value * severity)
+            : value;
+
         if (key === 'gatheringEfficiency') {
-            // Track modifiers as a list and recalculate from scratch
-            gameState.gatheringModifiers.push({ eventId: event.id, value: value });
+            // For gathering debuffs (value < 1), make them harsher with severity
+            const scaledGathering = value < 1
+                ? Math.max(0.1, 1 - (1 - value) * severity)
+                : value;
+            gameState.gatheringModifiers.push({ eventId: event.id, value: scaledGathering });
             recalculateGatheringEfficiency();
-        } else if (key in gameState) {
-            addResource(key, value);
+        } else if (key in gameState.resources) {
+            addResource(key, scaledValue);
         }
     });
 
@@ -112,16 +127,15 @@ export function updateWeather() {
         }
 
         // Apply resource effects
-        // resourceDiscoveryMultiplier (watchtower) and navigationEfficiencyMultiplier (telescope) mitigate negative weather
+        // Use effect aggregation to check for weather mitigation from buildings
+        // resourceDiscoveryMultiplier and navigationEfficiencyMultiplier mitigate negative weather
         let mitigationFactor = 1;
-        for (const item of Object.values(gameState.craftedItems)) {
-            if (item?.effect?.resourceDiscoveryMultiplier) mitigationFactor *= 0.8; // reduces negative by 20%
-            if (item?.effect?.navigationEfficiencyMultiplier) mitigationFactor *= 0.85; // reduces negative by 15%
-        }
+        if (hasEffect('resourceDiscoveryMultiplier')) mitigationFactor *= 0.8;  // reduces negative by 20%
+        if (hasEffect('navigationEfficiencyMultiplier')) mitigationFactor *= 0.85; // reduces negative by 15%
 
         Object.entries(effects).forEach(([key, value]) => {
             if (key === 'gatheringEfficiency') return; // Already handled
-            if (key in gameState && typeof value === 'number') {
+            if (key in gameState.resources && typeof value === 'number') {
                 if (value < 0) {
                     addResource(key, Math.ceil(value * mitigationFactor));
                 } else {
@@ -149,7 +163,9 @@ export function checkMilestoneEvents() {
                 triggered = gameState.day >= milestone.trigger.threshold;
                 break;
             case 'craftedItem':
-                triggered = !!gameState.craftedItems[milestone.trigger.item];
+                // Check if the item exists as an unlocked blueprint or is a built building/tool
+                triggered = gameState.unlockedBlueprints.includes(milestone.trigger.item) ||
+                    isBuildingBuilt(milestone.trigger.item);
                 break;
             case 'knowledge':
                 triggered = gameState.knowledge >= milestone.trigger.threshold;
@@ -164,13 +180,43 @@ export function checkMilestoneEvents() {
     }
 }
 
+/**
+ * Check if a building/tool with the given itemId is built somewhere.
+ * @param {string} itemId
+ * @returns {boolean}
+ */
+function isBuildingBuilt(itemId) {
+    // Check SINGLE buildings
+    for (const chainId of Object.keys(gameState.buildings)) {
+        if (gameState.buildings[chainId].itemId === itemId && gameState.buildings[chainId].level > 0) {
+            return true;
+        }
+    }
+
+    // Check tools
+    for (const chainId of Object.keys(gameState.tools)) {
+        if (gameState.tools[chainId].itemId === itemId && gameState.tools[chainId].level > 0) {
+            return true;
+        }
+    }
+
+    // Check MULTIPLE buildings
+    for (const chainId of Object.keys(gameState.multipleBuildings)) {
+        if ((gameState.multipleBuildings[chainId] || []).some(inst => inst.itemId === itemId)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function applyMilestoneChoice(choice) {
     Object.entries(choice.effects).forEach(([key, value]) => {
         if (key === 'population') {
             gameState.population = Math.max(1, gameState.population + value);
             if (value > 0) gameState.availableWorkers += value;
             logEvent(`Population changed by ${value > 0 ? '+' : ''}${value}.`);
-        } else if (key in gameState) {
+        } else if (key in gameState.resources) {
             addResource(key, value);
             logEvent(`${key.charAt(0).toUpperCase() + key.slice(1)} changed by ${value > 0 ? '+' : ''}${value}.`);
         }

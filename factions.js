@@ -55,7 +55,11 @@ export function checkFactionAppearance() {
         let triggered = false;
         if (def.trigger.type === 'population' && gameState.population >= def.trigger.threshold) triggered = true;
         if (def.trigger.type === 'day' && gameState.day >= def.trigger.threshold) triggered = true;
-        if (def.trigger.type === 'craftedItem' && gameState.craftedItems[def.trigger.item]) triggered = true;
+        if (def.trigger.type === 'craftedItem') {
+            // Check if the item exists as an unlocked blueprint or is built
+            triggered = gameState.unlockedBlueprints.includes(def.trigger.item) ||
+                isItemBuilt(def.trigger.item);
+        }
         if (def.trigger.type === 'knowledge' && gameState.knowledge >= def.trigger.threshold) triggered = true;
 
         if (triggered) {
@@ -72,6 +76,36 @@ export function checkFactionAppearance() {
             logEvent(`A new settlement has been discovered: ${def.name}!`);
         }
     });
+}
+
+/**
+ * Check if a building/tool with the given itemId is built somewhere.
+ * @param {string} itemId
+ * @returns {boolean}
+ */
+function isItemBuilt(itemId) {
+    // Check SINGLE buildings
+    for (const chainId of Object.keys(gameState.buildings)) {
+        if (gameState.buildings[chainId].itemId === itemId && gameState.buildings[chainId].level > 0) {
+            return true;
+        }
+    }
+
+    // Check tools
+    for (const chainId of Object.keys(gameState.tools)) {
+        if (gameState.tools[chainId].itemId === itemId && gameState.tools[chainId].level > 0) {
+            return true;
+        }
+    }
+
+    // Check MULTIPLE buildings
+    for (const chainId of Object.keys(gameState.multipleBuildings)) {
+        if ((gameState.multipleBuildings[chainId] || []).some(inst => inst.itemId === itemId)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -146,8 +180,8 @@ export function updateFactions() {
             const resources = ['food', 'water', 'wood'];
             const target = resources[Math.floor(Math.random() * resources.length)];
 
-            if ((gameState[target] || 0) > loss) {
-                gameState[target] -= loss;
+            if ((gameState.resources[target] || 0) > loss) {
+                gameState.resources[target] -= loss;
                 logEvent(`${faction.name} raided your settlement! Lost ${loss} ${target}.`);
             } else {
                 logEvent(`${faction.name} attempted a raid but found nothing worth taking.`);
@@ -164,7 +198,7 @@ export function updateFactions() {
  * Send a resource gift to a faction to increase trust.
  *
  * The trust gain is proportional to the amount sent (1 point per 5 units).
- * The resource is deducted from gameState immediately.
+ * The resource is deducted from gameState.resources immediately.
  *
  * @param {string} factionId - The faction's unique ID.
  * @param {string} resource  - Name of the resource to send (e.g. 'food').
@@ -181,12 +215,12 @@ export function sendGift(factionId, resource, amount) {
         return false;
     }
 
-    if ((gameState[resource] || 0) < amount) {
+    if ((gameState.resources[resource] || 0) < amount) {
         logEvent(`Not enough ${resource} for a gift.`);
         return false;
     }
 
-    gameState[resource] -= amount;
+    gameState.resources[resource] -= amount;
     const trustGain = Math.floor(amount / 5);
     faction.trust = Math.min(100, faction.trust + trustGain);
     faction.lastInteraction = gameState.day;

@@ -1,479 +1,368 @@
 /**
  * save.js
+ *
  * Save/load module for the post-apocalyptic survival game.
+ * v2 — clean slate, no backward compatibility with v1.
  *
- * Persistence strategy
- * --------------------
- * All primitive/plain-object state is serialised to JSON and written to
- * localStorage under the key SAVE_KEY.
+ * Uses the serialization/deserialization helpers in gameState.js (serializeState,
+ * deserializeState) which handle the full v2 format:
+ *   { version: 2, timestamp, global, currentSettlement, settlements }
  *
- * Special cases that require re-linking on load:
- *   craftedItems    - values are full item objects; only the item IDs are stored.
- *   craftingQueue   - entries hold a live item object; stored as { itemId, progress, duration }.
- *   currentWork     - may hold a live item object; stored as { type, itemId } or null.
- *
- * On load all three are reconstructed by looking up their item IDs inside the
- * config returned by getConfig().items.
+ * Persistence:
+ *   - localStorage under SAVE_KEY ('postapoc_save_v2')
+ *   - Export/import as text string (backup / device transfer)
+ *   - Save indicator flash on successful save
  */
 
-import { gameState, getConfig } from './gameState.js';
+import { gameState, getConfig, serializeState, deserializeState } from './gameState.js';
 import { getActiveEvents, setActiveEvents } from './events.js';
+import { prepareForSave } from './settlements.js';
 
-/** The localStorage key used by every save/load operation. */
-const SAVE_KEY = 'postapoc_save';
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
+/** The localStorage key used by every save/load operation. v2 uses a new key. */
+const SAVE_KEY = 'postapoc_save_v2';
+
+
+// ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Serialises the current gameState to localStorage.
+ * Serialize the current gameState and write it to localStorage.
  *
- * Returns true when the write succeeded, false on any error (e.g. storage
- * quota exceeded or localStorage unavailable in a sandboxed context).
+ * Uses serializeState() from gameState.js which produces the v2 format
+ * with global, currentSettlement, and settlements sections.
  *
- * @returns {boolean}
+ * @returns {boolean} True if the save succeeded, false on error.
  */
 export function saveGame() {
+  try {
+    // Ensure all settlement snapshots are up to date before serializing
+    prepareForSave();
+
+    const saveData = serializeState();
+
+    // Overlay active events from events.js module (authoritative source)
     try {
-        const payload = _buildPayload();
-        localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
-        console.info('[save] Game saved successfully (day %d).', gameState.day);
-        return true;
-    } catch (err) {
-        console.error('[save] Failed to save game:', err);
-        return false;
+      const events = getActiveEvents();
+      if (events && saveData.currentSettlement) {
+        saveData.currentSettlement.activeEvents = JSON.parse(JSON.stringify(events));
+      }
+    } catch {
+      // events module may not have events loaded yet — use what serializeState provided
     }
+
+    localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+    console.info('[save] Game saved (day %d).', gameState.day);
+    return true;
+  } catch (err) {
+    console.error('[save] Failed to save game:', err);
+    return false;
+  }
 }
 
+
 /**
- * Deserialises a previously saved game from localStorage and writes every
- * field back into the shared gameState object.
+ * Load and restore a saved game from localStorage.
  *
- * Item objects for craftedItems, craftingQueue, and currentWork are
- * re-linked from the loaded game configuration so that all downstream code
- * that expects full item objects (effects, requirements, etc.) continues to
- * work without modification.
+ * Uses deserializeState() from gameState.js which handles the full v2 format,
+ * including reconciling instance counters and restoring all state fields.
  *
- * Returns true when a save was found and applied, false when no save exists.
- * Throws (after logging) if the save data is structurally corrupt — callers
- * should treat a thrown error the same way they treat a missing save.
+ * After deserialization, re-links active events in the events module and
+ * recalculates available workers.
  *
- * @returns {boolean}
+ * @returns {boolean} True if a valid save was found and applied, false otherwise.
  */
 export function loadGame() {
-    try {
-        const raw = localStorage.getItem(SAVE_KEY);
-        if (raw === null) {
-            return false;
-        }
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
 
-        const payload = JSON.parse(raw);
-        _applyPayload(payload);
-
-        console.info('[save] Game loaded successfully (day %d).', gameState.day);
-        return true;
-    } catch (err) {
-        console.error('[save] Failed to load game:', err);
-        return false;
+    const saveData = JSON.parse(raw);
+    if (!saveData || saveData.version !== 2) {
+      console.warn('[save] Incompatible save version:', saveData?.version);
+      return false;
     }
+
+    // Deserialize using gameState.js helper
+    const success = deserializeState(saveData);
+    if (!success) return false;
+
+    // Re-link active events in the events module
+    try {
+      if (gameState.activeEvents && Array.isArray(gameState.activeEvents)) {
+        setActiveEvents(gameState.activeEvents.map(e => ({ ...e })));
+      }
+    } catch {
+      // events module setActiveEvents may not be available
+    }
+
+    // Recalculate available workers to account for sick, exploring, assigned
+    recalculateAvailableWorkers();
+
+    // ── AFK / Offline Progression ──────────────────────────────────────
+    const offlineMs = Date.now() - (saveData.timestamp || Date.now());
+    const daySpeed = gameState.settings?.daySpeed || 30;
+    const offlineDays = Math.floor(offlineMs / (1000 * daySpeed));
+
+    if (offlineDays > 0) {
+      const summary = simulateOfflineDays(offlineDays);
+      console.info('[save] Offline for ~%d game days. Summary:', offlineDays, summary);
+
+      // Schedule welcome-back popup (shown after UI initialises)
+      gameState._welcomeBackSummary = summary;
+    }
+
+    console.info('[save] Game loaded (day %d).', gameState.day);
+    return true;
+  } catch (err) {
+    console.error('[save] Failed to load game:', err);
+    return false;
+  }
 }
 
+
 /**
- * Returns true when a save slot exists in localStorage, false otherwise.
+ * Check whether a v2 save exists in localStorage.
+ * Lightweight check — does not parse or validate the stored JSON.
  *
- * This is a lightweight check — it does not parse or validate the stored
- * JSON.  Use it to decide whether to show a "Continue" button before
- * attempting a full loadGame() call.
- *
- * @returns {boolean}
+ * @returns {boolean} True if a save slot exists.
  */
 export function hasSave() {
-    try {
-        return localStorage.getItem(SAVE_KEY) !== null;
-    } catch (err) {
-        console.error('[save] Could not check for save:', err);
-        return false;
-    }
+  try {
+    return !!localStorage.getItem(SAVE_KEY);
+  } catch {
+    return false;
+  }
 }
 
+
 /**
- * Removes the save slot from localStorage.
- *
- * Safe to call even when no save exists.
+ * Remove the save slot from localStorage. Safe to call when no save exists.
  */
 export function deleteSave() {
-    try {
-        localStorage.removeItem(SAVE_KEY);
-        console.info('[save] Save deleted.');
-    } catch (err) {
-        console.error('[save] Failed to delete save:', err);
-    }
+  try {
+    localStorage.removeItem(SAVE_KEY);
+    console.info('[save] Save deleted.');
+  } catch (err) {
+    console.error('[save] Failed to delete save:', err);
+  }
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
 
 /**
- * Builds a plain, JSON-safe snapshot of the current gameState.
- *
- * Live item object references are replaced with their string IDs so that the
- * stored JSON contains no circular structures and no implementation-specific
- * references that would become stale between sessions.
- *
- * @returns {Object} The serialisable payload.
+ * Export the save data as a JSON string for backup / device transfer.
+ * @returns {string} The raw JSON string, or empty string if no save.
  */
-function _buildPayload() {
-    // Primitive / plain-object fields — safe to copy by value.
-    const payload = {
-        // Resources
-        food:               gameState.food,
-        water:              gameState.water,
-        wood:               gameState.wood,
-        stone:              gameState.stone,
-        clay:               gameState.clay,
-        fiber:              gameState.fiber,
-        ore:                gameState.ore,
-        herbs:              gameState.herbs,
-        fruit:              gameState.fruit,
-
-        // Meta
-        knowledge:          gameState.knowledge,
-        maxKnowledge:       gameState.maxKnowledge,
-        population:         gameState.population,
-        availableWorkers:   gameState.availableWorkers,
-        day:                gameState.day,
-        time:               gameState.time,
-
-        // Flags
-        isGameOver:         gameState.isGameOver,
-        gameStarted:        gameState.gameStarted,
-
-        // Plain arrays / objects
-        unlockedFeatures:   [...gameState.unlockedFeatures],
-        automationAssignments: { ...gameState.automationAssignments },
-        gatheringEfficiency: gameState.gatheringEfficiency,
-        gatheringModifiers:  gameState.gatheringModifiers.map(m => ({ ...m })),
-
-        // --- Fields requiring ID-only serialisation ---
-
-        // craftedItems: store IDs (keys) and quality metadata (Phase 6C).
-        // The full item object is re-linked on load from config; quality is
-        // re-applied from this separate map so crafted quality persists.
-        craftedItemIds: Object.keys(gameState.craftedItems),
-        craftedItemQualities: Object.fromEntries(
-            Object.entries(gameState.craftedItems)
-                .filter(([, item]) => item && item.quality)
-                .map(([id, item]) => [id, { quality: item.quality, qualityMultiplier: item.qualityMultiplier }])
-        ),
-
-        // craftingQueue: store itemId + progress + duration; item ref re-linked on load.
-        craftingQueue: gameState.craftingQueue.map(entry => ({
-            itemId:   entry.item.id,
-            progress: entry.progress,
-            duration: entry.duration
-        })),
-
-        // activeWork: store each worker's task; item refs replaced with IDs.
-        activeWork: _serializeActiveWork(),
-
-        // activeEvents: store event snapshots with remaining duration.
-        activeEvents: _getActiveEvents(),
-
-        // Study gate & pending puzzle
-        studyGate: gameState.studyGate ? { ...gameState.studyGate } : null,
-        pendingPuzzle: gameState.pendingPuzzle ? { ...gameState.pendingPuzzle } : null,
-
-        // Phase 2: Weather & Seasons
-        currentSeason:   gameState.currentSeason,
-        currentWeather:  gameState.currentWeather,
-        seenMilestones:  [...(gameState.seenMilestones || [])],
-
-        // Phase 3: Trading & Economy
-        currency:        gameState.currency ?? 0,
-        traderVisits:    gameState.traderVisits ? gameState.traderVisits.map(v => ({ ...v })) : [],
-        activeTrades:    gameState.activeTrades ? gameState.activeTrades.map(t => ({ ...t })) : [],
-
-        // Phase 4: Exploration, Quests, Achievements
-        explorations:    gameState.explorations ? gameState.explorations.map(e => ({ ...e })) : [],
-        activeQuests:    [...(gameState.activeQuests || [])],
-        completedQuests: [...(gameState.completedQuests || [])],
-        achievements:    [...(gameState.achievements || [])],
-        stats:           { ...(gameState.stats || {}) },
-
-        // Phase 5: Difficulty & Population
-        difficulty:          gameState.difficulty || 'normal',
-        populationMembers:   gameState.populationMembers ? gameState.populationMembers.map(m => ({ ...m, skills: { ...m.skills } })) : [],
-
-        // Phase 6: Prestige & Sandbox
-        prestigePoints:  gameState.prestigePoints ?? 0,
-        prestigeBonuses: { ...(gameState.prestigeBonuses || {}) },
-        sandboxMode:     gameState.sandboxMode ?? false,
-
-        // Phase 7: Factions / Diplomacy
-        factions: (gameState.factions || []).map(f => ({ ...f })),
-
-        // Save versioning & metadata
-        saveVersion: gameState.saveVersion ?? 1,
-        savedAt: Date.now()
-    };
-
-    return payload;
+export function exportSave() {
+  return localStorage.getItem(SAVE_KEY) || '';
 }
 
+
 /**
- * Applies a deserialised payload onto the shared gameState object.
+ * Import save data from a JSON string. Validates version before writing.
  *
- * Performs item re-linking for craftedItems, craftingQueue, and currentWork
- * using the loaded config.  Skips item IDs that are no longer present in the
- * current config (forwards compatibility — a config update could remove an
- * item while an old save still references it).
- *
- * @param {Object} payload - The parsed JSON payload from localStorage.
+ * @param {string} data - The JSON string to import.
+ * @returns {boolean} True if import succeeded.
  */
-function _applyPayload(payload) {
-    const config = getConfig();
-
-    // Helper: look up an item by ID, returns undefined for unknown IDs.
-    const findItem = (id) => config.items.find(i => i.id === id);
-
-    // --- Primitive / plain-object fields ---
-    gameState.food               = payload.food               ?? gameState.food;
-    gameState.water              = payload.water              ?? gameState.water;
-    gameState.wood               = payload.wood               ?? gameState.wood;
-    gameState.stone              = payload.stone              ?? gameState.stone;
-    gameState.clay               = payload.clay               ?? gameState.clay;
-    gameState.fiber              = payload.fiber              ?? gameState.fiber;
-    gameState.ore                = payload.ore                ?? gameState.ore;
-    gameState.herbs              = payload.herbs              ?? gameState.herbs;
-    gameState.fruit              = payload.fruit              ?? gameState.fruit;
-
-    gameState.knowledge          = payload.knowledge          ?? gameState.knowledge;
-    gameState.maxKnowledge       = payload.maxKnowledge       ?? gameState.maxKnowledge;
-    gameState.population         = payload.population         ?? gameState.population;
-    gameState.availableWorkers   = payload.availableWorkers   ?? gameState.availableWorkers;
-    gameState.day                = payload.day                ?? gameState.day;
-    gameState.time               = payload.time               ?? gameState.time;
-
-    gameState.isGameOver         = payload.isGameOver         ?? gameState.isGameOver;
-    gameState.gameStarted        = payload.gameStarted        ?? gameState.gameStarted;
-
-    gameState.unlockedFeatures   = Array.isArray(payload.unlockedFeatures)
-        ? [...payload.unlockedFeatures]
-        : gameState.unlockedFeatures;
-
-    gameState.automationAssignments = (payload.automationAssignments && typeof payload.automationAssignments === 'object')
-        ? { ...payload.automationAssignments }
-        : gameState.automationAssignments;
-
-    gameState.gatheringEfficiency = payload.gatheringEfficiency ?? gameState.gatheringEfficiency;
-
-    gameState.gatheringModifiers  = Array.isArray(payload.gatheringModifiers)
-        ? payload.gatheringModifiers.map(m => ({ ...m }))
-        : gameState.gatheringModifiers;
-
-    // --- Study gate & pending puzzle ---
-    gameState.studyGate = payload.studyGate ?? null;
-    gameState.pendingPuzzle = payload.pendingPuzzle ?? null;
-
-    // --- Phase 2: Weather & Seasons ---
-    gameState.currentSeason   = payload.currentSeason   ?? 'spring';
-    gameState.currentWeather  = payload.currentWeather  ?? 'clear';
-    gameState.seenMilestones  = Array.isArray(payload.seenMilestones)
-        ? [...payload.seenMilestones]
-        : [];
-
-    // --- Phase 3: Trading & Economy ---
-    gameState.currency     = payload.currency     ?? 0;
-    gameState.traderVisits = Array.isArray(payload.traderVisits)
-        ? payload.traderVisits.map(v => ({ ...v }))
-        : [];
-    gameState.activeTrades = Array.isArray(payload.activeTrades)
-        ? payload.activeTrades.map(t => ({ ...t }))
-        : [];
-
-    // --- Phase 4: Exploration, Quests, Achievements ---
-    gameState.explorations    = Array.isArray(payload.explorations)
-        ? payload.explorations.map(e => ({ ...e }))
-        : [];
-    gameState.activeQuests    = Array.isArray(payload.activeQuests)    ? [...payload.activeQuests]    : [];
-    gameState.completedQuests = Array.isArray(payload.completedQuests) ? [...payload.completedQuests] : [];
-    gameState.achievements    = Array.isArray(payload.achievements)    ? [...payload.achievements]    : [];
-    gameState.stats           = (payload.stats && typeof payload.stats === 'object')
-        ? { ...payload.stats }
-        : { totalCrafted: 0, totalGathered: 0, totalStudied: 0, totalTraded: 0, totalExplored: 0 };
-
-    // --- Phase 5: Difficulty & Population ---
-    gameState.difficulty        = payload.difficulty ?? 'normal';
-    gameState.populationMembers = Array.isArray(payload.populationMembers)
-        ? payload.populationMembers.map(m => ({ ...m, skills: { ...(m.skills || {}) } }))
-        : [];
-
-    // --- Phase 6: Prestige & Sandbox ---
-    gameState.prestigePoints  = payload.prestigePoints  ?? 0;
-    gameState.prestigeBonuses = (payload.prestigeBonuses && typeof payload.prestigeBonuses === 'object')
-        ? { ...payload.prestigeBonuses }
-        : {};
-    gameState.sandboxMode     = payload.sandboxMode     ?? false;
-
-    // --- Phase 7: Factions / Diplomacy ---
-    gameState.factions = Array.isArray(payload.factions)
-        ? payload.factions.map(f => ({ ...f }))
-        : [];
-
-    // --- Save version ---
-    gameState.saveVersion = payload.saveVersion ?? 1;
-
-    // --- Re-link craftedItems ---
-    // Rebuild the object so each key maps to the current full item object from
-    // config, not the stale copy that was in the save.
-    // Phase 6C: Re-apply quality metadata so crafted quality survives save/load.
-    gameState.craftedItems = {};
-    const savedQualities = (payload.craftedItemQualities && typeof payload.craftedItemQualities === 'object')
-        ? payload.craftedItemQualities
-        : {};
-
-    if (Array.isArray(payload.craftedItemIds)) {
-        payload.craftedItemIds.forEach(id => {
-            const item = findItem(id);
-            if (item) {
-                const qualityData = savedQualities[id];
-                if (qualityData && qualityData.quality) {
-                    // Reconstruct the quality-scaled effect object
-                    const qMult = qualityData.qualityMultiplier || 1;
-                    const scaledEffect = item.effect
-                        ? Object.fromEntries(
-                            Object.entries(item.effect).map(([k, v]) => {
-                                if (typeof v === 'number' && v > 0) {
-                                    const scaled = k.endsWith('Multiplier')
-                                        ? 1 + (v - 1) * qMult
-                                        : v * qMult;
-                                    return [k, scaled];
-                                }
-                                return [k, v];
-                            })
-                        )
-                        : undefined;
-                    gameState.craftedItems[id] = {
-                        ...item,
-                        quality:           qualityData.quality,
-                        qualityMultiplier: qMult,
-                        effect:            scaledEffect
-                    };
-                } else {
-                    gameState.craftedItems[id] = item;
-                }
-            } else {
-                console.warn('[save] loadGame: craftedItem id "%s" not found in config — skipped.', id);
-            }
-        });
+export function importSave(data) {
+  try {
+    const parsed = JSON.parse(data);
+    if (!parsed || parsed.version !== 2) {
+      console.warn('[save] Import rejected: incompatible version:', parsed?.version);
+      return false;
     }
+    localStorage.setItem(SAVE_KEY, data);
+    console.info('[save] Save imported successfully.');
+    return true;
+  } catch (err) {
+    console.error('[save] Import failed:', err);
+    return false;
+  }
+}
 
-    // --- Re-link craftingQueue ---
-    gameState.craftingQueue = [];
-    if (Array.isArray(payload.craftingQueue)) {
-        payload.craftingQueue.forEach(entry => {
-            const item = findItem(entry.itemId);
-            if (item) {
-                gameState.craftingQueue.push({
-                    item:     item,
-                    progress: typeof entry.progress === 'number' ? entry.progress : 0,
-                    duration: typeof entry.duration === 'number' ? entry.duration : item.craftingTime
-                });
-            } else {
-                console.warn('[save] loadGame: craftingQueue item id "%s" not found in config — skipped.', entry.itemId);
-            }
-        });
+
+// ─── Internal Helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Recalculate availableWorkers from population, sick members, exploring workers,
+ * and automation assignments. Ensures consistency after loading a save.
+ */
+function recalculateAvailableWorkers() {
+  const sickCount = (gameState.populationMembers || []).filter(m => m.sick).length;
+
+  const exploringWorkers = (gameState.explorations || [])
+    .filter(e => e.inProgress)
+    .reduce((sum, e) => sum + (e.workersOut || 1), 0);
+
+  // SINGLE building automation workers
+  let automationWorkers = 0;
+  for (const count of Object.values(gameState.automationAssignments || {})) {
+    automationWorkers += count || 0;
+  }
+
+  // MULTIPLE building workers
+  for (const chainId of Object.keys(gameState.multipleBuildings || {})) {
+    for (const instance of (gameState.multipleBuildings[chainId] || [])) {
+      automationWorkers += instance.workersAssigned || 0;
     }
+  }
 
-    // --- Re-link activeWork ---
-    gameState.activeWork = _deserializeActiveWork(payload.activeWork ?? payload.currentWork, findItem);
+  gameState.availableWorkers = Math.max(0,
+    gameState.population - sickCount - exploringWorkers - automationWorkers
+  );
+}
 
-    // --- Re-link activeEvents ---
-    if (Array.isArray(payload.activeEvents)) {
-        setActiveEvents(payload.activeEvents.map(e => ({ ...e })));
+
+/**
+ * Simulate offline days with a simplified tick.
+ * For each offline day:
+ *  - Workers assigned to production buildings generate resources
+ *  - Food and water are consumed per population
+ *  - Resources are capped
+ *  - AFK protection floors prevent total loss
+ *
+ * Uses diminishing returns: after a threshold, each day produces less.
+ * Capped at MAX_OFFLINE_DAYS to prevent extreme catch-up.
+ *
+ * @param {number} rawDays - Number of game days the player was offline.
+ * @returns {{ days: number, foodProduced: number, waterProduced: number,
+ *             foodConsumed: number, waterConsumed: number, daysAdvanced: number }}
+ */
+function simulateOfflineDays(rawDays) {
+  const config = getConfig();
+  const MAX_OFFLINE_DAYS = 200;
+  const days = Math.min(rawDays, MAX_OFFLINE_DAYS);
+
+  // Difficulty AFK protection floors
+  const preset = config.difficultyPresets?.[gameState.difficulty];
+  const resourceFloor = preset?.afkResourceFloor ?? 0.1;
+  const popFloor = preset?.afkPopulationFloor ?? 0.5;
+
+  // Snapshot starting state for summary
+  const startFood = gameState.resources.food || 0;
+  const startWater = gameState.resources.water || 0;
+  const startPop = gameState.population;
+
+  // Base per-person consumption from config
+  const baseFoodPerPerson = config.constants?.BASE_FOOD_PER_PERSON || 2;
+  const baseWaterPerPerson = config.constants?.BASE_WATER_PER_PERSON || 1.5;
+  const consumptionMult = preset?.consumptionMultiplier || 1.0;
+
+  // Calculate production rates from assigned workers (simplified — flat per day)
+  let foodProduction = 0;
+  let waterProduction = 0;
+
+  // MULTIPLE buildings production (farms, wells)
+  for (const chainId of Object.keys(gameState.multipleBuildings || {})) {
+    for (const instance of (gameState.multipleBuildings[chainId] || [])) {
+      if (!instance.itemId || !instance.workersAssigned) continue;
+      const item = config.items?.find(i => i.id === instance.itemId);
+      if (!item) continue;
+      const rate = item.productionRate || 0;
+      const workers = instance.workersAssigned || 0;
+      if (item.produces === 'food' || item.productionOutput?.food) {
+        foodProduction += rate * workers;
+      }
+      if (item.produces === 'water' || item.productionOutput?.water) {
+        waterProduction += rate * workers;
+      }
     }
+  }
 
-    // --- Recalculate availableWorkers from actual state ---
-    // Accounts for sick members, exploring workers, automation, and active work.
-    const sickCount = (gameState.populationMembers || []).filter(m => m.sick).length;
-    const exploringWorkers = (gameState.explorations || [])
-        .filter(e => e.inProgress)
-        .reduce((sum, e) => sum + (e.workersOut || 1), 0);
-    const automationWorkers = Object.values(gameState.automationAssignments || {})
-        .reduce((sum, v) => sum + v, 0);
-    const activeWorkCount = gameState.activeWork.length;
-    gameState.availableWorkers = Math.max(0,
-        gameState.population - sickCount - exploringWorkers - automationWorkers - activeWorkCount
+  // SINGLE building production
+  for (const chainId of Object.keys(gameState.buildings || {})) {
+    const building = gameState.buildings[chainId];
+    if (!building.itemId || building.level === 0) continue;
+    const workers = gameState.automationAssignments?.[chainId] || 0;
+    if (workers === 0) continue;
+    const item = config.items?.find(i => i.id === building.itemId);
+    if (!item) continue;
+    const rate = item.productionRate || 0;
+    if (item.produces === 'food' || item.productionOutput?.food) {
+      foodProduction += rate * workers;
+    }
+    if (item.produces === 'water' || item.productionOutput?.water) {
+      waterProduction += rate * workers;
+    }
+  }
+
+  // Resource caps
+  const foodCap = config.constants?.BASE_RESOURCE_CAP || 200;
+  const waterCap = config.constants?.BASE_RESOURCE_CAP || 200;
+
+  let totalFoodProduced = 0;
+  let totalWaterProduced = 0;
+  let totalFoodConsumed = 0;
+  let totalWaterConsumed = 0;
+
+  // Simulate each day with diminishing returns after day 50
+  for (let d = 0; d < days; d++) {
+    // Diminishing returns: efficiency drops after 50 days offline
+    const efficiency = d < 50 ? 1.0 : Math.max(0.1, 1.0 - (d - 50) * 0.01);
+
+    // Production (scaled by diminishing returns)
+    const dayFoodProd = foodProduction * efficiency;
+    const dayWaterProd = waterProduction * efficiency;
+    totalFoodProduced += dayFoodProd;
+    totalWaterProduced += dayWaterProd;
+
+    gameState.resources.food = Math.min(
+      (gameState.resources.food || 0) + dayFoodProd,
+      foodCap
     );
-}
+    gameState.resources.water = Math.min(
+      (gameState.resources.water || 0) + dayWaterProd,
+      waterCap
+    );
 
-/**
- * Serialises the activeWork array. Item refs are replaced with IDs.
- */
-function _serializeActiveWork() {
-    return gameState.activeWork.map(w => {
-        switch (w.type) {
-            case 'crafting':
-                return { type: 'crafting', itemId: w.item ? w.item.id : null };
-            case 'gathering':
-                return { type: 'gathering', resource: w.resource };
-            case 'studying':
-                return { type: 'studying' };
-            default:
-                return { type: w.type };
-        }
-    });
-}
+    // Consumption
+    const dayFoodCost = baseFoodPerPerson * gameState.population * consumptionMult;
+    const dayWaterCost = baseWaterPerPerson * gameState.population * consumptionMult;
+    totalFoodConsumed += dayFoodCost;
+    totalWaterConsumed += dayWaterCost;
 
-/**
- * Deserialises activeWork, re-linking item objects where needed.
- * On load, gathering/studying intervals can't be restored so those workers
- * are returned to the available pool. Crafting work is kept for the queue.
- *
- * Also handles legacy saves that stored a single currentWork object.
- */
-function _deserializeActiveWork(saved, findItem) {
-    // Legacy single-object save: wrap into array
-    if (saved && !Array.isArray(saved)) {
-        saved = saved.type ? [saved] : [];
+    gameState.resources.food = Math.max(0, (gameState.resources.food || 0) - dayFoodCost);
+    gameState.resources.water = Math.max(0, (gameState.resources.water || 0) - dayWaterCost);
+
+    // Population loss if resources hit 0
+    if (gameState.resources.food <= 0 && gameState.resources.water <= 0) {
+      const minPop = Math.max(1, Math.ceil(startPop * popFloor));
+      if (gameState.population > minPop) {
+        gameState.population = Math.max(minPop, gameState.population - 1);
+      }
     }
-    if (!Array.isArray(saved)) return [];
 
-    const result = [];
-    for (const entry of saved) {
-        if (!entry || !entry.type) continue;
-        switch (entry.type) {
-            case 'crafting': {
-                if (!entry.itemId) break;
-                const item = findItem(entry.itemId);
-                if (!item) {
-                    console.warn('[save] loadGame: activeWork item id "%s" not found — skipped.', entry.itemId);
-                    break;
-                }
-                result.push({ type: 'crafting', item: item });
-                break;
-            }
-            case 'gathering':
-            case 'studying':
-                // Intervals can't be restored; return worker to pool
-                gameState.availableWorkers++;
-                break;
-        }
-    }
-    return result;
-}
+    // Advance day counter
+    gameState.day++;
+    gameState.totalDaysPlayed++;
+  }
 
-/**
- * Returns a copy of active events for serialisation.
- */
-function _getActiveEvents() {
-    return getActiveEvents().map(e => ({
-        id: e.id,
-        name: e.name,
-        description: e.description,
-        effect: { ...e.effect },
-        remainingDuration: e.remainingDuration
-    }));
+  // Apply AFK resource floors — never go below floor % of starting resources
+  const foodFloor = startFood * resourceFloor;
+  const waterFloor = startWater * resourceFloor;
+  gameState.resources.food = Math.max(gameState.resources.food || 0, foodFloor);
+  gameState.resources.water = Math.max(gameState.resources.water || 0, waterFloor);
+
+  // Ensure population doesn't drop below AFK floor
+  const minPopulation = Math.max(1, Math.ceil(startPop * popFloor));
+  gameState.population = Math.max(gameState.population, minPopulation);
+
+  // Recalculate workers after potential pop changes
+  recalculateAvailableWorkers();
+
+  return {
+    days,
+    rawDays,
+    capped: rawDays > MAX_OFFLINE_DAYS,
+    foodProduced: Math.round(totalFoodProduced),
+    waterProduced: Math.round(totalWaterProduced),
+    foodConsumed: Math.round(totalFoodConsumed),
+    waterConsumed: Math.round(totalWaterConsumed),
+    daysAdvanced: days,
+    populationBefore: startPop,
+    populationAfter: gameState.population,
+    foodBefore: Math.round(startFood),
+    foodAfter: Math.round(gameState.resources.food),
+    waterBefore: Math.round(startWater),
+    waterAfter: Math.round(gameState.resources.water)
+  };
 }

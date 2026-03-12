@@ -4,10 +4,11 @@ import { addResource } from './resources.js';
 import { getEffect } from './effects.js';
 
 /**
- * Check if trading is unlocked (marketplace is built)
+ * Check if trading is unlocked (trade chain building is built).
+ * Trade chain level >= 1 means the marketplace (or equivalent) exists.
  */
 export function isTradingUnlocked() {
-    return !!gameState.craftedItems.marketplace;
+    return gameState.buildings.trade?.level >= 1;
 }
 
 /**
@@ -62,8 +63,8 @@ function checkTraderArrivals(tradingConfig) {
     if (!tradingConfig.traders) return;
 
     tradingConfig.traders.forEach(trader => {
-        // Check requirements
-        if (trader.requiresItem && !gameState.craftedItems[trader.requiresItem]) return;
+        // Check requirements — item must be an unlocked blueprint or a built building/tool
+        if (trader.requiresItem && !isTraderRequirementMet(trader.requiresItem)) return;
 
         // Check frequency
         if (gameState.day % trader.frequency === 0) {
@@ -85,6 +86,40 @@ function checkTraderArrivals(tradingConfig) {
 
     // Remove expired traders
     gameState.traderVisits = (gameState.traderVisits || []).filter(v => gameState.day <= v.expiresDay);
+}
+
+/**
+ * Check if a trader's item requirement is met.
+ * Checks unlocked blueprints, SINGLE buildings, tools, and MULTIPLE buildings.
+ * @param {string} itemId
+ * @returns {boolean}
+ */
+function isTraderRequirementMet(itemId) {
+    // Check unlocked blueprints
+    if (gameState.unlockedBlueprints.includes(itemId)) return true;
+
+    // Check SINGLE buildings by itemId
+    for (const chainId of Object.keys(gameState.buildings)) {
+        if (gameState.buildings[chainId].itemId === itemId && gameState.buildings[chainId].level > 0) {
+            return true;
+        }
+    }
+
+    // Check tools by itemId
+    for (const chainId of Object.keys(gameState.tools)) {
+        if (gameState.tools[chainId].itemId === itemId && gameState.tools[chainId].level > 0) {
+            return true;
+        }
+    }
+
+    // Check MULTIPLE buildings by itemId
+    for (const chainId of Object.keys(gameState.multipleBuildings)) {
+        if ((gameState.multipleBuildings[chainId] || []).some(inst => inst.itemId === itemId)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function generateTraderOffers(tradingConfig) {
@@ -111,7 +146,7 @@ export function executeTrade(traderIndex, tradeIndex) {
     if (!trade || !trade.available) return false;
 
     // Check if player has enough to give
-    if ((gameState[trade.give] || 0) < trade.giveAmount) {
+    if ((gameState.resources[trade.give] || 0) < trade.giveAmount) {
         logEvent(`Not enough ${trade.give} for this trade.`);
         return false;
     }
@@ -120,7 +155,7 @@ export function executeTrade(traderIndex, tradeIndex) {
     const safety = getEffect('tradeShipSafetyMultiplier');
     if (trader.id === 'coastal_trader' && safety < 1.5) {
         if (Math.random() < 0.15) { // 15% failure chance without lighthouse
-            gameState[trade.give] -= trade.giveAmount;
+            gameState.resources[trade.give] -= trade.giveAmount;
             logEvent(`Trade shipment was lost at sea! Lost ${trade.giveAmount} ${trade.give}.`);
             updateDisplay();
             return false;
@@ -128,7 +163,7 @@ export function executeTrade(traderIndex, tradeIndex) {
     }
 
     // Execute trade
-    gameState[trade.give] -= trade.giveAmount;
+    gameState.resources[trade.give] -= trade.giveAmount;
     addResource(trade.receive, trade.receiveAmount);
 
     // Track stats

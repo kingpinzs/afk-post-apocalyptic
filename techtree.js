@@ -8,28 +8,24 @@
  * is reflected via colour coding.
  */
 
-import { gameState, getConfig } from './gameState.js';
+import { gameState, getConfig, isItemBuilt } from './gameState.js';
 import { getEffect } from './effects.js';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const TIER_NAMES = ['Survival', 'Settlement', 'Village', 'Town', 'Civilization'];
+const TIER_NAMES = ['Ch1 Survival', 'Ch2 Primitive', 'Ch3 Settlement', 'Ch4 Village', 'Ch5 Industrial', 'Ch6 Modern', 'Ch7 Space'];
 
 const TIER_COLORS = {
-    Survival:     '#2ecc71',
-    Settlement:   '#3498db',
-    Village:      '#9b59b6',
-    Town:         '#e67e22',
-    Civilization: '#e74c3c'
+    'Ch1 Survival':   '#2ecc71',
+    'Ch2 Primitive':  '#27ae60',
+    'Ch3 Settlement': '#3498db',
+    'Ch4 Village':    '#9b59b6',
+    'Ch5 Industrial': '#e67e22',
+    'Ch6 Modern':     '#e74c3c',
+    'Ch7 Space':      '#f39c12'
 };
-
-/**
- * Upper bounds (exclusive) of the total resource cost that place an item in
- * each tier.  The last entry is Infinity so every item maps to a tier.
- */
-const TIER_THRESHOLDS = [50, 100, 250, 500, Infinity];
 
 // Layout constants
 const NODE_WIDTH  = 110;
@@ -43,17 +39,14 @@ const PADDING     = 30;
 // ---------------------------------------------------------------------------
 
 /**
- * Return the tier name for an item based on its total resource cost.
+ * Return the tier name for an item based on its chapter.
  *
- * @param {Object} item - An item config object with a `requirements` property.
+ * @param {Object} item - An item config object with a `chapter` property.
  * @returns {string} One of the TIER_NAMES values.
  */
 function getItemTierName(item) {
-    const totalCost = Object.values(item.requirements || {}).reduce((a, b) => a + b, 0);
-    for (let i = 0; i < TIER_THRESHOLDS.length; i++) {
-        if (totalCost < TIER_THRESHOLDS[i]) return TIER_NAMES[i];
-    }
-    return TIER_NAMES[TIER_NAMES.length - 1];
+    const chapter = item.chapter || 1;
+    return TIER_NAMES[Math.min(chapter - 1, TIER_NAMES.length - 1)];
 }
 
 /**
@@ -136,8 +129,8 @@ export function renderTechTree(canvasId) {
         tierItems.forEach((item, itemIdx) => {
             const x = PADDING + itemIdx * (NODE_WIDTH + NODE_GAP);
 
-            const isCrafted   = !!gameState.craftedItems[item.id];
-            const isAvailable = !isCrafted && item.dependencies.every(d => !!gameState.craftedItems[d]);
+            const isCrafted   = isItemBuilt(item.id);
+            const isAvailable = !isCrafted && gameState.unlockedBlueprints.includes(item.id);
             const isLocked    = !isCrafted && !isAvailable;
 
             // Determine visual style from state
@@ -198,28 +191,30 @@ export function renderTechTree(canvasId) {
         });
     });
 
-    // --- Pass 2: draw dependency lines between nodes ---
+    // --- Pass 2: draw chain connections (items linked by chain + level order) ---
     ctx.lineWidth = 1;
     items.forEach(item => {
         const target = nodePositions[item.id];
-        if (!target) return;
+        if (!target || !item.chain || item.level <= 1) return;
 
-        item.dependencies.forEach(depId => {
-            const source = nodePositions[depId];
-            if (!source) return;
+        // Find the previous level item in the same chain
+        const prevItem = items.find(i => i.chain === item.chain && i.level === item.level - 1);
+        if (!prevItem) return;
 
-            const isCrafted  = !!gameState.craftedItems[item.id];
-            const depCrafted = !!gameState.craftedItems[depId];
+        const source = nodePositions[prevItem.id];
+        if (!source) return;
 
-            ctx.strokeStyle = (isCrafted || depCrafted)
-                ? 'rgba(46, 204, 113, 0.4)'
-                : 'rgba(100, 100, 100, 0.3)';
+        const itemBuilt = isItemBuilt(item.id);
+        const prevBuilt = isItemBuilt(prevItem.id);
 
-            ctx.beginPath();
-            ctx.moveTo(source.x, source.bottom);
-            ctx.lineTo(target.x, target.top);
-            ctx.stroke();
-        });
+        ctx.strokeStyle = (itemBuilt || prevBuilt)
+            ? 'rgba(46, 204, 113, 0.4)'
+            : 'rgba(100, 100, 100, 0.3)';
+
+        ctx.beginPath();
+        ctx.moveTo(source.x, source.bottom);
+        ctx.lineTo(target.x, target.top);
+        ctx.stroke();
     });
 }
 

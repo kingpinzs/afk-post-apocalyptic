@@ -5,15 +5,17 @@ import { getEffect } from './effects.js';
 import { removePopulationMember } from './population.js';
 
 /**
- * Check if exploration is unlocked (watchtower is built).
+ * Check if exploration is unlocked.
+ * Watchtower is defense chain level 3. Defense is a MULTIPLE chain,
+ * so we check if ANY defense instance has reached level >= 3.
  * @returns {boolean}
  */
 export function isExplorationUnlocked() {
-    return !!gameState.craftedItems.watchtower;
+    return (gameState.multipleBuildings.defense || []).some(d => d.level >= 3);
 }
 
 /**
- * Get available exploration locations based on knowledge and items.
+ * Get available exploration locations based on knowledge and buildings.
  * Hidden locations only surface when the space_program's resourceDiscoveryChance > 0.
  * @returns {Array} Filtered array of location config objects.
  */
@@ -29,8 +31,9 @@ export function getAvailableLocations() {
         // Knowledge requirement
         if (loc.knowledgeRequired && gameState.knowledge < loc.knowledgeRequired) return false;
 
-        // Item requirement
-        if (loc.requiresItem && !gameState.craftedItems[loc.requiresItem]) return false;
+        // Item requirement — check if the required item is an unlocked blueprint
+        // or if a building/tool of that ID is built
+        if (loc.requiresItem && !isItemAvailable(loc.requiresItem)) return false;
 
         // resourceDiscoveryChance (space_program) unlocks hidden locations
         if (loc.hidden) {
@@ -40,6 +43,40 @@ export function getAvailableLocations() {
 
         return true;
     });
+}
+
+/**
+ * Check if an item (by ID) is available — either as an unlocked blueprint,
+ * a built SINGLE building/tool, or a built MULTIPLE building instance.
+ * @param {string} itemId
+ * @returns {boolean}
+ */
+function isItemAvailable(itemId) {
+    // Check unlocked blueprints
+    if (gameState.unlockedBlueprints.includes(itemId)) return true;
+
+    // Check SINGLE buildings by itemId
+    for (const chainId of Object.keys(gameState.buildings)) {
+        if (gameState.buildings[chainId].itemId === itemId && gameState.buildings[chainId].level > 0) {
+            return true;
+        }
+    }
+
+    // Check tools by itemId
+    for (const chainId of Object.keys(gameState.tools)) {
+        if (gameState.tools[chainId].itemId === itemId && gameState.tools[chainId].level > 0) {
+            return true;
+        }
+    }
+
+    // Check MULTIPLE buildings by itemId
+    for (const chainId of Object.keys(gameState.multipleBuildings)) {
+        if ((gameState.multipleBuildings[chainId] || []).some(inst => inst.itemId === itemId)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -210,7 +247,7 @@ function completeExploration(location, exploration) {
             if (resource === 'knowledge') {
                 gameState.knowledge += finalAmount;
                 gameState.maxKnowledge = Math.max(gameState.maxKnowledge, gameState.knowledge);
-            } else if (resource in gameState) {
+            } else if (resource in gameState.resources) {
                 addResource(resource, finalAmount);
             }
             logEvent(`Found ${finalAmount} ${resource}.`);
