@@ -372,8 +372,7 @@ export function findNextItemUnlock(config) {
         item.puzzle && item.puzzleAnswer &&
         !gameState.unlockedFeatures.includes(item.id) &&
         !config.unlockPuzzles.some(p => p.unlocks === item.id) &&
-        gameState.knowledge >= (item.knowledgeRequired || 0) &&
-        item.dependencies.every(depId => gameState.craftedItems[depId])
+        gameState.knowledge >= (item.knowledgeRequired || 0)
     );
 }
 
