@@ -907,6 +907,46 @@
         }
 
         /* ================================================================
+           ACHIEVEMENT TOAST
+           ================================================================ */
+        #achievement-toast {
+            position: fixed;
+            top: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1200;
+            background: linear-gradient(135deg, rgba(46, 204, 113, 0.95), rgba(39, 174, 96, 0.95));
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 12px 24px;
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            box-shadow: 0 4px 20px rgba(46, 204, 113, 0.4);
+            transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            min-width: 200px;
+            max-width: 90vw;
+        }
+
+        #achievement-toast.show {
+            top: 12px;
+        }
+
+        #achievement-toast .toast-label {
+            font-size: 0.5em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 4px;
+        }
+
+        #achievement-toast .toast-name {
+            font-size: 0.75em;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        /* ================================================================
            SOUND TOGGLE (moved into Camp tab settings)
            ================================================================ */
         #sound-toggle {
@@ -1082,6 +1122,14 @@
          SAVE INDICATOR
          ============================================================ -->
     <div id="save-indicator">SAVED</div>
+
+    <!-- ============================================================
+         ACHIEVEMENT TOAST
+         ============================================================ -->
+    <div id="achievement-toast">
+        <div class="toast-label">Achievement Unlocked</div>
+        <div class="toast-name" id="achievement-toast-name"></div>
+    </div>
 
     <!-- ============================================================
          TOP HUD

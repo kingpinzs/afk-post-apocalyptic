@@ -420,6 +420,13 @@ export function submitItemUnlockPuzzleAnswer() {
     }
 }
 
+export function showAchievementToast(name) {
+    const toast = document.getElementById('achievement-toast');
+    document.getElementById('achievement-toast-name').textContent = name;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
 export function showGameOver() {
     document.getElementById('puzzle-popup').style.display = 'none';
     document.getElementById('game-over-popup').style.display = 'block';

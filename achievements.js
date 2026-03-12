@@ -1,5 +1,5 @@
 import { gameState, getConfig } from './gameState.js';
-import { logEvent } from './ui.js';
+import { logEvent, showAchievementToast } from './ui.js';
 
 /**
  * Check achievements (called once per day to minimize overhead).
@@ -53,6 +53,7 @@ export function checkAchievements() {
         if (earned) {
             gameState.achievements.push(achievement.id);
             logEvent(`Achievement unlocked: ${achievement.name}!`);
+            showAchievementToast(achievement.name);
 
             // Apply reward if any
             if (achievement.reward) {
