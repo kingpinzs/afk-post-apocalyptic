@@ -1,5 +1,5 @@
 import { gameState, loadGameConfig, getConfig, computeUnlockedResources } from './gameState.js';
-import { updateDisplay, updateTimeDisplay, updateTimeEmoji, updateDayNightCycle, logEvent, submitUnlockPuzzleAnswer, submitItemUnlockPuzzleAnswer, showUnlockPuzzle, showItemUnlockPuzzle, findNextItemUnlock, showGameOver, clearEventLog, updateGatheringVisibility, updateTradingSection, updateExplorationSection, updateQuestsSection, updateAchievementsSection, updatePopulationSection, updateFactionsSection } from './ui.js';
+import { updateDisplay, updateTimeDisplay, updateTimeEmoji, updateDayNightCycle, logEvent, submitUnlockPuzzleAnswer, submitItemUnlockPuzzleAnswer, showGameOver, clearEventLog, updateGatheringVisibility, updateTradingSection, updateExplorationSection, updateQuestsSection, updateAchievementsSection, updatePopulationSection, updateFactionsSection } from './ui.js';
 import { updateTrading, executeTrade } from './trading.js';
 import { gatherResource, consumeResources, capResources, checkPopulationGrowth, study, clearActiveIntervals, resetGathering } from './resources.js';
 import { updateCraftableItems, processQueue, clearCraftingInterval } from './crafting.js';
@@ -158,16 +158,6 @@ async function initializeGame() {
             checkQuestAvailability();
             startAutoSave();
             logEvent('Game loaded.');
-
-            // Trigger any pending unlock puzzles (fixes saves where puzzles were missed)
-            const config = getConfig();
-            const pendingPuzzle = config.unlockPuzzles.find(p =>
-                !gameState.unlockedFeatures.includes(p.unlocks) &&
-                gameState.knowledge >= p.knowledgeRequired
-            );
-            if (pendingPuzzle) {
-                showUnlockPuzzle(pendingPuzzle);
-            }
         }
     });
 

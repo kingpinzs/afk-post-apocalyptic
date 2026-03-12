@@ -185,8 +185,8 @@ function completeExploration(location, exploration) {
         const sickNames = healthyMembers.slice(0, workersSickened).map(m => m.name).join(', ');
         logEvent(`${sickNames} returned from exploration feeling ill.`);
     }
-    if (returning > 0 && workersLost === 0 && workersSickened === 0) {
-        logEvent(`All ${returning} workers returned safely.`);
+    if (healthyReturning > 0 && workersLost === 0 && workersSickened === 0) {
+        logEvent(`All ${healthyReturning} workers returned safely.`);
     }
 
     // --- Apply rewards ---

@@ -83,18 +83,25 @@ export function updateCraftableItems() {
     const tierGate = { settlement: 'settlement_tier', village: 'village_tier', town: 'town_tier', civilization: 'civilization_tier' };
 
     config.items.forEach(item => {
-        const hasSpecificLock = config.unlockPuzzles.some(p => p.unlocks === item.id)
-            || !!item.puzzle; // items with puzzles now need unlock via study
-        const isUnlocked = !hasSpecificLock || gameState.unlockedFeatures.includes(item.id);
-        // If item was explicitly unlocked via puzzle, skip knowledge gate — the puzzle
-        // already required knowledge to appear, so the item should stay visible.
-        const meetsKnowledgeReq = (hasSpecificLock && isUnlocked) || !item.knowledgeRequired || (gameState.maxKnowledge || gameState.knowledge) >= item.knowledgeRequired;
-        const tierUnlocked = !item.tier || gameState.unlockedFeatures.includes(tierGate[item.tier]);
+        if (gameState.craftedItems[item.id]) return;
 
-        if (!gameState.craftedItems[item.id] && isUnlocked && meetsKnowledgeReq && tierUnlocked && areDependenciesMet(item)) {
-            const tier = getItemTier(item);
-            tierGroups.get(tier.name).items.push(item);
-        }
+        const isFeatureGate = config.unlockPuzzles.some(p => p.unlocks === item.id);
+        const hasPuzzleLock = !!item.puzzle && !isFeatureGate;
+        const isUnlocked = (!isFeatureGate && !hasPuzzleLock)
+            || gameState.unlockedFeatures.includes(item.id);
+        const meetsKnowledgeReq = !item.knowledgeRequired
+            || (gameState.maxKnowledge || gameState.knowledge) >= item.knowledgeRequired;
+        const tierUnlocked = !item.tier || gameState.unlockedFeatures.includes(tierGate[item.tier]);
+        const depsMet = areDependenciesMet(item);
+
+        // Feature gates (unlockPuzzles) stay fully hidden until unlocked
+        if (isFeatureGate && !gameState.unlockedFeatures.includes(item.id)) return;
+        if (!tierUnlocked || !depsMet) return;
+
+        const tier = getItemTier(item);
+        // Puzzle-locked items show grayed out; unlocked items show normally
+        const locked = hasPuzzleLock && !isUnlocked;
+        tierGroups.get(tier.name).items.push({ ...item, _locked: locked, _meetsKnowledge: meetsKnowledgeReq });
     });
 
     // Render each non-empty tier
@@ -119,7 +126,11 @@ export function updateCraftableItems() {
 
         const badge = document.createElement('span');
         badge.className = 'tier-badge';
-        badge.textContent = `${items.length} available`;
+        const unlockedCount = items.filter(i => !i._locked).length;
+        const lockedCount = items.filter(i => i._locked).length;
+        badge.textContent = lockedCount > 0
+            ? `${unlockedCount} available, ${lockedCount} locked`
+            : `${unlockedCount} available`;
         titleRow.appendChild(badge);
 
         header.appendChild(titleRow);
@@ -135,20 +146,30 @@ export function updateCraftableItems() {
         itemsContainer.className = 'tier-items';
 
         items.forEach(item => {
-            const canCraft = Object.entries(item.requirements).every(
-                ([resource, amount]) => gameState[resource] >= amount
-            );
-
             const wrapper = document.createElement('div');
             wrapper.className = 'craft-btn-wrapper';
 
             const button = document.createElement('button');
-            const reqText = Object.entries(item.requirements)
-                .map(([resource, amount]) => `${amount} ${resource}`)
-                .join(', ');
-            button.textContent = `Craft ${item.name} (${reqText})`;
-            button.disabled = !canCraft || gameState.availableWorkers === 0;
-            button.addEventListener('click', () => startCrafting(item));
+
+            if (item._locked) {
+                // Locked item — grayed out, not craftable
+                const lockText = item._meetsKnowledge
+                    ? `${item.name} — Study to unlock`
+                    : `${item.name} — Requires ${item.knowledgeRequired} knowledge`;
+                button.textContent = lockText;
+                button.disabled = true;
+                button.classList.add('locked-item');
+            } else {
+                const canCraft = Object.entries(item.requirements).every(
+                    ([resource, amount]) => gameState[resource] >= amount
+                );
+                const reqText = Object.entries(item.requirements)
+                    .map(([resource, amount]) => `${amount} ${resource}`)
+                    .join(', ');
+                button.textContent = `Craft ${item.name} (${reqText})`;
+                button.disabled = !canCraft || gameState.availableWorkers === 0;
+                button.addEventListener('click', () => startCrafting(item));
+            }
 
             // Tooltip
             const tooltip = document.createElement('div');
