@@ -157,6 +157,8 @@ function getProductionAmount(prod, workerCount) {
 
 export function runAutomation() {
     const config = getConfig();
+
+    // --- Building production (assigned workers) ---
     Object.entries(gameState.automationAssignments).forEach(([itemId, count]) => {
         const item = config.items.find(i => i.id === itemId);
         if (!item || count <= 0) return;
@@ -168,5 +170,18 @@ export function runAutomation() {
             logEvent(`${item.name} produced ${amount.toFixed(1)} ${prod.resource}.`);
         }
     });
+
+    // --- Idle worker foraging (AFK passive income) ---
+    // Idle workers passively gather small amounts of food and water each day.
+    // This keeps the settlement alive while the player is away.
+    const idleWorkers = gameState.availableWorkers;
+    if (idleWorkers > 0) {
+        const foodForaged = idleWorkers;
+        const waterForaged = idleWorkers;
+        addResource('food', foodForaged);
+        addResource('water', waterForaged);
+        logEvent(`${idleWorkers} idle worker${idleWorkers > 1 ? 's' : ''} foraged ${foodForaged} food and ${waterForaged} water.`);
+    }
+
     updateDisplay();
 }
