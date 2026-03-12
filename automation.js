@@ -171,17 +171,5 @@ export function runAutomation() {
         }
     });
 
-    // --- Idle worker foraging (AFK passive income) ---
-    // Idle workers passively gather small amounts of food and water each day.
-    // This keeps the settlement alive while the player is away.
-    const idleWorkers = gameState.availableWorkers;
-    if (idleWorkers > 0) {
-        const foodForaged = idleWorkers;
-        const waterForaged = idleWorkers;
-        addResource('food', foodForaged);
-        addResource('water', waterForaged);
-        logEvent(`${idleWorkers} idle worker${idleWorkers > 1 ? 's' : ''} foraged ${foodForaged} food and ${waterForaged} water.`);
-    }
-
     updateDisplay();
 }
