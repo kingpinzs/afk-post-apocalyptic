@@ -392,6 +392,19 @@ function _applyPayload(payload) {
     if (Array.isArray(payload.activeEvents)) {
         setActiveEvents(payload.activeEvents.map(e => ({ ...e })));
     }
+
+    // --- Recalculate availableWorkers from actual state ---
+    // Accounts for sick members, exploring workers, automation, and active work.
+    const sickCount = (gameState.populationMembers || []).filter(m => m.sick).length;
+    const exploringWorkers = (gameState.explorations || [])
+        .filter(e => e.inProgress)
+        .reduce((sum, e) => sum + (e.workersOut || 1), 0);
+    const automationWorkers = Object.values(gameState.automationAssignments || {})
+        .reduce((sum, v) => sum + v, 0);
+    const activeWorkCount = gameState.activeWork.length;
+    gameState.availableWorkers = Math.max(0,
+        gameState.population - sickCount - exploringWorkers - automationWorkers - activeWorkCount
+    );
 }
 
 /**
