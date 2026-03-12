@@ -153,10 +153,13 @@ export function updateCraftableItems() {
             const button = document.createElement('button');
 
             if (item._locked) {
-                // Locked item — grayed out, not craftable
+                // Locked item — grayed out, show requirements so player knows what to gather
+                const reqText = Object.entries(item.requirements)
+                    .map(([resource, amount]) => `${amount} ${resource}`)
+                    .join(', ');
                 const lockText = item._meetsKnowledge
-                    ? `${item.name} — Study to unlock`
-                    : `${item.name} — Requires ${item.knowledgeRequired} knowledge`;
+                    ? `${item.name} (${reqText}) — Study to unlock`
+                    : `${item.name} (${reqText}) — Requires ${item.knowledgeRequired} knowledge`;
                 button.textContent = lockText;
                 button.disabled = true;
                 button.classList.add('locked-item');
