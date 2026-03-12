@@ -84,6 +84,7 @@ export function updateCraftableItems() {
 
     config.items.forEach(item => {
         if (gameState.craftedItems[item.id]) return;
+        if (gameState.craftingQueue.some(q => q.item.id === item.id)) return;
 
         const isFeatureGate = config.unlockPuzzles.some(p => p.unlocks === item.id);
         const hasPuzzleLock = !!item.puzzle && !isFeatureGate;
