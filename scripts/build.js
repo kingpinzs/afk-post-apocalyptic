@@ -1,35 +1,19 @@
 /**
  * build.js
- * Copies all web assets into dist/ for Capacitor to bundle into the APK.
- * No bundler needed — the game uses vanilla ES6 modules.
+ * Bundles all ES6 modules into a single bundle.js via esbuild,
+ * then copies web assets into dist/ for Capacitor to bundle into the APK.
  */
 
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
 
-// Files and directories to copy into dist/
+// Non-JS assets to copy (JS is handled by esbuild bundle)
 const ASSETS = [
     'index.html',
-    'game.js',
-    'gameState.js',
-    'resources.js',
-    'crafting.js',
-    'automation.js',
-    'events.js',
-    'ui.js',
-    'save.js',
-    'audio.js',
-    'effects.js',
-    'trading.js',
-    'exploration.js',
-    'quests.js',
-    'achievements.js',
-    'population.js',
-    'techtree.js',
-    'factions.js',
     'knowledge_data.json',
     'assets',
 ];
@@ -56,6 +40,14 @@ function copyRecursive(src, dest) {
 rmDir(DIST);
 fs.mkdirSync(DIST, { recursive: true });
 
+// Bundle all ES6 modules into a single file
+console.log('[build] Bundling JS modules with esbuild...');
+execFileSync('npx', ['esbuild', 'game.js', '--bundle', '--outfile=dist/bundle.js', '--format=iife'], {
+    cwd: ROOT,
+    stdio: 'inherit',
+});
+
+// Copy non-JS assets
 let copied = 0;
 for (const asset of ASSETS) {
     const src = path.join(ROOT, asset);
@@ -69,3 +61,4 @@ for (const asset of ASSETS) {
 }
 
 console.log(`[build] Copied ${copied} assets to dist/`);
+console.log('[build] Done.');
