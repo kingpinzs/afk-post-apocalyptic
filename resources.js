@@ -668,8 +668,35 @@ export function isStudyGateMet() {
     return true;
   }
 
+  // Re-evaluate gate against current stock (handles dev tools / trading / any non-gather source)
+  refreshStudyGate();
+
   // Check if all requirements have been gathered (all values <= 0)
   return Object.values(gameState.studyGateProgress).every(v => v <= 0);
+}
+
+/**
+ * Re-check study gate requirements against current resource stock.
+ * If the player now has enough of a gated resource (from dev tools, trade, etc.),
+ * mark that requirement as met. Clears the gate entirely if all met.
+ */
+export function refreshStudyGate() {
+  if (!gameState.studyGateProgress || Object.keys(gameState.studyGateProgress).length === 0) return;
+
+  const config = getConfig();
+  const gateAmount = config.constants.STUDY_GATE_AMOUNT || 5;
+  const scaledAmount = gateAmount * (1 + Math.floor(gameState.knowledge / 10));
+
+  for (const resource of Object.keys(gameState.studyGateProgress)) {
+    const inStock = gameState.resources[resource] || 0;
+    const remaining = scaledAmount - Math.floor(inStock);
+    gameState.studyGateProgress[resource] = Math.max(0, remaining);
+  }
+
+  if (Object.values(gameState.studyGateProgress).every(v => v <= 0)) {
+    gameState.studyGateProgress = {};
+    logEvent('Resources gathered! You can study again.');
+  }
 }
 
 /**
