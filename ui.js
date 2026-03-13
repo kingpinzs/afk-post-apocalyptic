@@ -571,57 +571,80 @@ export function updateCraftingTab() {
     }
 
     for (const item of items) {
-        const costText = formatCost(item.cost || {});
-        const canAfford = checkCost(item.cost || {});
+        const cost = item.cost || {};
+        const canAfford = checkCost(cost);
         const effectText = formatEffectsText(item.effect || {});
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'craft-btn-wrapper';
+        const card = document.createElement('div');
+        card.className = 'craft-card';
+        card.style.cssText = 'background:rgba(0,255,255,0.05); border:1px solid rgba(0,255,255,0.15); border-radius:6px; padding:10px; margin-bottom:8px;';
+
+        // Item name + craft button row
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;';
+
+        const nameEl = document.createElement('div');
+        nameEl.style.cssText = 'font-weight:bold; color:#00ffff; font-size:0.95em;';
+        nameEl.textContent = item.name;
+        header.appendChild(nameEl);
 
         const btn = document.createElement('button');
         btn.className = 'craft-item-btn';
         btn.dataset.itemId = item.id;
+        btn.dataset.itemName = item.name;
         btn.disabled = !canAfford;
-        btn.textContent = item.name;
-        if (costText) {
-            const costSpan = document.createElement('span');
-            costSpan.style.cssText = 'font-size:0.85em; color:#7f8c8d; margin-left:6px;';
-            costSpan.textContent = '[' + costText + ']';
-            btn.appendChild(costSpan);
-        }
+        btn.style.cssText = 'padding:4px 12px; font-size:0.8em; white-space:nowrap;';
+        btn.textContent = canAfford ? 'Craft' : 'Need Resources';
+        header.appendChild(btn);
 
-        const tooltip = document.createElement('div');
-        tooltip.className = 'item-tooltip';
+        card.appendChild(header);
 
-        const tooltipName = document.createElement('div');
-        tooltipName.className = 'tooltip-name';
-        tooltipName.textContent = item.name;
-        tooltip.appendChild(tooltipName);
-
+        // Description
         if (item.description) {
-            const tooltipDesc = document.createElement('div');
-            tooltipDesc.className = 'tooltip-desc';
-            tooltipDesc.textContent = item.description;
-            tooltip.appendChild(tooltipDesc);
+            const desc = document.createElement('div');
+            desc.style.cssText = 'font-size:0.8em; color:#7f8c8d; margin-bottom:6px;';
+            desc.textContent = item.description;
+            card.appendChild(desc);
         }
 
+        // Resource cost list
+        const costEntries = Object.entries(cost).filter(function(e) { return e[1] > 0; });
+        if (costEntries.length > 0) {
+            const costList = document.createElement('div');
+            costList.style.cssText = 'display:flex; flex-wrap:wrap; gap:4px 10px; margin-bottom:4px;';
+
+            for (const [resource, needed] of costEntries) {
+                const have = Math.floor(gameState.resources[resource] || 0);
+                const enough = have >= needed;
+
+                const tag = document.createElement('span');
+                tag.style.cssText = 'font-size:0.8em; padding:2px 6px; border-radius:3px; background:' +
+                    (enough ? 'rgba(46,204,113,0.15)' : 'rgba(231,76,60,0.15)') + '; color:' +
+                    (enough ? '#2ecc71' : '#e74c3c') + ';';
+                tag.textContent = capitalize(resource) + ': ' + have + '/' + needed;
+                costList.appendChild(tag);
+            }
+
+            card.appendChild(costList);
+        }
+
+        // Effects
         if (effectText) {
-            const tooltipEffect = document.createElement('div');
-            tooltipEffect.className = 'tooltip-effect';
-            tooltipEffect.textContent = effectText;
-            tooltip.appendChild(tooltipEffect);
+            const effectEl = document.createElement('div');
+            effectEl.style.cssText = 'font-size:0.75em; color:#e2b714; margin-top:4px;';
+            effectEl.textContent = effectText;
+            card.appendChild(effectEl);
         }
 
+        // Craft time
         if (item.craftTime) {
-            const tooltipTime = document.createElement('div');
-            tooltipTime.className = 'tooltip-time';
-            tooltipTime.textContent = 'Time: ' + item.craftTime + 's';
-            tooltip.appendChild(tooltipTime);
+            const timeEl = document.createElement('div');
+            timeEl.style.cssText = 'font-size:0.75em; color:#7f8c8d; margin-top:2px;';
+            timeEl.textContent = 'Craft time: ' + item.craftTime + 's';
+            card.appendChild(timeEl);
         }
 
-        wrapper.appendChild(btn);
-        wrapper.appendChild(tooltip);
-        container.appendChild(wrapper);
+        container.appendChild(card);
     }
 }
 
