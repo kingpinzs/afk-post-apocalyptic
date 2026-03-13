@@ -42,22 +42,30 @@ let saveInterval = null;
 // ─── Game Initialization ──────────────────────────────────────────────────────
 
 async function initializeGame() {
+  // ── Load config first ──────────────────────────────────────────────
   await loadGameConfig();
-  const config = getConfig();
 
-  // Phase 8: Multi-settlement initialisation
-  initSettlements();
-  initNetwork();
+  // Config-dependent early init (wrapped so button handlers still attach on failure)
+  try {
+    const config = getConfig();
 
-  // Show continue button if a v2 save exists
-  if (hasSave()) {
-    document.getElementById('continue-game').style.display = 'inline-block';
+    // Phase 8: Multi-settlement initialisation
+    initSettlements();
+    initNetwork();
+
+    // Show continue button if a v2 save exists
+    if (hasSave()) {
+      document.getElementById('continue-game').style.display = 'inline-block';
+    }
+
+    // Compute initial resource visibility
+    computeUnlockedResources();
+    updateGatheringVisibility();
+  } catch (err) {
+    console.error('[init] Config-dependent init failed:', err);
   }
 
-  // Compute initial resource visibility
-  computeUnlockedResources();
-  updateGatheringVisibility();
-
+  // ── Everything below is pure DOM wiring — must always run ──────────
   // Sound toggle — restore persisted mute preference
   initMuteState();
   const soundBtn = document.getElementById('sound-toggle');
@@ -909,4 +917,4 @@ function resetGame() {
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-initializeGame();
+initializeGame().catch(err => console.error('[bootstrap] initializeGame failed:', err));

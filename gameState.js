@@ -213,21 +213,31 @@ export const gameState = {
  * Merges initialState from config into gameState and syncs availableWorkers.
  */
 export async function loadGameConfig() {
-  try {
-    const response = await fetch('knowledge_data.json');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    gameConfig = await response.json();
+  // Try multiple URL forms for compatibility with Capacitor/WebView and browsers
+  const urls = ['./knowledge_data.json', 'knowledge_data.json'];
+  let lastError = null;
 
-    // Merge any initialState values from config (population, day, etc.)
-    if (gameConfig.initialState) {
-      Object.assign(gameState, gameConfig.initialState);
+  for (const url of urls) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      gameConfig = await response.json();
+
+      // Merge any initialState values from config (population, day, etc.)
+      if (gameConfig.initialState) {
+        Object.assign(gameState, gameConfig.initialState);
+      }
+      gameState.availableWorkers = gameState.population;
+      return; // Success — stop trying
+    } catch (error) {
+      lastError = error;
+      console.warn(`[config] Failed to load from ${url}:`, error.message);
     }
-    gameState.availableWorkers = gameState.population;
-  } catch (error) {
-    console.error('Failed to load game configuration:', error);
   }
+
+  console.error('[config] Could not load game configuration from any URL:', lastError);
 }
 
 /**
