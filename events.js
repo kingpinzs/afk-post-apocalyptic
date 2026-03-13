@@ -1,5 +1,5 @@
-import { gameState, getConfig } from './gameState.js';
-import { logEvent, updateDisplay, showMilestoneEvent } from './ui.js';
+import { gameState, getConfig, notifyTab } from './gameState.js';
+import { logEvent, updateDisplay, showMilestoneEvent, showFlashback } from './ui.js';
 import { addResource } from './resources.js';
 import { getEffect, hasEffect } from './effects.js';
 
@@ -13,6 +13,50 @@ export function checkForEvents() {
             triggerEvent(event);
         }
     });
+
+    // Check for lore flashback events (separate pool)
+    checkForLoreFlashbacks();
+}
+
+/**
+ * Check for random lore flashback events. These are rare "a memory surfaces"
+ * moments independent of study. Each lore event fires at most once.
+ */
+function checkForLoreFlashbacks() {
+    const config = getConfig();
+    const loreEvents = config.loreEvents || [];
+    if (loreEvents.length === 0) return;
+
+    // Initialize seenLoreEvents if needed
+    if (!gameState.seenLoreEvents) gameState.seenLoreEvents = [];
+
+    for (const loreEvent of loreEvents) {
+        // Skip already seen
+        if (gameState.seenLoreEvents.includes(loreEvent.id)) continue;
+
+        // Roll probability
+        const prob = loreEvent.probability || 0.05;
+        if (Math.random() < prob) {
+            // Trigger this lore flashback
+            gameState.seenLoreEvents.push(loreEvent.id);
+
+            // Add to collected lore
+            if (!gameState.collectedLore) gameState.collectedLore = [];
+            if (!gameState.collectedLore.some(l => l.id === loreEvent.id)) {
+                gameState.collectedLore.push({
+                    id: loreEvent.id,
+                    chronologicalOrder: loreEvent.chronologicalOrder,
+                    text: loreEvent.loreText,
+                    source: 'event'
+                });
+            }
+
+            // Show the flashback
+            showFlashback(loreEvent.loreText);
+            notifyTab('book');
+            return; // Only one per day
+        }
+    }
 }
 
 function triggerEvent(event) {

@@ -61,4 +61,8 @@ for (const asset of ASSETS) {
 }
 
 console.log(`[build] Copied ${copied} assets to dist/`);
+
+// Also copy bundle.js to root for local dev server (serves from root, not dist/)
+fs.copyFileSync(path.join(DIST, 'bundle.js'), path.join(ROOT, 'bundle.js'));
+console.log('[build] Copied bundle.js to root for dev server.');
 console.log('[build] Done.');

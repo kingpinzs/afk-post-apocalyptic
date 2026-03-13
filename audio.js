@@ -292,6 +292,25 @@ export function playUnlock() {
 }
 
 /**
+ * playWrong - Short descending tone indicating a wrong puzzle answer.
+ *
+ * Character: Two quick descending notes (minor second) using a square wave,
+ *            evoking a "nope" / buzzer feeling without being too harsh.
+ * Duration:  ~0.30 s
+ */
+export function playWrong() {
+    const ctx = _ctx();
+    if (!ctx || _muted) return;
+
+    const now = ctx.currentTime;
+    const dest = ctx.destination;
+
+    // Descending minor second: Bb4 → A4
+    _scheduleNote(ctx, dest, 'square', 466, now,        0.15, 0.20, 0.005, 0.08);
+    _scheduleNote(ctx, dest, 'square', 370, now + 0.12, 0.18, 0.18, 0.005, 0.10);
+}
+
+/**
  * playGameOver - Descending somber tone indicating the game is over.
  *
  * Character: A slow descending minor scale passage using a sawtooth wave

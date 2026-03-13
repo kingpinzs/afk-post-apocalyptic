@@ -7,20 +7,20 @@
  * and game lifecycle (new game, continue, reset).
  *
  * The game loop runs once per second. Day advancement is controlled by
- * gameState.settings.daySpeed (seconds per day, default 60).
+ * gameState.settings.daySpeed (seconds per day, default 600 = 10 real minutes).
  */
 
 // ─── Imports ──────────────────────────────────────────────────────────────────
 
-import { gameState, loadGameConfig, getConfig, getConfigSafe, computeUnlockedResources, getWorkbenchLevel, resetSettlementState } from './gameState.js';
-import { gatherResource, consumeResources, capResources, checkPopulationGrowth, study, submitPuzzleAnswer, clearActiveIntervals, resetGathering, getGatherCount, skipPuzzle, getPuzzleHint } from './resources.js';
+import { gameState, loadGameConfig, getConfig, getConfigSafe, computeUnlockedResources, getWorkbenchLevel, resetSettlementState, notifyTab, getResourceCap } from './gameState.js';
+import { gatherResource, consumeResources, capResources, checkPopulationGrowth, study, submitPuzzleAnswer, submitPuzzleChoice, clearActiveIntervals, resetGathering, getGatherCount, skipPuzzle, getPuzzleHint } from './resources.js';
 import { getCraftableItems, startCrafting, getUpgradeOptions, clearCraftingInterval, getCraftingQueue } from './crafting.js';
 import { runDailyProduction, getProductionSummary, assignWorkerToSingle, assignWorkerToMultiple, unassignAllWorkers } from './automation.js';
 import { checkForEvents, updateActiveEvents, resetActiveEvents, updateWeather, checkMilestoneEvents } from './events.js';
-import { updateDisplay, logEvent, initUI, switchTab, updateHUD, showPuzzlePopup, hidePuzzlePopup, showGameOver, showVictory, showAchievementToast, updateGatheringButtons, updateCraftingQueueDisplay, updateSettlementTab, updateBookTab, updateCraftingTab, updateProductionTab, updateExplorationTab, updateWorldTab, clearEventLog, updateDayNightCycle, updateTimeDisplay, updateTimeEmoji, updateGatheringVisibility, updateTradingSection, updateExplorationSection, updateQuestsSection, updateAchievementsSection, updatePopulationSection, updateFactionsSection, updateStatsSection, getShareableStats, showUnlockPuzzle, showItemUnlockPuzzle, submitUnlockPuzzleAnswer, submitItemUnlockPuzzleAnswer, findNextItemUnlock, updateWorkingSection, updateNetworkTab } from './ui.js';
+import { updateDisplay, logEvent, initUI, switchTab, updateHUD, showPuzzlePopup, hidePuzzlePopup, showGameOver, showVictory, showAchievementToast, updateGatheringButtons, updateCraftingQueueDisplay, updateSettlementTab, updateBookTab, updateCraftingTab, updateProductionTab, updateExplorationTab, updateWorldTab, clearEventLog, updateDayNightCycle, updateTimeDisplay, updateTimeEmoji, updateGatheringVisibility, updateTradingSection, updateExplorationSection, updateQuestsSection, updateAchievementsSection, updatePopulationSection, updateFactionsSection, updateStatsSection, getShareableStats, showUnlockPuzzle, showItemUnlockPuzzle, submitUnlockPuzzleAnswer, submitItemUnlockPuzzleAnswer, findNextItemUnlock, updateWorkingSection, updateNetworkTab, showFlashback, startLoreSlideshow, navigateLoreSlideshow, closeLoreSlideshow, preRenderAllTabs } from './ui.js';
 import { saveGame, loadGame, hasSave, deleteSave, exportSave, importSave } from './save.js';
 import { updatePopulation, initializePopulationMembers, addPopulationMember } from './population.js';
-import { initAudio, initMuteState, playClick, playGameOver, playVictory, playGather, playCraft, playUnlock, toggleMute, isMuted } from './audio.js';
+import { initAudio, initMuteState, playClick, playGameOver, playVictory, playGather, playCraft, playUnlock, playWrong, toggleMute, isMuted } from './audio.js';
 import { getEffect } from './effects.js';
 import { isExplorationUnlocked, getAvailableLocations, startExploration, updateExplorations } from './exploration.js';
 import { checkQuestAvailability, checkQuestCompletion } from './quests.js';
@@ -36,19 +36,17 @@ import { initNetwork, createSupplyLine, removeSupplyLine, processSupplyLines } f
 
 let gameLoopInterval = null;
 let dayTickCounter = 0;
+let mealsEatenToday = 0;  // Tracks meals consumed this day (0-3)
 let saveInterval = null;
 
 
 // ─── Game Initialization ──────────────────────────────────────────────────────
 
 async function initializeGame() {
-  // if (window.__dbg) window.__dbg('initializeGame() started');
-
   // ── Load config first ──────────────────────────────────────────────
   await loadGameConfig();
-  // if (window.__dbg) window.__dbg('loadGameConfig() done, config loaded: ' + !!getConfigSafe());
 
-  // Config-dependent early init (wrapped so button handlers still attach on failure)
+  // Config-dependent early init
   try {
     const config = getConfig();
 
@@ -56,18 +54,11 @@ async function initializeGame() {
     initSettlements();
     initNetwork();
 
-    // Show continue button if a v2 save exists
-    if (hasSave()) {
-      document.getElementById('continue-game').style.display = 'inline-block';
-    }
-
     // Compute initial resource visibility
     computeUnlockedResources();
     updateGatheringVisibility();
-    // if (window.__dbg) window.__dbg('Config init complete');
   } catch (err) {
     console.error('[init] Config-dependent init failed:', err);
-    // if (window.__dbg) window.__dbg('Config init FAILED: ' + err.message, '#ff4444');
   }
 
   // ── Everything below is pure DOM wiring — must always run ──────────
@@ -83,33 +74,18 @@ async function initializeGame() {
     });
   }
 
-  // ── Puzzle Popup Handlers ─────────────────────────────────────────────
-  document.getElementById('puzzle-submit')?.addEventListener('click', () => {
+  // ── Puzzle Popup Handlers (Multiple Choice) ────────────────────────────
+  document.getElementById('puzzle-choices')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.puzzle-choice');
+    if (!btn || btn.disabled) return;
     initAudio();
+
     const popup = document.getElementById('puzzle-popup');
     const type = popup?.dataset.puzzleType;
 
     if (type === 'study') {
-      // New study puzzle system (resources.js)
-      const answer = document.getElementById('puzzle-answer')?.value;
-      if (answer && submitPuzzleAnswer(answer)) {
-        popup.style.display = 'none';
-        logEvent('Blueprint unlocked!', 'success');
-        playUnlock();
-        updateDisplay();
-      } else {
-        logEvent('Incorrect answer. Try again or use a hint.', 'warning');
-      }
-    } else if (type === 'item_unlock') {
-      submitItemUnlockPuzzleAnswer();
-    } else {
-      submitUnlockPuzzleAnswer();
-    }
-  });
-
-  document.getElementById('puzzle-answer')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      document.getElementById('puzzle-submit')?.click();
+      const choiceIndex = parseInt(btn.dataset.choice, 10);
+      submitPuzzleChoice(choiceIndex);
     }
   });
 
@@ -131,34 +107,56 @@ async function initializeGame() {
   });
 
   document.getElementById('puzzle-hint')?.addEventListener('click', () => {
-    const hintsEl = document.getElementById('puzzle-hints');
-    if (!hintsEl) return;
+    initAudio();
+    getPuzzleHint();
+  });
 
-    // Track which hint we're on via dataset
-    const currentHint = parseInt(hintsEl.dataset.hintIndex || '0', 10);
-    const hint = getPuzzleHint(currentHint);
+  // ── Flashback Popup Handler ───────────────────────────────────────────
+  document.getElementById('flashback-close')?.addEventListener('click', () => {
+    const popup = document.getElementById('flashback-popup');
+    if (popup) popup.style.display = 'none';
+  });
 
-    if (hint) {
-      const hintDiv = document.createElement('div');
-      hintDiv.style.cssText = 'color:#e2b714; font-size:0.85em; margin-top:6px; padding:6px 8px; background:rgba(226,183,20,0.08); border-left:2px solid #e2b714; border-radius:4px;';
-      hintDiv.textContent = `Hint ${currentHint + 1}: ${hint}`;
-      hintsEl.appendChild(hintDiv);
-      hintsEl.dataset.hintIndex = currentHint + 1;
-    } else {
-      // No more progressive hints — fall back to letter hint
-      const popup = document.getElementById('puzzle-popup');
-      const answer = popup?.dataset.puzzleAnswer || '';
-      if (answer.length > 0) {
-        const hintDiv = document.createElement('div');
-        hintDiv.style.cssText = 'color:#f39c12; font-size:0.85em; margin-top:6px; padding:6px 8px; background:rgba(243,156,18,0.08); border-left:2px solid #f39c12; border-radius:4px;';
-        const firstLetter = answer.charAt(0).toUpperCase();
-        const blanks = '_'.repeat(answer.length - 1);
-        hintDiv.textContent = `Letter hint: ${firstLetter}${blanks} (${answer.length} letters)`;
-        hintsEl.appendChild(hintDiv);
-        // Disable hint button after all hints exhausted
-        document.getElementById('puzzle-hint').disabled = true;
-      }
-    }
+  // ── Lore Archive Handlers ─────────────────────────────────────────────
+  document.getElementById('lore-play-btn')?.addEventListener('click', () => {
+    startLoreSlideshow();
+  });
+
+  document.getElementById('lore-prev')?.addEventListener('click', () => {
+    navigateLoreSlideshow(-1);
+  });
+
+  document.getElementById('lore-next')?.addEventListener('click', () => {
+    navigateLoreSlideshow(1);
+  });
+
+  document.getElementById('lore-slideshow-close')?.addEventListener('click', () => {
+    closeLoreSlideshow();
+  });
+
+  // ── Memories Back Button ────────────────────────────────────────────
+  document.getElementById('lore-back-btn')?.addEventListener('click', () => {
+    const archive = document.getElementById('lore-archive');
+    const bookMain = document.getElementById('book-main-content');
+    if (archive) archive.classList.remove('active');
+    if (bookMain) bookMain.style.display = '';
+    // De-highlight the Memories nav button
+    document.querySelector('.memories-btn.active')?.classList.remove('active');
+  });
+
+  // ── World pseudo-tab (inside Camp) ─────────────────────────────────────
+  document.getElementById('world-view-btn')?.addEventListener('click', () => {
+    const worldView = document.getElementById('world-view');
+    const campMain = document.getElementById('camp-main-content');
+    if (worldView) worldView.style.display = '';
+    if (campMain) campMain.style.display = 'none';
+  });
+
+  document.getElementById('world-back-btn')?.addEventListener('click', () => {
+    const worldView = document.getElementById('world-view');
+    const campMain = document.getElementById('camp-main-content');
+    if (worldView) worldView.style.display = 'none';
+    if (campMain) campMain.style.display = '';
   });
 
   // ── Game Over / Victory Handlers ──────────────────────────────────────
@@ -183,60 +181,21 @@ async function initializeGame() {
     toggleTechTree();
   });
 
-  // ── Difficulty Selection ──────────────────────────────────────────────
-  document.querySelectorAll('.difficulty-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      gameState.difficulty = btn.dataset.difficulty;
-    });
+  // ── Restart Game Button (in World > Settings) ────────────────────────
+  document.getElementById('restart-game-btn')?.addEventListener('click', () => {
+    const popup = document.getElementById('restart-confirm-popup');
+    if (popup) popup.style.display = 'flex';
+  });
+  document.getElementById('restart-confirm-yes')?.addEventListener('click', () => {
+    document.getElementById('restart-confirm-popup').style.display = 'none';
+    resetGame();
+  });
+  document.getElementById('restart-confirm-no')?.addEventListener('click', () => {
+    document.getElementById('restart-confirm-popup').style.display = 'none';
   });
 
-  // ── New Game Button ───────────────────────────────────────────────────
-  document.getElementById('start-game')?.addEventListener('click', () => {
-    try {
-      initAudio();
-      playClick();
-      startNewGame();
-    } catch (err) {
-      console.error('[start] Failed:', err);
-    }
-  });
-
-  // ── Continue Game Button ──────────────────────────────────────────────
-  document.getElementById('continue-game')?.addEventListener('click', () => {
-    initAudio();
-    playClick();
-    if (loadGame()) {
-      gameState.gameStarted = true;
-      initSettlements();
-      initNetwork();
-      initializePopulationMembers();
-      initializeFactions();
-      showGameUI();
-      computeUnlockedResources();
-      updateGatheringVisibility();
-      updateDisplay();
-      updateDayNightCycle();
-      updateTradingSection();
-      updateExplorationSection();
-      updateQuestsSection();
-      updateAchievementsSection();
-      updateFactionsSection();
-      updateStatsSection();
-      updateNetworkTab();
-      checkQuestAvailability();
-      startGameLoop();
-      startAutoSave();
-      logEvent('Game loaded.');
-
-      // Show welcome-back popup if there was offline time
-      if (gameState._welcomeBackSummary) {
-        showWelcomeBack(gameState._welcomeBackSummary);
-        delete gameState._welcomeBackSummary;
-      }
-    }
-  });
+  // ── Dev Tools ──────────────────────────────────────────────────────────
+  setupDevTools();
 
   // ── Study Button ──────────────────────────────────────────────────────
   document.getElementById('study-btn')?.addEventListener('click', () => {
@@ -518,73 +477,231 @@ async function initializeGame() {
     });
   }
 
-  // if (window.__dbg) window.__dbg('All event listeners attached');
+  // ── Auto-start or auto-continue (no title screen) ──────────────────
+  // Show game UI immediately (behind splash screen)
+  document.getElementById('game-container').style.display = 'block';
+  document.getElementById('hud').style.display = 'flex';
+  document.getElementById('bottom-nav').style.display = 'flex';
+
+  if (hasSave()) {
+    // Continue from saved game
+    if (loadGame()) {
+      gameState.gameStarted = true;
+      initSettlements();
+      initNetwork();
+      initializePopulationMembers();
+      initializeFactions();
+      computeUnlockedResources();
+      updateGatheringVisibility();
+      preRenderAllTabs();
+      checkQuestAvailability();
+      startGameLoop();
+      startAutoSave();
+      logEvent('Game loaded.');
+
+      // Show welcome-back popup after splash dismisses
+      if (gameState._welcomeBackSummary) {
+        const summary = gameState._welcomeBackSummary;
+        delete gameState._welcomeBackSummary;
+        setTimeout(() => showWelcomeBack(summary), 2500);
+      }
+    }
+  } else {
+    // New game — first time playing
+    initSettlements();
+    initNetwork();
+    initializePopulationMembers();
+    initializeFactions();
+    gameState.gameStarted = true;
+    computeUnlockedResources();
+    updateGatheringVisibility();
+    preRenderAllTabs();
+    checkQuestAvailability();
+
+    logEvent('You wake up alone in the wilderness. You have nothing but a worn book.', 'story');
+    logEvent('Study the Book to learn how to survive.', 'info');
+
+    startGameLoop();
+    startAutoSave();
+
+    // Show tutorial on first play
+    if (!localStorage.getItem('postapoc_tutorial_seen')) {
+      setTimeout(() => {
+        const overlay = document.getElementById('tutorial-overlay');
+        if (overlay) overlay.classList.add('active');
+      }, 2500);
+    }
+  }
+
+  // ── Dismiss splash after pre-render + font load ──────────────────
+  const waitForFonts = new Promise(resolve => {
+    if (window.__fontsLoaded) return resolve();
+    const check = setInterval(() => {
+      if (window.__fontsLoaded) { clearInterval(check); resolve(); }
+    }, 100);
+    setTimeout(() => { clearInterval(check); resolve(); }, 3000);
+  });
+  const minDelay = new Promise(r => setTimeout(r, 2000));
+  Promise.all([waitForFonts, minDelay]).then(() => {
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+      splash.classList.add('dismissed');
+      setTimeout(() => { splash.style.display = 'none'; }, 900);
+    }
+  });
+}
+
+
+// ─── Dev Tools ───────────────────────────────────────────────────────────────
+
+function setupDevTools() {
+  // Toggle dev tools panel
+  const header = document.querySelector('#dev-tools-card .section-header');
+  const content = document.getElementById('dev-tools-content');
+  if (header && content) {
+    header.addEventListener('click', () => {
+      const open = content.style.display !== 'none';
+      content.style.display = open ? 'none' : 'block';
+      const arrow = header.querySelector('.toggle-arrow');
+      if (arrow) arrow.textContent = open ? '\u25BC' : '\u25B2';
+    });
+  }
+
+  // Day speed selector
+  document.getElementById('dev-day-speed')?.addEventListener('change', (e) => {
+    const speed = parseInt(e.target.value, 10);
+    if (speed > 0) {
+      gameState.settings.daySpeed = speed;
+      logEvent(`[Dev] Day speed set to ${speed}s.`);
+    }
+  });
+
+  // Skip days
+  document.getElementById('dev-skip-day')?.addEventListener('click', () => {
+    advanceDay();
+    logEvent('[Dev] Skipped 1 day.');
+    updateDisplay();
+  });
+  document.getElementById('dev-skip-week')?.addEventListener('click', () => {
+    for (let i = 0; i < 7; i++) advanceDay();
+    logEvent('[Dev] Skipped 7 days.');
+    updateDisplay();
+  });
+
+  // Add resources (delegated, respects cap)
+  document.getElementById('dev-tools-content')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.dev-add-res');
+    if (btn) {
+      const res = btn.dataset.res;
+      const amt = parseInt(btn.dataset.amt, 10) || 50;
+      const cap = getResourceCap(res);
+      const current = gameState.resources[res] || 0;
+      const added = Math.min(amt, cap - current);
+      if (added > 0) {
+        gameState.resources[res] = current + added;
+        logEvent(`[Dev] Added ${added} ${res}.`);
+      } else {
+        logEvent(`[Dev] ${res} already at cap (${cap}).`);
+      }
+      updateDisplay();
+    }
+  });
+
+  // Fill all resources to their caps
+  document.getElementById('dev-fill-all')?.addEventListener('click', () => {
+    const config = getConfig();
+    const allRes = (config.resources?.raw || []).concat(['food', 'water']);
+    allRes.forEach(r => {
+      gameState.resources[r] = getResourceCap(r);
+    });
+    logEvent('[Dev] Filled all resources to cap.');
+    updateDisplay();
+  });
+
+  // Clear study gate
+  document.getElementById('dev-clear-gate')?.addEventListener('click', () => {
+    gameState.studyGateProgress = {};
+    logEvent('[Dev] Study gate cleared.');
+    updateDisplay();
+  });
+
+  // Add knowledge
+  document.getElementById('dev-add-knowledge')?.addEventListener('click', () => {
+    gameState.knowledge += 20;
+    gameState.maxKnowledge = Math.max(gameState.maxKnowledge, gameState.knowledge);
+    logEvent('[Dev] Added 20 knowledge.');
+    updateDisplay();
+  });
+
+  // Add population
+  document.getElementById('dev-add-pop')?.addEventListener('click', () => {
+    gameState.population++;
+    gameState.availableWorkers++;
+    addPopulationMember();
+    logEvent('[Dev] Added 1 population.');
+    updateDisplay();
+  });
+
+  // Unlock all blueprints
+  document.getElementById('dev-unlock-all')?.addEventListener('click', () => {
+    const config = getConfig();
+    if (config.items) {
+      config.items.forEach(item => {
+        if (!gameState.unlockedBlueprints.includes(item.id)) {
+          gameState.unlockedBlueprints.push(item.id);
+        }
+      });
+    }
+    computeUnlockedResources();
+    logEvent('[Dev] Unlocked all blueprints.');
+    updateDisplay();
+  });
+
+  // Dump gameState to console
+  document.getElementById('dev-dump-state')?.addEventListener('click', () => {
+    console.log('[Dev] gameState:', JSON.parse(JSON.stringify(gameState)));
+    logEvent('[Dev] GameState logged to console (F12).');
+  });
+
+  // Heal all sick members
+  document.getElementById('dev-heal-all')?.addEventListener('click', () => {
+    (gameState.populationMembers || []).forEach(m => {
+      if (m.sick) {
+        m.sick = false;
+        m.sickDaysRemaining = 0;
+        m.health = Math.min(100, m.health + 30);
+      }
+    });
+    // Recalculate workers
+    const sickCount = 0;
+    const exploringWorkers = (gameState.explorations || [])
+      .filter(e => e.inProgress)
+      .reduce((sum, e) => sum + (e.workersOut || 1), 0);
+    let automationWorkers = 0;
+    for (const count of Object.values(gameState.automationAssignments || {})) {
+      automationWorkers += count || 0;
+    }
+    for (const chainId of Object.keys(gameState.multipleBuildings || {})) {
+      for (const instance of (gameState.multipleBuildings[chainId] || [])) {
+        automationWorkers += instance.workersAssigned || 0;
+      }
+    }
+    gameState.availableWorkers = Math.max(0, gameState.population - sickCount - exploringWorkers - automationWorkers);
+    logEvent('[Dev] Healed all sick members.');
+    updateDisplay();
+  });
+
+  // Sync day speed selector with current setting on load
+  const speedSelect = document.getElementById('dev-day-speed');
+  if (speedSelect) {
+    const current = gameState.settings?.daySpeed || 600;
+    const option = speedSelect.querySelector(`option[value="${current}"]`);
+    if (option) option.selected = true;
+  }
 }
 
 
 // ─── Game Lifecycle ───────────────────────────────────────────────────────────
-
-function startNewGame() {
-  // Hide title screen with fade
-  showGameUI();
-
-  // Show tutorial on first play
-  if (!localStorage.getItem('postapoc_tutorial_seen')) {
-    const overlay = document.getElementById('tutorial-overlay');
-    if (overlay) overlay.classList.add('active');
-  }
-
-  // Phase 8: Multi-settlement initialisation
-  initSettlements();
-  initNetwork();
-
-  // Initialize population
-  initializePopulationMembers();
-
-  // Initialize factions
-  initializeFactions();
-
-  // Set game started flag
-  gameState.gameStarted = true;
-
-  // Compute initial resource visibility
-  computeUnlockedResources();
-  updateGatheringVisibility();
-
-  // Initial display update
-  updateDisplay();
-  updateNetworkTab();
-  checkQuestAvailability();
-
-  // Log welcome messages
-  logEvent('You wake up alone in the wilderness. You have nothing but a worn book.', 'story');
-  logEvent('Study the Book to learn how to survive.', 'info');
-
-  // Start game loop and auto-save
-  startGameLoop();
-  startAutoSave();
-}
-
-function showGameUI() {
-  const titleScreen = document.getElementById('title-screen');
-  if (titleScreen) {
-    titleScreen.style.opacity = '0';
-    setTimeout(() => {
-      titleScreen.style.display = 'none';
-      document.getElementById('game-container').style.display = 'block';
-      document.getElementById('hud').style.display = 'flex';
-      document.getElementById('bottom-nav').style.display = 'flex';
-    }, 1000);
-  }
-}
-
-function hideGameUI() {
-  document.getElementById('game-container').style.display = 'none';
-  document.getElementById('hud').style.display = 'none';
-  document.getElementById('bottom-nav').style.display = 'none';
-  document.getElementById('title-screen').style.display = 'flex';
-  document.getElementById('title-screen').style.opacity = '1';
-}
 
 
 // ─── Game Loop ────────────────────────────────────────────────────────────────
@@ -592,6 +709,7 @@ function hideGameUI() {
 function startGameLoop() {
   if (gameLoopInterval) clearInterval(gameLoopInterval);
   dayTickCounter = 0;
+  mealsEatenToday = 0;
 
   gameLoopInterval = setInterval(() => {
     if (!gameState.gameStarted || gameState.isGameOver) return;
@@ -599,7 +717,7 @@ function startGameLoop() {
     gameState.time++;
     dayTickCounter++;
 
-    const daySpeed = gameState.settings?.daySpeed || 30;
+    const daySpeed = gameState.settings?.daySpeed || 600;
 
     // === Per-Second Updates ===
     updateTimeEmoji();
@@ -609,10 +727,26 @@ function startGameLoop() {
     checkSurvival();
     updateDisplay();
 
+    // === Meal Consumption (3 meals spread across the day) ===
+    const mealInterval = Math.floor(daySpeed / 3);
+    const mealsExpected = Math.min(3, Math.floor(dayTickCounter / mealInterval));
+    if (mealsExpected > mealsEatenToday) {
+      consumeResources(mealsExpected - mealsEatenToday);
+      mealsEatenToday = mealsExpected;
+    }
+
+    // === Flush deferred events once study finishes ===
+    if (!gameState.isStudying && gameState._pendingEventCheck) {
+      gameState._pendingEventCheck = false;
+      checkForEvents();
+      checkMilestoneEvents();
+    }
+
     // === Day Advancement ===
     if (dayTickCounter >= daySpeed) {
       dayTickCounter = 0;
       advanceDay();
+      mealsEatenToday = 0;
     }
   }, 1000);
 }
@@ -622,8 +756,12 @@ function advanceDay() {
   gameState.totalDaysPlayed++;
   gameState.stats.totalDaysInSettlement = (gameState.stats.totalDaysInSettlement || 0) + 1;
 
-  // Resource consumption
-  consumeResources();
+  // Meals are consumed gradually during the day (3 meal ticks in game loop).
+  // Catch any remaining fraction if rounding left a meal unconsumed.
+  if (mealsEatenToday < 3) {
+    consumeResources(3 - mealsEatenToday);
+    mealsEatenToday = 3;
+  }
 
   // Production (workers produce resources)
   runDailyProduction();
@@ -633,6 +771,14 @@ function advanceDay() {
 
   // Population update (health, happiness, skills, sickness)
   updatePopulation();
+
+  // Snapshot counts for badge notifications
+  const _prevPop = gameState.population;
+  const _prevQuests = (gameState.activeQuests || []).length;
+  const _prevAchievements = (gameState.achievements || []).length;
+  const _prevFactions = (gameState.factions || []).length;
+  const _prevTraders = (gameState.traderVisits || []).length;
+  const _prevDiscovered = (gameState.discoveredLocations || []).length;
 
   // Population growth check
   checkPopulationGrowth();
@@ -650,10 +796,14 @@ function advanceDay() {
     advanceSeason();
   }
 
-  // Events
+  // Events — defer new event checks while the player is studying
   updateActiveEvents();
-  checkForEvents();
-  checkMilestoneEvents();
+  if (!gameState.isStudying) {
+    checkForEvents();
+    checkMilestoneEvents();
+  } else {
+    gameState._pendingEventCheck = true;
+  }
 
   // Exploration progress
   updateExplorations();
@@ -672,6 +822,14 @@ function advanceDay() {
   checkQuestAvailability();
   checkQuestCompletion();
   checkAchievements();
+
+  // ── Badge notifications for changes that happened this day ──
+  if (gameState.population > _prevPop) notifyTab('settlement', gameState.population - _prevPop);
+  if ((gameState.activeQuests || []).length > _prevQuests) notifyTab('world');
+  if ((gameState.achievements || []).length > _prevAchievements) notifyTab('world');
+  if ((gameState.factions || []).length > _prevFactions) notifyTab('world');
+  if ((gameState.traderVisits || []).length > _prevTraders) notifyTab('world');
+  if ((gameState.discoveredLocations || []).length > _prevDiscovered) notifyTab('exploration');
 
   // Update section displays that need daily refresh
   updateTradingSection();
@@ -886,6 +1044,11 @@ function resetGame() {
   gameState.factions = [];
   gameState.settlements = [];
   gameState.supplyLines = [];
+  gameState.collectedLore = [];
+  gameState.seenLoreEvents = [];
+  gameState.tabNotifications = {};
+  gameState.isStudying = false;
+  gameState._pendingEventCheck = false;
 
   gameState.isGameOver = false;
   gameState.gameStarted = true;
@@ -908,17 +1071,11 @@ function resetGame() {
   clearEventLog();
   computeUnlockedResources();
   updateGatheringVisibility();
-  updateDisplay();
-  updateDayNightCycle();
-  updateTradingSection();
-  updateExplorationSection();
-  updateQuestsSection();
-  updateAchievementsSection();
-  updatePopulationSection();
-  updateFactionsSection();
-  updateStatsSection();
-  updateNetworkTab();
+  preRenderAllTabs();
   checkQuestAvailability();
+
+  logEvent('You wake up alone in the wilderness. You have nothing but a worn book.', 'story');
+  logEvent('Study the Book to learn how to survive.', 'info');
 
   // Restart game loop
   startGameLoop();

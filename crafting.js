@@ -21,7 +21,8 @@ import {
   hasWorkstation,
   getWorkbenchLevel,
   generateInstanceId,
-  getWorkbenchSpeedMultiplier
+  getWorkbenchSpeedMultiplier,
+  notifyTab
 } from './gameState.js';
 import { getEffect } from './effects.js';
 
@@ -122,7 +123,7 @@ function getResourceBreakdown(requirements) {
  * @param {object} item - Item from config.
  * @returns {boolean}
  */
-function isAlreadyBuilt(item) {
+export function isAlreadyBuilt(item) {
   const config = getConfig();
   const chainConfig = config.chains[item.chain];
   if (!chainConfig) return false;
@@ -462,6 +463,9 @@ function completeCrafting(queueItem) {
 
   // ── Update stats ──────────────────────────────────────────────────────
   gameState.stats.totalCrafted = (gameState.stats.totalCrafted || 0) + 1;
+
+  // Notify Settlement tab about new building/tool
+  notifyTab('settlement');
 }
 
 

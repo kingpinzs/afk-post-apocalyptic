@@ -41,10 +41,21 @@ export const gameState = {
     hunting: 0
   },
 
+  // Lore collection (global, persists across settlements)
+  collectedLore: [],            // [{ id, chronologicalOrder, text, source }]
+  seenLoreEvents: [],           // event IDs already shown (prevents repeats)
+
   difficulty: 'normal',
   settings: {
-    daySpeed: 60                // seconds per game day
+    daySpeed: 600               // seconds per game day (must match DAY_LENGTH for clock sync)
   },
+
+  // Tab notification badges (new things count per tab, capped at 99)
+  tabNotifications: {},         // { book: 2, crafting: 1, ... }
+
+  // Study pause flag — when true, events are deferred until study completes
+  isStudying: false,
+  _pendingEventCheck: false,
 
   // ═══════════════════════════════════════════════════════════════════════════
   // CURRENT SETTLEMENT
@@ -171,9 +182,10 @@ export const gameState = {
 
   // Study state
   currentChapter: 1,
-  studyProgress: 0,            // progress toward next page
+  studyBarProgress: 0,         // progress bar 0-100 for current study animation
   pendingPuzzle: null,
   studyGateProgress: {},       // track study gate requirements
+  itemStudyProgress: {},       // per-item study tracking: { itemId: { studyCount, totalStudies, flashbackSlots, flashbacksShown } }
 
   // Stats
   stats: {
@@ -281,12 +293,20 @@ export function computeUnlockedResources() {
     return [];
   }
 
-  // New system: check blueprints for revealsResources
+  // Auto-unlock resources needed by unlocked blueprints
   if (config.items) {
+    const allRaw = new Set(config.resources?.raw || []);
     for (const blueprintId of gameState.unlockedBlueprints) {
       const item = config.items.find(i => i.id === blueprintId);
-      if (item && item.revealsResources) {
+      if (!item) continue;
+      // Explicit revealsResources field
+      if (item.revealsResources) {
         item.revealsResources.forEach(r => unlocked.add(r));
+      }
+      // Auto-reveal any raw resource in the item's requirements
+      const reqs = item.requirements || item.cost || {};
+      for (const r of Object.keys(reqs)) {
+        if (allRaw.has(r)) unlocked.add(r);
       }
     }
   }
@@ -298,6 +318,12 @@ export function computeUnlockedResources() {
         unlocked.add(resource);
       } else if (rule.type === 'blueprint' && gameState.unlockedBlueprints.includes(rule.requires)) {
         unlocked.add(resource);
+      } else if (rule.type === 'chapter') {
+        // Unlock when the player's current chapter >= the required chapter
+        const currentChapter = (gameState.buildings?.knowledge?.level || 0) + 1;
+        if (currentChapter >= (rule.requires || 1)) {
+          unlocked.add(resource);
+        }
       } else if (rule.type === 'building') {
         // Check if the required building chain is built
         const building = gameState.buildings[rule.requires];
@@ -561,7 +587,9 @@ export function serializeState() {
       tools: JSON.parse(JSON.stringify(gameState.tools)),
       difficulty: gameState.difficulty,
       settings: { ...gameState.settings },
-      factions: JSON.parse(JSON.stringify(gameState.factions))
+      factions: JSON.parse(JSON.stringify(gameState.factions)),
+      collectedLore: JSON.parse(JSON.stringify(gameState.collectedLore)),
+      seenLoreEvents: [...gameState.seenLoreEvents]
     },
 
     currentSettlement: {
@@ -592,9 +620,10 @@ export function serializeState() {
       activeTrades: JSON.parse(JSON.stringify(gameState.activeTrades)),
       activeQuests: JSON.parse(JSON.stringify(gameState.activeQuests)),
       currentChapter: gameState.currentChapter,
-      studyProgress: gameState.studyProgress,
+      studyBarProgress: gameState.studyBarProgress,
       pendingPuzzle: gameState.pendingPuzzle,
       studyGateProgress: { ...gameState.studyGateProgress },
+      itemStudyProgress: JSON.parse(JSON.stringify(gameState.itemStudyProgress)),
       stats: { ...gameState.stats }
     },
 
@@ -626,8 +655,10 @@ export function deserializeState(saveData) {
   gameState.totalDaysPlayed = g.totalDaysPlayed ?? 0;
   gameState.toolLevels = g.toolLevels ?? { cutting: 0, chopping: 0, mining: 0, construction: 0, farming: 0, fishing: 0, hunting: 0 };
   gameState.difficulty = g.difficulty ?? 'normal';
-  gameState.settings = g.settings ?? { daySpeed: 60 };
+  gameState.settings = g.settings ?? { daySpeed: 600 };
   gameState.factions = g.factions ?? [];
+  gameState.collectedLore = g.collectedLore ?? [];
+  gameState.seenLoreEvents = g.seenLoreEvents ?? [];
 
   // Tools (global, portable)
   if (g.tools) {
@@ -690,9 +721,10 @@ export function deserializeState(saveData) {
 
   // Study
   gameState.currentChapter = s.currentChapter ?? 1;
-  gameState.studyProgress = s.studyProgress ?? 0;
+  gameState.studyBarProgress = s.studyBarProgress ?? s.studyProgress ?? 0;
   gameState.pendingPuzzle = s.pendingPuzzle ?? null;
   gameState.studyGateProgress = s.studyGateProgress ?? {};
+  gameState.itemStudyProgress = s.itemStudyProgress ?? {};
 
   // Stats
   gameState.stats = s.stats ?? {
@@ -720,11 +752,40 @@ export function deserializeState(saveData) {
   }
   instanceCounter = maxInst;
 
+  // Reset transient study state (intervals don't persist across reloads)
+  gameState.isStudying = false;
+  gameState.studyBarProgress = 0;
+
   return true;
 }
 
 
 // ─── Reset Helper ─────────────────────────────────────────────────────────────
+
+// ─── Tab Notification Helpers ─────────────────────────────────────────────────
+
+/**
+ * Increment the notification badge count for a tab.
+ * Capped at 99.  The badge is cleared when the player visits that tab.
+ *
+ * @param {string} tabName - Tab name (settlement, book, crafting, production, exploration, world, network)
+ * @param {number} [amount=1] - Amount to add.
+ */
+export function notifyTab(tabName, amount) {
+  if (!gameState.tabNotifications) gameState.tabNotifications = {};
+  const current = gameState.tabNotifications[tabName] || 0;
+  gameState.tabNotifications[tabName] = Math.min(99, current + (amount || 1));
+}
+
+/**
+ * Clear the notification badge for a tab (player visited it).
+ * @param {string} tabName
+ */
+export function clearTabNotification(tabName) {
+  if (!gameState.tabNotifications) gameState.tabNotifications = {};
+  gameState.tabNotifications[tabName] = 0;
+}
+
 
 /**
  * Reset the current settlement state while preserving global progress.
@@ -772,9 +833,10 @@ export function resetSettlementState() {
   gameState.activeTrades = [];
   gameState.activeQuests = [];
   gameState.currentChapter = 1;
-  gameState.studyProgress = 0;
+  gameState.studyBarProgress = 0;
   gameState.pendingPuzzle = null;
   gameState.studyGateProgress = {};
+  gameState.itemStudyProgress = {};
   gameState.stats = {
     totalGathered: 0, totalCrafted: 0, totalExplored: 0,
     totalTraded: 0, totalStudied: 0, totalDaysInSettlement: 0

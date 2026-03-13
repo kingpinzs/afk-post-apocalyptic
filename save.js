@@ -100,7 +100,7 @@ export function loadGame() {
 
     // ── AFK / Offline Progression ──────────────────────────────────────
     const offlineMs = Date.now() - (saveData.timestamp || Date.now());
-    const daySpeed = gameState.settings?.daySpeed || 30;
+    const daySpeed = gameState.settings?.daySpeed || 600;
     const offlineDays = Math.floor(offlineMs / (1000 * daySpeed));
 
     if (offlineDays > 0) {
@@ -206,9 +206,12 @@ function recalculateAvailableWorkers() {
     }
   }
 
-  gameState.availableWorkers = Math.max(0,
-    gameState.population - sickCount - exploringWorkers - automationWorkers
-  );
+  const computed = gameState.population - sickCount - exploringWorkers - automationWorkers;
+
+  // Guarantee at least 1 worker for basic survival actions (gathering/studying)
+  // to prevent soft-lock when entire population is sick
+  const minWorkers = (gameState.population > 0 && automationWorkers === 0 && exploringWorkers === 0) ? 1 : 0;
+  gameState.availableWorkers = Math.max(minWorkers, computed);
 }
 
 

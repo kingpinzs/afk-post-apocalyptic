@@ -162,7 +162,8 @@ export function updatePopulation() {
       if (Math.random() < sickChance) {
         member.sick = true;
         member.sickDaysRemaining = Math.ceil(3 + Math.random() * 3);
-        if (gameState.availableWorkers > 0) gameState.availableWorkers--;
+        // Decrement workers but always keep at least 1 for basic survival
+        if (gameState.availableWorkers > 1) gameState.availableWorkers--;
         logEvent(`${member.name} has fallen ill!`);
       }
     }

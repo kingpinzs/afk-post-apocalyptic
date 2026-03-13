@@ -119,7 +119,7 @@ const SETTLEMENT_SNAPSHOT_KEYS = [
     // Gathering
     'gatheringEfficiency', 'gatheringModifiers', 'unlockedResources',
     // Study
-    'currentChapter', 'studyProgress', 'pendingPuzzle', 'studyGateProgress',
+    'currentChapter', 'studyBarProgress', 'pendingPuzzle', 'studyGateProgress', 'itemStudyProgress',
     // Events
     'activeEvents', 'seenMilestones',
     // Trading

@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" as="style">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap">
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
 
     <title>Advanced Survival and Civilization Rebuilder</title>
     <style>
@@ -45,6 +47,130 @@
             font-size: 1.1em;
             margin: 0 0 10px 0;
             color: #00ffff;
+        }
+
+        /* ================================================================
+           SPLASH SCREEN — cinematic load + transition overlay
+           ================================================================ */
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: #030508;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.8s ease;
+            overflow: hidden;
+        }
+        #splash-screen.dismissed {
+            opacity: 0;
+            pointer-events: none;
+        }
+        /* Atmospheric scan-line overlay */
+        #splash-screen::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,255,255,0.015) 2px,
+                rgba(0,255,255,0.015) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+        /* Slow moving light sweep */
+        #splash-screen::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(
+                ellipse at center,
+                rgba(0,255,255,0.04) 0%,
+                transparent 60%
+            );
+            animation: splash-sweep 4s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 1;
+        }
+        @keyframes splash-sweep {
+            0%   { transform: translate(-10%, -10%) scale(1); }
+            100% { transform: translate(10%, 10%) scale(1.2); }
+        }
+        .splash-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: 20px;
+        }
+        .splash-title {
+            font-family: 'Orbitron', monospace, sans-serif;
+            font-size: 1.4em;
+            font-weight: 700;
+            color: #00ffff;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow:
+                0 0 10px rgba(0,255,255,0.6),
+                0 0 30px rgba(0,255,255,0.3),
+                0 0 60px rgba(0,255,255,0.15);
+            margin-bottom: 8px;
+            animation: splash-title-glow 3s ease-in-out infinite alternate;
+        }
+        @keyframes splash-title-glow {
+            0%   { text-shadow: 0 0 10px rgba(0,255,255,0.6), 0 0 30px rgba(0,255,255,0.3); }
+            100% { text-shadow: 0 0 15px rgba(0,255,255,0.8), 0 0 40px rgba(0,255,255,0.4), 0 0 80px rgba(0,255,255,0.2); }
+        }
+        .splash-subtitle {
+            font-family: 'Orbitron', monospace, sans-serif;
+            font-size: 0.55em;
+            color: rgba(0,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            margin-bottom: 48px;
+        }
+        .splash-status {
+            font-family: 'Orbitron', monospace, sans-serif;
+            font-size: 0.65em;
+            color: rgba(0,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+        }
+        .splash-dots::after {
+            content: '';
+            animation: splash-dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes splash-dots {
+            0%   { content: ''; }
+            25%  { content: '.'; }
+            50%  { content: '..'; }
+            75%  { content: '...'; }
+        }
+        /* Horizontal progress line */
+        .splash-bar {
+            width: 200px;
+            height: 2px;
+            background: rgba(0,255,255,0.1);
+            border-radius: 1px;
+            margin: 20px auto 0;
+            overflow: hidden;
+        }
+        .splash-bar-fill {
+            height: 100%;
+            width: 30%;
+            background: linear-gradient(90deg, transparent, #00ffff, transparent);
+            animation: splash-bar-slide 1.5s ease-in-out infinite;
+        }
+        @keyframes splash-bar-slide {
+            0%   { transform: translateX(-100%); }
+            100% { transform: translateX(400%); }
         }
 
         /* ================================================================
@@ -308,6 +434,32 @@
             letter-spacing: 0.5px;
         }
 
+        /* Notification badge on tab buttons */
+        .nav-icon {
+            position: relative;
+        }
+        .nav-badge {
+            position: absolute;
+            top: -6px;
+            right: -10px;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 4px;
+            border-radius: 8px;
+            background: #e74c3c;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+            line-height: 16px;
+            text-align: center;
+            display: none;
+            box-shadow: 0 0 6px rgba(231,76,60,0.5);
+        }
+        .nav-badge.visible {
+            display: block;
+        }
+
         /* Desktop-only / Mobile-only responsive classes */
         .desktop-only {
             display: none;
@@ -488,18 +640,55 @@
             margin-bottom: 6px;
         }
 
+        .gather-action {
+            margin-bottom: 6px;
+        }
+
         .gather-btn {
-            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
             font-size: 11px;
-            padding: 8px 12px;
-            min-height: 40px;
-            min-width: 100px;
+            padding: 10px 12px;
+            min-height: 44px;
+            box-sizing: border-box;
+            text-align: left;
+        }
+
+        .gather-btn-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .gather-btn-name {
+            font-weight: 600;
+        }
+
+        .gather-btn-mult {
+            font-size: 0.85em;
+            color: #2ecc71;
+            opacity: 0.9;
+        }
+
+        .gather-btn-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85em;
+            color: #7f8c8d;
+        }
+
+        .gather-btn-amount {
+            color: #f39c12;
+            font-weight: 600;
+            font-size: 0.85em;
         }
 
         .resource-count {
-            font-size: 0.75em;
-            min-width: 55px;
-            text-align: center;
+            font-size: 0.85em;
+            color: #bdc3c7;
         }
 
         .gather-progress-container {
@@ -947,6 +1136,239 @@
         }
 
         /* ================================================================
+           PUZZLE MULTIPLE CHOICE
+           ================================================================ */
+        #puzzle-choices {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .puzzle-choice {
+            width: 100%;
+            min-height: 48px;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 8px;
+            color: #ecf0f1;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .puzzle-choice:hover:not(:disabled) {
+            border-color: #00ffff;
+            background: rgba(0, 255, 255, 0.1);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+        }
+
+        .puzzle-choice.correct {
+            border-color: #2ecc71;
+            background: rgba(46, 204, 113, 0.2);
+            box-shadow: 0 0 15px rgba(46, 204, 113, 0.4);
+            color: #2ecc71;
+        }
+
+        .puzzle-choice.wrong {
+            border-color: #e74c3c;
+            background: rgba(231, 76, 60, 0.2);
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.4);
+            color: #e74c3c;
+        }
+
+        .puzzle-choice.eliminated {
+            opacity: 0.3;
+            pointer-events: none;
+            text-decoration: line-through;
+        }
+
+        .puzzle-choice:disabled {
+            cursor: default;
+        }
+
+        #puzzle-feedback {
+            font-size: 0.8em;
+            min-height: 1.2em;
+            margin: 4px 0;
+        }
+
+        /* ================================================================
+           FLASHBACK POPUP
+           ================================================================ */
+        .popup.flashback {
+            background: rgba(30, 20, 10, 0.97);
+            border-color: rgba(218, 165, 32, 0.5);
+            box-shadow: 0 0 30px rgba(218, 165, 32, 0.3), 0 0 60px rgba(218, 165, 32, 0.15);
+            color: #d4a547;
+            animation: flashback-appear 0.8s ease-out;
+        }
+
+        .popup.flashback h2 {
+            color: #d4a547;
+            font-style: italic;
+            font-size: 0.95em;
+            text-shadow: 0 0 10px rgba(218, 165, 32, 0.3);
+        }
+
+        .popup.flashback #flashback-text {
+            font-style: italic;
+            font-size: 0.8em;
+            line-height: 1.7;
+            color: #c9a84c;
+            text-align: left;
+            padding: 12px;
+            background: rgba(218, 165, 32, 0.05);
+            border-radius: 8px;
+            border-left: 3px solid rgba(218, 165, 32, 0.3);
+        }
+
+        .popup.flashback button {
+            background: rgba(218, 165, 32, 0.15);
+            border-color: rgba(218, 165, 32, 0.4);
+            color: #d4a547;
+        }
+
+        .popup.flashback button:hover {
+            background: rgba(218, 165, 32, 0.25);
+        }
+
+        @keyframes flashback-appear {
+            0% {
+                opacity: 0;
+                filter: blur(8px);
+                transform: translate(-50%, -50%) scale(0.95);
+            }
+            100% {
+                opacity: 1;
+                filter: blur(0);
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        /* ================================================================
+           LORE ARCHIVE
+           ================================================================ */
+        #lore-archive {
+            display: none;
+        }
+
+        #lore-archive.active {
+            display: block;
+        }
+
+        /* When memories pseudo-tab is active, hide normal book content */
+        #lore-archive.active ~ #book-main-content,
+        #tab-book.memories-active #book-main-content {
+            display: none;
+        }
+
+        .lore-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .lore-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 0.7em;
+            font-weight: 700;
+            cursor: default;
+            transition: all 0.2s ease;
+        }
+
+        .lore-cell.collected {
+            background: rgba(218, 165, 32, 0.15);
+            border: 1px solid rgba(218, 165, 32, 0.4);
+            color: #d4a547;
+            cursor: pointer;
+        }
+
+        .lore-cell.collected:hover {
+            background: rgba(218, 165, 32, 0.25);
+            box-shadow: 0 0 8px rgba(218, 165, 32, 0.3);
+        }
+
+        .lore-cell.undiscovered {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.15);
+        }
+
+        .lore-counter {
+            font-size: 0.75em;
+            color: #d4a547;
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #lore-slideshow {
+            display: none;
+        }
+
+        #lore-slideshow.active {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        #lore-slideshow-text {
+            font-style: italic;
+            font-size: 0.8em;
+            line-height: 1.7;
+            color: #c9a84c;
+            text-align: left;
+            padding: 16px;
+            background: rgba(218, 165, 32, 0.05);
+            border-radius: 8px;
+            border-left: 3px solid rgba(218, 165, 32, 0.3);
+            min-height: 80px;
+            margin: 12px 0;
+        }
+
+        .lore-slideshow-nav {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .lore-slideshow-nav button {
+            padding: 6px 14px;
+            font-size: 0.7em;
+        }
+
+        .lore-slideshow-counter {
+            font-size: 0.7em;
+            color: #d4a547;
+        }
+
+        .memories-btn {
+            background: rgba(218, 165, 32, 0.15);
+            border-color: rgba(218, 165, 32, 0.4);
+            color: #d4a547;
+        }
+
+        .memories-btn:hover {
+            background: rgba(218, 165, 32, 0.25);
+        }
+
+        .memories-btn.active {
+            background: rgba(218, 165, 32, 0.3);
+            box-shadow: 0 0 8px rgba(218, 165, 32, 0.3);
+        }
+
+        /* ================================================================
            VICTORY POPUP
            ================================================================ */
         #victory-popup {
@@ -1211,11 +1633,7 @@
             bottom: 0;
             pointer-events: none;
             z-index: 0;
-            transition: background-color 2s ease;
-        }
-
-        #day-night-cycle.night {
-            background-color: rgba(0, 0, 20, 0.35);
+            transition: background 1.5s ease;
         }
 
         /* ================================================================
@@ -1331,28 +1749,30 @@
     </style>
 </head>
 <body>
-    <!-- ============================================================
-         TITLE SCREEN
-         ============================================================ -->
-    <div id="title-screen">
-        <h1>Advanced Survival and Civilization Rebuilder</h1>
-        <button id="start-game">New Game</button>
-        <button id="continue-game" style="display:none; margin-top:10px;">Continue</button>
-        <div id="difficulty-selector" style="margin-top:20px;">
-            <p style="font-size:0.7em; color:#7f8c8d; margin-bottom:10px;">Difficulty:</p>
-            <div id="difficulty-buttons" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
-                <button class="difficulty-btn" data-difficulty="casual" style="font-size:11px; padding:8px 14px;">Casual</button>
-                <button class="difficulty-btn selected" data-difficulty="normal" style="font-size:11px; padding:8px 14px;">Normal</button>
-                <button class="difficulty-btn" data-difficulty="hard" style="font-size:11px; padding:8px 14px;">Hard</button>
-                <button class="difficulty-btn" data-difficulty="apocalypse" style="font-size:11px; padding:8px 14px;">Apocalypse</button>
-            </div>
+    <!-- Splash screen — cinematic load + game transition overlay -->
+    <div id="splash-screen">
+        <div class="splash-content">
+            <div class="splash-title">Survival &amp; Civilization<br>Rebuilder</div>
+            <div class="splash-subtitle">A Post-Apocalyptic Journey</div>
+            <div class="splash-status"><span id="splash-status-text">Initializing</span><span class="splash-dots"></span></div>
+            <div class="splash-bar"><div class="splash-bar-fill"></div></div>
         </div>
-        <div id="mod-loader" style="margin-top:15px;">
-            <label style="font-size:0.65em; color:#7f8c8d; cursor:pointer;">
-                Load Custom Config: <input type="file" id="mod-file" accept=".json" style="display:none;">
-                <span style="color:#00ffff; text-decoration:underline;">Browse</span>
-            </label>
-            <span id="mod-status" style="font-size:0.65em; color:#7f8c8d;"></span>
+    </div>
+
+    <!-- Title screen removed — auto-start/continue handled by game.js -->
+    <div id="title-screen" style="display:none;"></div>
+
+    <!-- ============================================================
+         RESTART CONFIRMATION POPUP
+         ============================================================ -->
+    <div id="restart-confirm-popup" style="display:none; position:fixed; inset:0; z-index:99998; background:rgba(0,0,0,0.85); justify-content:center; align-items:center;">
+        <div style="background:#0d1117; border:1px solid rgba(255,60,60,0.4); border-radius:12px; padding:24px; max-width:320px; text-align:center;">
+            <h3 style="color:#ff4444; margin:0 0 12px;">Restart Game?</h3>
+            <p style="color:#ccc; font-size:0.8em; margin:0 0 18px;">This will delete your save and start a new game. This cannot be undone.</p>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button id="restart-confirm-yes" style="background:#ff4444; color:#fff; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:0.85em;">Yes, Restart</button>
+                <button id="restart-confirm-no" style="background:#333; color:#ccc; border:1px solid #555; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:0.85em;">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -1436,24 +1856,185 @@
              TAB 1: SETTLEMENT
              ======================================================== -->
         <div id="tab-settlement" class="tab-panel active">
-            <div id="settlement-overview" class="game-card">
-                <h3>Settlement</h3>
-                <div id="built-buildings"></div>
-                <div id="quick-stats" class="quick-stats"></div>
-            </div>
-
-            <div id="gathering-section" class="game-card">
-                <h3>Gathering</h3>
-                <div id="gathering-buttons"></div>
-            </div>
-
-            <div id="event-log-section" class="game-card">
-                <div class="section-header" data-toggle="event-log">
-                    <h3>Event Log</h3>
-                    <span class="collapse-arrow">&#9660;</span>
+            <!-- Camp main content (hidden when World pseudo-tab is active) -->
+            <div id="camp-main-content">
+                <!-- Current Objective -->
+                <div id="current-goal" class="game-card" style="border-color:rgba(226,183,20,0.3); background:rgba(226,183,20,0.04);">
+                    <div id="goal-content"></div>
                 </div>
-                <div class="section-content">
-                    <div id="event-log"></div>
+
+                <!-- Command Center -->
+                <div id="settlement-overview" class="game-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <h3 style="margin:0;">Command Center</h3>
+                        <button id="world-view-btn" class="memories-btn" style="font-size:0.7em; padding:4px 12px; color:#00ffcc; border-color:rgba(0,255,204,0.4);">World</button>
+                    </div>
+                    <div id="camp-status-bar"></div>
+                    <div id="built-buildings"></div>
+                </div>
+
+                <div id="gathering-section" class="game-card">
+                    <h3>Gathering</h3>
+                    <div id="gathering-buttons"></div>
+                </div>
+
+                <div id="event-log-section" class="game-card">
+                    <div class="section-header" data-toggle="event-log">
+                        <h3>Event Log</h3>
+                        <span class="collapse-arrow">&#9660;</span>
+                    </div>
+                    <div class="section-content">
+                        <div id="event-log"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- World pseudo-tab (replaces Camp content when active) -->
+            <div id="world-view" style="display:none;">
+                <div class="game-card" style="margin-bottom:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="color:#00ffcc; margin:0;">World</h3>
+                        <button id="world-back-btn" style="font-size:0.7em; padding:4px 12px; color:#00ffcc; border-color:rgba(0,255,204,0.4);">Back to Camp</button>
+                    </div>
+                </div>
+                <div id="population-section" class="game-card">
+                    <div class="section-header" data-toggle="population-list">
+                        <h3>Population</h3>
+                        <span class="collapse-arrow">&#9660;</span>
+                    </div>
+                    <div class="section-content" id="population-list"></div>
+                </div>
+                <div id="factions-section" class="game-card">
+                    <h3>Factions</h3>
+                    <div id="faction-list"></div>
+                </div>
+                <div id="trading-section" class="game-card">
+                    <h3>Trading</h3>
+                    <div id="trader-list"></div>
+                </div>
+                <div id="quests-section" class="game-card">
+                    <h3>Quests</h3>
+                    <div id="quest-list"></div>
+                </div>
+                <div id="achievements-section" class="game-card">
+                    <h3>Achievements</h3>
+                    <div id="achievement-list"></div>
+                </div>
+
+                <!-- Stats panel -->
+                <div class="game-card">
+                    <div class="section-header" data-toggle="stats-content">
+                        <h3>Survivor Stats</h3>
+                        <span class="collapse-arrow">&#9660;</span>
+                    </div>
+                    <div class="section-content" id="stats-content">
+                        <div id="survivor-score" style="text-align:center; padding:10px 0; border-bottom:1px solid rgba(0,255,255,0.15); margin-bottom:10px;">
+                            <div style="font-size:0.7em; color:#7f8c8d; text-transform:uppercase; letter-spacing:2px;">Survivor Score</div>
+                            <div id="score-value" style="font-size:2em; font-weight:bold; color:#00ffff;">0</div>
+                            <div id="score-rank" style="font-size:0.75em; color:#e2b714;"></div>
+                        </div>
+                        <div id="stats-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.75em;"></div>
+                        <div style="margin-top:12px; text-align:center;">
+                            <button id="share-stats-btn" style="font-size:0.7em; padding:6px 16px; min-height:36px;">Copy Stats to Clipboard</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings panel -->
+                <div class="game-card">
+                    <h3>Settings</h3>
+                    <div class="settings-panel">
+                        <div class="settings-row">
+                            <button id="sound-toggle" title="Toggle Sound">&#x1f50a;</button>
+                            <button id="manual-save-btn" style="font-size:11px;">Save Game</button>
+                            <button id="tech-tree-btn" style="font-size:11px;">Tech Tree</button>
+                        </div>
+                        <div class="settings-row" style="margin-top:8px;">
+                            <button id="export-save-btn" style="font-size:11px;">Export Save</button>
+                            <button id="import-save-btn" style="font-size:11px;">Import Save</button>
+                            <input type="file" id="import-save-file" accept=".json,.txt" style="display:none;">
+                        </div>
+                        <div id="export-save-status" style="font-size:0.65em; color:#2ecc71; margin-top:4px;"></div>
+                        <div class="settings-row" style="margin-top:8px;">
+                            <label style="cursor:pointer;">
+                                Load Mod: <input type="file" id="camp-mod-file" accept=".json" style="display:none;">
+                                <span style="color:#00ffff; text-decoration:underline; font-size:0.9em;">Browse</span>
+                            </label>
+                            <span id="camp-mod-status" style="font-size:0.65em; color:#7f8c8d;"></span>
+                        </div>
+                        <div class="settings-row" style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px;">
+                            <button id="restart-game-btn" style="font-size:11px; color:#ff4444; border-color:rgba(255,60,60,0.4);">Restart Game</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dev Tools panel -->
+                <div class="game-card" id="dev-tools-card">
+                    <div class="section-header" data-toggle="dev-tools-content" style="cursor:pointer;">
+                        <h3 style="color:#ff6b00;">Dev Tools</h3>
+                        <span class="toggle-arrow">&#9660;</span>
+                    </div>
+                    <div id="dev-tools-content" style="display:none;">
+                        <div style="font-size:0.6em; color:#7f8c8d; margin-bottom:8px;">Testing &amp; debug controls</div>
+
+                        <!-- Time controls -->
+                        <div style="margin-bottom:10px;">
+                            <div style="font-size:0.65em; color:#e2b714; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Time</div>
+                            <div class="settings-row">
+                                <label style="font-size:0.7em; color:#bdc3c7; min-width:70px;">Day Speed</label>
+                                <select id="dev-day-speed" style="font-size:11px; padding:4px 6px; background:#1a1a2e; color:#eee; border:1px solid rgba(0,255,255,0.2); border-radius:4px;">
+                                    <option value="10">Hyper (10s)</option>
+                                    <option value="30">Fast (30s)</option>
+                                    <option value="60">Quick (60s)</option>
+                                    <option value="120">Normal (2m)</option>
+                                    <option value="600" selected>Default (10m)</option>
+                                </select>
+                            </div>
+                            <div class="settings-row" style="margin-top:4px;">
+                                <button id="dev-skip-day" style="font-size:10px; padding:4px 8px;">Skip 1 Day</button>
+                                <button id="dev-skip-week" style="font-size:10px; padding:4px 8px;">Skip 7 Days</button>
+                            </div>
+                        </div>
+
+                        <!-- Resources -->
+                        <div style="margin-bottom:10px;">
+                            <div style="font-size:0.65em; color:#e2b714; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Resources</div>
+                            <div class="settings-row" style="flex-wrap:wrap; gap:4px;">
+                                <button class="dev-add-res" data-res="food" data-amt="50" style="font-size:10px; padding:4px 6px;">+50 Food</button>
+                                <button class="dev-add-res" data-res="water" data-amt="50" style="font-size:10px; padding:4px 6px;">+50 Water</button>
+                                <button class="dev-add-res" data-res="sticks" data-amt="50" style="font-size:10px; padding:4px 6px;">+50 Sticks</button>
+                                <button class="dev-add-res" data-res="stone" data-amt="50" style="font-size:10px; padding:4px 6px;">+50 Stone</button>
+                                <button class="dev-add-res" data-res="wood" data-amt="50" style="font-size:10px; padding:4px 6px;">+50 Wood</button>
+                                <button class="dev-add-res" data-res="clay" data-amt="50" style="font-size:10px; padding:4px 6px;">+50 Clay</button>
+                                <button class="dev-add-res" data-res="fiber" data-amt="50" style="font-size:10px; padding:4px 6px;">+50 Fiber</button>
+                                <button class="dev-add-res" data-res="herbs" data-amt="50" style="font-size:10px; padding:4px 6px;">+50 Herbs</button>
+                                <button class="dev-add-res" data-res="ore" data-amt="50" style="font-size:10px; padding:4px 6px;">+50 Ore</button>
+                            </div>
+                            <div class="settings-row" style="margin-top:4px;">
+                                <button id="dev-fill-all" style="font-size:10px; padding:4px 8px; color:#2ecc71;">Fill All Resources</button>
+                                <button id="dev-clear-gate" style="font-size:10px; padding:4px 8px; color:#f39c12;">Clear Study Gate</button>
+                            </div>
+                        </div>
+
+                        <!-- Knowledge & Population -->
+                        <div style="margin-bottom:10px;">
+                            <div style="font-size:0.65em; color:#e2b714; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Knowledge &amp; Population</div>
+                            <div class="settings-row" style="flex-wrap:wrap; gap:4px;">
+                                <button id="dev-add-knowledge" style="font-size:10px; padding:4px 6px;">+20 Knowledge</button>
+                                <button id="dev-add-pop" style="font-size:10px; padding:4px 6px;">+1 Population</button>
+                                <button id="dev-unlock-all" style="font-size:10px; padding:4px 6px; color:#bb86fc;">Unlock All Blueprints</button>
+                            </div>
+                        </div>
+
+                        <!-- State dump -->
+                        <div>
+                            <div style="font-size:0.65em; color:#e2b714; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Debug</div>
+                            <div class="settings-row">
+                                <button id="dev-dump-state" style="font-size:10px; padding:4px 8px;">Log GameState</button>
+                                <button id="dev-heal-all" style="font-size:10px; padding:4px 8px;">Heal All Sick</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1462,19 +2043,48 @@
              TAB 2: BOOK
              ======================================================== -->
         <div id="tab-book" class="tab-panel">
-            <div class="game-card">
-                <h3>The Book</h3>
-                <div id="book-chapter-nav"></div>
-            </div>
-            <div class="game-card">
-                <div id="study-section">
-                    <button id="study-btn" class="action-btn">Study the Book</button>
-                    <progress id="study-progress" value="0" max="100" style="width:100%; margin-top:8px;"></progress>
-                    <div id="study-gate-info"></div>
+            <!-- Book main content (hidden when Memories pseudo-tab is active) -->
+            <div id="book-main-content">
+                <div class="game-card">
+                    <h3>The Book</h3>
+                    <div id="book-chapter-nav"></div>
+                </div>
+                <div class="game-card">
+                    <div id="study-section">
+                        <button id="study-btn" class="action-btn">Study the Book</button>
+                        <progress id="study-progress" value="0" max="100" style="width:100%; margin-top:8px;"></progress>
+                        <div id="study-gate-info"></div>
+                    </div>
+                </div>
+                <div class="game-card">
+                    <div id="unlocked-blueprints"></div>
                 </div>
             </div>
-            <div class="game-card">
-                <div id="unlocked-blueprints"></div>
+
+            <!-- Memories pseudo-tab (replaces Book content when active) -->
+            <div id="lore-archive">
+                <div class="game-card" style="margin-bottom:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="color:#d4a547; margin:0;">Memories</h3>
+                        <button id="lore-back-btn" style="font-size:0.75em; padding:4px 14px; background:rgba(0,255,255,0.1); border:1px solid rgba(0,255,255,0.3); color:#00ffff; border-radius:4px; cursor:pointer;">Back to Book</button>
+                    </div>
+                </div>
+                <div class="game-card">
+                    <div id="lore-grid" class="lore-grid"></div>
+                    <div class="lore-counter">
+                        <span id="lore-counter-text">Collected: 0 / 0</span>
+                        <button id="lore-play-btn" class="memories-btn" style="font-size:0.7em; padding:4px 12px;">Play</button>
+                    </div>
+                    <div id="lore-slideshow">
+                        <div id="lore-slideshow-text"></div>
+                        <div class="lore-slideshow-nav">
+                            <button id="lore-prev">Prev</button>
+                            <span class="lore-slideshow-counter" id="lore-slide-counter">1 / 1</span>
+                            <button id="lore-next">Next</button>
+                            <button id="lore-slideshow-close">Close</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1523,78 +2133,8 @@
             </div>
         </div>
 
-        <!-- ========================================================
-             TAB 6: WORLD
-             ======================================================== -->
-        <div id="tab-world" class="tab-panel">
-            <div id="population-section" class="game-card">
-                <div class="section-header" data-toggle="population-list">
-                    <h3>Population</h3>
-                    <span class="collapse-arrow">&#9660;</span>
-                </div>
-                <div class="section-content" id="population-list"></div>
-            </div>
-            <div id="factions-section" class="game-card">
-                <h3>Factions</h3>
-                <div id="faction-list"></div>
-            </div>
-            <div id="trading-section" class="game-card">
-                <h3>Trading</h3>
-                <div id="trader-list"></div>
-            </div>
-            <div id="quests-section" class="game-card">
-                <h3>Quests</h3>
-                <div id="quest-list"></div>
-            </div>
-            <div id="achievements-section" class="game-card">
-                <h3>Achievements</h3>
-                <div id="achievement-list"></div>
-            </div>
-
-            <!-- Stats panel -->
-            <div class="game-card">
-                <div class="section-header" data-toggle="stats-content">
-                    <h3>Survivor Stats</h3>
-                    <span class="collapse-arrow">&#9660;</span>
-                </div>
-                <div class="section-content" id="stats-content">
-                    <div id="survivor-score" style="text-align:center; padding:10px 0; border-bottom:1px solid rgba(0,255,255,0.15); margin-bottom:10px;">
-                        <div style="font-size:0.7em; color:#7f8c8d; text-transform:uppercase; letter-spacing:2px;">Survivor Score</div>
-                        <div id="score-value" style="font-size:2em; font-weight:bold; color:#00ffff;">0</div>
-                        <div id="score-rank" style="font-size:0.75em; color:#e2b714;"></div>
-                    </div>
-                    <div id="stats-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.75em;"></div>
-                    <div style="margin-top:12px; text-align:center;">
-                        <button id="share-stats-btn" style="font-size:0.7em; padding:6px 16px; min-height:36px;">Copy Stats to Clipboard</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Settings panel -->
-            <div class="game-card">
-                <h3>Settings</h3>
-                <div class="settings-panel">
-                    <div class="settings-row">
-                        <button id="sound-toggle" title="Toggle Sound">&#x1f50a;</button>
-                        <button id="manual-save-btn" style="font-size:11px;">Save Game</button>
-                        <button id="tech-tree-btn" style="font-size:11px;">Tech Tree</button>
-                    </div>
-                    <div class="settings-row" style="margin-top:8px;">
-                        <button id="export-save-btn" style="font-size:11px;">Export Save</button>
-                        <button id="import-save-btn" style="font-size:11px;">Import Save</button>
-                        <input type="file" id="import-save-file" accept=".json,.txt" style="display:none;">
-                    </div>
-                    <div id="export-save-status" style="font-size:0.65em; color:#2ecc71; margin-top:4px;"></div>
-                    <div class="settings-row" style="margin-top:8px;">
-                        <label style="cursor:pointer;">
-                            Load Mod: <input type="file" id="camp-mod-file" accept=".json" style="display:none;">
-                            <span style="color:#00ffff; text-decoration:underline; font-size:0.9em;">Browse</span>
-                        </label>
-                        <span id="camp-mod-status" style="font-size:0.65em; color:#7f8c8d;"></span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- TAB 6: WORLD (merged into Camp tab as pseudo-tab) -->
+        <div id="tab-world" class="tab-panel" style="display:none;"></div>
 
         <!-- ========================================================
              TAB 7: NETWORK (hidden until first settlement move)
@@ -1616,32 +2156,29 @@
          ============================================================ -->
     <nav id="bottom-nav" style="display: none;">
         <button class="nav-btn active" data-tab="settlement">
-            <span class="nav-icon"><i class="fas fa-campground"></i></span>
-            <span class="nav-label">Home</span>
+            <span class="nav-icon"><i class="fas fa-campground"></i><span class="nav-badge" data-badge-tab="settlement"></span></span>
+            <span class="nav-label">Camp</span>
         </button>
         <button class="nav-btn" data-tab="book">
-            <span class="nav-icon"><i class="fas fa-book"></i></span>
+            <span class="nav-icon"><i class="fas fa-book"></i><span class="nav-badge" data-badge-tab="book"></span></span>
             <span class="nav-label">Book</span>
         </button>
         <button class="nav-btn" data-tab="crafting">
-            <span class="nav-icon"><i class="fas fa-hammer"></i></span>
+            <span class="nav-icon"><i class="fas fa-hammer"></i><span class="nav-badge" data-badge-tab="crafting"></span></span>
             <span class="nav-label">Craft</span>
         </button>
         <button class="nav-btn" data-tab="production">
-            <span class="nav-icon"><i class="fas fa-industry"></i></span>
+            <span class="nav-icon"><i class="fas fa-industry"></i><span class="nav-badge" data-badge-tab="production"></span></span>
             <span class="nav-label">Produce</span>
         </button>
         <!-- Desktop only: extra tabs -->
         <button class="nav-btn desktop-only" data-tab="exploration">
-            <span class="nav-icon"><i class="fas fa-compass"></i></span>
+            <span class="nav-icon"><i class="fas fa-compass"></i><span class="nav-badge" data-badge-tab="exploration"></span></span>
             <span class="nav-label">Explore</span>
         </button>
-        <button class="nav-btn desktop-only" data-tab="world">
-            <span class="nav-icon"><i class="fas fa-globe"></i></span>
-            <span class="nav-label">World</span>
-        </button>
+        <!-- World merged into Camp tab as pseudo-tab -->
         <button class="nav-btn desktop-only" data-tab="network">
-            <span class="nav-icon"><i class="fas fa-project-diagram"></i></span>
+            <span class="nav-icon"><i class="fas fa-project-diagram"></i><span class="nav-badge" data-badge-tab="network"></span></span>
             <span class="nav-label">Network</span>
         </button>
         <!-- Mobile only: More button -->
@@ -1659,10 +2196,7 @@
             <span class="drawer-icon"><i class="fas fa-compass"></i></span>
             <span class="drawer-label">Explore</span>
         </button>
-        <button class="drawer-btn" data-tab="world">
-            <span class="drawer-icon"><i class="fas fa-globe"></i></span>
-            <span class="drawer-label">World</span>
-        </button>
+        <!-- World merged into Camp tab -->
         <button class="drawer-btn" data-tab="network">
             <span class="drawer-icon"><i class="fas fa-project-diagram"></i></span>
             <span class="drawer-label">Network</span>
@@ -1684,15 +2218,25 @@
          POPUPS (outside tab system)
          ============================================================ -->
     <div id="puzzle-popup" class="popup">
-        <h2 id="puzzle-title"></h2>
+        <h2 id="puzzle-title">The Book asks...</h2>
         <p id="puzzle-question"></p>
+        <div id="puzzle-choices">
+            <button class="puzzle-choice" data-choice="0"></button>
+            <button class="puzzle-choice" data-choice="1"></button>
+            <button class="puzzle-choice" data-choice="2"></button>
+        </div>
         <div id="puzzle-hints"></div>
-        <input type="text" id="puzzle-answer" placeholder="Your answer...">
+        <div id="puzzle-feedback"></div>
         <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-            <button id="puzzle-submit">Submit</button>
-            <button id="puzzle-hint" style="background:rgba(226,183,20,0.15); border-color:rgba(226,183,20,0.4); color:#e2b714;">Hint</button>
+            <button id="puzzle-hint" style="background:rgba(226,183,20,0.15); border-color:rgba(226,183,20,0.4); color:#e2b714;">Hint (2)</button>
             <button id="puzzle-skip">Skip</button>
         </div>
+    </div>
+
+    <div id="flashback-popup" class="popup flashback">
+        <h2>...a memory surfaces</h2>
+        <p id="flashback-text"></p>
+        <button id="flashback-close">Return to the present</button>
     </div>
 
     <div id="game-over-popup" class="popup">
@@ -1817,6 +2361,21 @@
         })();
     </script>
     END DEBUG OVERLAY -->
+    </script>
+    <script>
+    // Splash screen stays visible — game.js handles dismissal after pre-rendering all tabs.
+    // We only ensure fonts are loaded here (the game module handles the rest).
+    (function() {
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(function() {
+                window.__fontsLoaded = true;
+            });
+        } else {
+            window.__fontsLoaded = true;
+        }
+        // Safety: mark fonts loaded after 3s regardless
+        setTimeout(function() { window.__fontsLoaded = true; }, 3000);
+    })();
     </script>
     <script src="bundle.js"></script>
 </body>

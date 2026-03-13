@@ -12,13 +12,13 @@
 
 import {
   gameState, getConfig, getResourceCap as _getResourceCap,
-  computeUnlockedResources, getTotalHousing
+  computeUnlockedResources, getTotalHousing, notifyTab
 } from './gameState.js';
 import { getEffect } from './effects.js';
 // UI imports — these may not all exist yet in the reworked codebase.
-import { logEvent, updateDisplay, updateWorkingSection } from './ui.js';
+import { logEvent, updateDisplay, updateWorkingSection, showFlashback } from './ui.js';
 // automation.js and crafting.js UI updates handled via updateDisplay() cycle
-import { playGather, playUnlock } from './audio.js';
+import { playGather, playUnlock, playWrong } from './audio.js';
 
 // Re-alias for internal use and backward-compatible re-export.
 // gameState.js owns getResourceCap(); this module re-exports it so that
@@ -124,7 +124,7 @@ let workerColorIndex = 0;
  * @param {string} resource
  * @returns {number} Multiplier >= 1.0
  */
-function getToolMultiplierForResource(resource) {
+export function getToolMultiplierForResource(resource) {
   switch (resource) {
     case 'fiber':
     case 'herbs':
@@ -182,6 +182,32 @@ function getGatheringTime(resource) {
 }
 
 
+/**
+ * Get gathering info for a resource: speed multiplier, gather amount, and active bonuses.
+ * Used by the UI to display modifier badges on gather buttons.
+ *
+ * @param {string} resource
+ * @returns {{ speedMult: number, amount: number, bonuses: string[] }}
+ */
+export function getGatherInfo(resource) {
+  const toolMult = getToolMultiplierForResource(resource);
+  const toolEff = getEffect('toolEfficiencyMultiplier', 1.0);
+  const productivity = getEffect('productivityMultiplier', 1.0);
+  const gatheringEfficiency = gameState.gatheringEfficiency || 1.0;
+
+  const speedMult = toolMult * toolEff * productivity * gatheringEfficiency;
+  const amount = Math.max(1, Math.round(toolMult));
+
+  const bonuses = [];
+  if (toolMult > 1) bonuses.push('Tool x' + toolMult.toFixed(1));
+  if (toolEff > 1) bonuses.push('Forge x' + toolEff.toFixed(1));
+  if (productivity > 1) bonuses.push('Productivity x' + productivity.toFixed(1));
+  if (gatheringEfficiency > 1) bonuses.push('Event x' + gatheringEfficiency.toFixed(1));
+
+  return { speedMult, amount, bonuses };
+}
+
+
 // ─── Gathering ───────────────────────────────────────────────────────────────
 
 /**
@@ -231,12 +257,12 @@ export function gatherResource(resource) {
     barContainer.appendChild(fill);
   }
 
-  let progress = 0;
-  const tickInterval = 100;
+  const tickInterval = 200;
   const duration = getGatheringTime(resource);
+  const gatherStartTime = Date.now();
 
   // Track gathering metadata
-  activeGathering[resource] = { startTime: Date.now(), duration };
+  activeGathering[resource] = { startTime: gatherStartTime, duration };
 
   const progressInterval = setInterval(() => {
     // Stop gathering if game over mid-gather
@@ -249,11 +275,11 @@ export function gatherResource(resource) {
       return;
     }
 
-    progress += tickInterval;
-    const percentage = Math.min(100, (progress / duration) * 100);
+    const elapsed = Date.now() - gatherStartTime;
+    const percentage = Math.min(100, (elapsed / duration) * 100);
     if (fill) fill.style.width = `${percentage}%`;
 
-    if (progress >= duration) {
+    if (elapsed >= duration) {
       clearInterval(progressInterval);
       untrackInterval(progressInterval);
       _returnGatherWorker(resource);
@@ -396,11 +422,22 @@ function getSeasonConsumptionMultiplier() {
  *
  * @returns {{ foodConsumed: number, waterConsumed: number }}
  */
-export function consumeResources() {
+/**
+ * Consume food, water, and fuel for one meal.
+ * Called 3 times per game day (morning, midday, evening) so consumption
+ * drains gradually rather than all at once.
+ *
+ * Each call consumes 1/3 of the daily total per person.
+ * Daily totals: BASE_FOOD_PER_PERSON (2) food, BASE_WATER_PER_PERSON (1.5) water.
+ *
+ * @param {number} [meals=1] - Number of meals to consume (1 for normal tick, 3 for full-day catch-up).
+ */
+export function consumeResources(meals = 1) {
   const config = getConfig();
   const pop = gameState.population;
+  const MEALS_PER_DAY = 3;
 
-  // Base per-person consumption from config
+  // Base per-person consumption from config (daily total)
   const baseFoodPerPerson = config.constants.BASE_FOOD_PER_PERSON || 2;
   const baseWaterPerPerson = config.constants.BASE_WATER_PER_PERSON || 1.5;
 
@@ -417,21 +454,22 @@ export function consumeResources() {
   // Season multiplier
   const season = getSeasonConsumptionMultiplier();
 
-  // Food: BASE_FOOD_PER_PERSON * population * shelterMult * consumptionMult * seasonMult
-  const foodConsumed = baseFoodPerPerson * pop * shelterMult * consumptionMult * season.foodMult;
+  // Per-meal fraction of the daily total
+  const mealFraction = meals / MEALS_PER_DAY;
+
+  // Food: (daily rate) * mealFraction
+  const foodConsumed = baseFoodPerPerson * pop * shelterMult * consumptionMult * season.foodMult * mealFraction;
   gameState.resources.food = Math.max(0, (gameState.resources.food || 0) - foodConsumed);
 
-  // Water: BASE_WATER_PER_PERSON * population * shelterMult * (1/waterEfficiency) * consumptionMult
-  // Note: waterEfficiency > 1 means LESS consumption, so we divide by it
-  const waterConsumed = baseWaterPerPerson * pop * shelterMult * (1 / waterEfficiency) * consumptionMult * season.waterMult;
+  // Water: (daily rate) * mealFraction
+  const waterConsumed = baseWaterPerPerson * pop * shelterMult * (1 / waterEfficiency) * consumptionMult * season.waterMult * mealFraction;
   gameState.resources.water = Math.max(0, (gameState.resources.water || 0) - waterConsumed);
 
   // Fuel consumption: only if power infrastructure exists
-  // More fuel consumed in winter
   if (getEffect('fuelConsumptionRate', 0) > 0) {
     const fuelBase = getEffect('fuelConsumptionRate', 0);
     const winterFuelMult = gameState.currentSeason === 'winter' ? 1.5 : 1.0;
-    const fuelConsumed = fuelBase * pop * winterFuelMult * consumptionMult;
+    const fuelConsumed = fuelBase * pop * winterFuelMult * consumptionMult * mealFraction;
     gameState.resources.fuel = Math.max(0, (gameState.resources.fuel || 0) - fuelConsumed);
   }
 
@@ -533,6 +571,9 @@ export function getCurrentChapter() {
  * Returns the first unstudied item sorted by knowledgeRequired
  * that is within the player's current chapter access and knowledge level.
  *
+ * Supports both old format (puzzle string + puzzleAnswer) and new format
+ * (puzzle object with question/correctAnswers).
+ *
  * @returns {object|null} The next item config object, or null if nothing to study.
  */
 export function getNextStudyItem() {
@@ -545,11 +586,68 @@ export function getNextStudyItem() {
   const studyableItems = config.items
     .filter(item => item.chapter <= maxChapter)
     .filter(item => !gameState.unlockedBlueprints.includes(item.id))
-    .filter(item => item.knowledgeRequired <= (gameState.knowledge + 1)) // can study next one
-    .filter(item => item.puzzle && item.puzzleAnswer) // must have a puzzle
+    .filter(item => item.knowledgeRequired <= (gameState.knowledge + 1))
+    .filter(item => {
+      // Support new format (puzzle.question) or old format (puzzle string + puzzleAnswer)
+      if (item.puzzle && typeof item.puzzle === 'object' && item.puzzle.question) return true;
+      if (item.puzzle && item.puzzleAnswer) return true;
+      return false;
+    })
     .sort((a, b) => a.knowledgeRequired - b.knowledgeRequired);
 
   return studyableItems[0] || null;
+}
+
+// ─── Hardness → Study Count Mapping ─────────────────────────────────────────
+
+/**
+ * Convert item hardness (1-3) to total study sessions required.
+ * @param {number} hardness - 1, 2, or 3
+ * @returns {number} Total studies needed (3, 5, or 7)
+ */
+function hardnessToStudies(hardness) {
+  switch (hardness) {
+    case 1: return 3;
+    case 2: return 5;
+    case 3: return 7;
+    default: return 3;
+  }
+}
+
+/**
+ * Initialize per-item study tracking on first study.
+ * Assigns flashback slots based on hardness.
+ * @param {object} item - Item config from knowledge_data.json
+ */
+function initItemStudyProgress(item) {
+  const hardness = item.hardness || 1;
+  const totalStudies = hardnessToStudies(hardness);
+  const flashbackCount = Math.max(1, Math.floor(totalStudies / 3));
+
+  const slots = [];
+
+  // Available studies for flashbacks: 1 to totalStudies-1 (not the final one — that's the puzzle)
+  const availableStudies = [];
+  for (let i = 1; i < totalStudies; i++) availableStudies.push(i);
+
+  // Assign learning flashback to a random study
+  const learningIdx = Math.floor(Math.random() * availableStudies.length);
+  const learningStudy = availableStudies.splice(learningIdx, 1)[0];
+  slots.push({ study: learningStudy, type: 'learning' });
+
+  // If flashbackCount > 1, assign lore flashbacks
+  for (let i = 1; i < flashbackCount && availableStudies.length > 0; i++) {
+    const loreIdx = Math.floor(Math.random() * availableStudies.length);
+    const loreStudy = availableStudies.splice(loreIdx, 1)[0];
+    slots.push({ study: loreStudy, type: 'lore' });
+  }
+
+  gameState.itemStudyProgress[item.id] = {
+    studyCount: 0,
+    totalStudies,
+    flashbackSlots: slots,
+    flashbacksShown: 0
+  };
 }
 
 /**
@@ -596,26 +694,41 @@ function setStudyGate() {
   // Gate scales with knowledge: more knowledge = more resources needed
   const scaledAmount = gateAmount * (1 + Math.floor(gameState.knowledge / 10));
   const gate = {};
-  gateableResources.forEach(r => { gate[r] = scaledAmount; });
+  gateableResources.forEach(r => {
+    const inStock = gameState.resources[r] || 0;
+    const remaining = scaledAmount - Math.floor(inStock);
+    if (remaining > 0) {
+      gate[r] = remaining;
+    }
+    // If already in stock, skip — no need to gather what you have
+  });
   gameState.studyGateProgress = gate;
 
-  const names = gateableResources
-    .map(r => r.charAt(0).toUpperCase() + r.slice(1))
+  // If everything was already in stock, gate is empty — can study immediately
+  if (Object.keys(gate).length === 0) return;
+
+  const needs = Object.entries(gate)
+    .map(([r, v]) => `${v} ${r.charAt(0).toUpperCase() + r.slice(1)}`)
     .join(', ');
-  logEvent(`Gather ${scaledAmount} of each resource (${names}) before studying again.`);
+  logEvent(`Gather more resources before studying again: ${needs} needed.`);
 }
 
 /**
- * Main study function. Opens the Book, studies the next page, shows a puzzle.
+ * Main study function. Opens the Book, studies the next page.
  *
- * Flow:
+ * New variable-study-cycle flow:
  *  1. Check prerequisites (no pending puzzle, gate met, workers available)
- *  2. Find next unstudied item in accessible chapters
- *  3. Consume paper for chapters 3+
- *  4. Progress bar → knowledge gained → puzzle presented
+ *  2. Find next unstudied item
+ *  3. Init per-item tracking if first study
+ *  4. Progress bar → knowledge gained
+ *  5. If not final study: check for flashback slot → show flashback or log
+ *  6. If final study: show multiple-choice puzzle
  */
 export function study() {
   const config = getConfig();
+
+  // Prevent starting a new study while one is in progress
+  if (gameState.isStudying) return;
 
   // If there's a pending puzzle, re-show it
   if (gameState.pendingPuzzle) {
@@ -631,7 +744,11 @@ export function study() {
 
   // Check study gate
   if (!isStudyGateMet()) {
-    logEvent('Gather the required resources before studying again.');
+    const remaining = Object.entries(gameState.studyGateProgress || {})
+      .filter(([, v]) => v > 0)
+      .map(([r, v]) => `${v} ${r}`)
+      .join(', ');
+    logEvent(`Gather more resources before studying again: ${remaining} needed.`);
     return;
   }
 
@@ -644,7 +761,6 @@ export function study() {
   // Find next item to study
   const nextItem = getNextStudyItem();
   if (!nextItem) {
-    // Check if it's a chapter access issue
     const maxChapter = getCurrentChapter();
     const nextChapterItem = config.items.find(item =>
       item.chapter === maxChapter + 1 &&
@@ -658,6 +774,13 @@ export function study() {
     return;
   }
 
+  // Initialize per-item tracking on first study
+  if (!gameState.itemStudyProgress[nextItem.id]) {
+    initItemStudyProgress(nextItem);
+  }
+
+  const tracking = gameState.itemStudyProgress[nextItem.id];
+
   // Paper consumption for chapters 3+
   if (nextItem.chapter >= 3) {
     if ((gameState.resources.paper || 0) < 1) {
@@ -669,63 +792,104 @@ export function study() {
 
   // Assign worker
   gameState.availableWorkers--;
+  gameState.isStudying = true;
   updateDisplay();
 
   // Calculate study time
   const baseTime = config.constants.BASE_STUDY_TIME || 10000;
   const knowledgeMult = getEffect('knowledgeGenerationMultiplier', 1.0);
   const researchSpeed = getEffect('researchSpeedMultiplier', 1.0);
-
-  // Difficulty study speed bonus
   const preset = config.difficultyPresets?.[gameState.difficulty];
   const studySpeedBonus = preset?.studySpeedBonus || 1.0;
-
   const effectiveTime = Math.max(200, baseTime / (knowledgeMult * researchSpeed * studySpeedBonus));
 
-  // Start study progress
-  gameState.studyProgress = 0;
-  let progress = 0;
-  const tickInterval = 100;
+  // Start study progress bar (use wall-clock time for reliable timing)
+  gameState.studyBarProgress = 0;
+  const studyStartTime = Date.now();
+  const tickInterval = 200;
 
   const studyInterval = setInterval(() => {
-    // Bail if game is over
     if (gameState.isGameOver) {
       clearInterval(studyInterval);
       untrackInterval(studyInterval);
-      gameState.studyProgress = 0;
+      gameState.studyBarProgress = 0;
       gameState.availableWorkers++;
+      gameState.isStudying = false;
       return;
     }
 
-    progress += tickInterval;
-    gameState.studyProgress = Math.min(100, (progress / effectiveTime) * 100);
+    const elapsed = Date.now() - studyStartTime;
+    gameState.studyBarProgress = Math.min(100, (elapsed / effectiveTime) * 100);
 
-    if (progress >= effectiveTime) {
+    if (elapsed >= effectiveTime) {
       clearInterval(studyInterval);
       untrackInterval(studyInterval);
-      gameState.studyProgress = 0;
+      gameState.studyBarProgress = 0;
 
       // Return worker
       gameState.availableWorkers++;
 
+      // Increment study count
+      tracking.studyCount++;
+
       // Grant knowledge
-      gameState.knowledge += 1;
+      const knowledgeGain = nextItem.knowledgePerStudy || 1;
+      gameState.knowledge += knowledgeGain;
       gameState.maxKnowledge = Math.max(gameState.maxKnowledge, gameState.knowledge);
       gameState.stats.totalStudied = (gameState.stats.totalStudied || 0) + 1;
 
       // Update current chapter tracker
       gameState.currentChapter = getCurrentChapter();
 
-      // Discover new resources from this item
+      // Discover new resources
       computeUnlockedResources();
+
+      if (tracking.studyCount < tracking.totalStudies) {
+        // ── Not final study: check for flashback slot ──
+        const flashbackSlot = tracking.flashbackSlots.find(s => s.study === tracking.studyCount);
+
+        if (flashbackSlot) {
+          tracking.flashbacksShown++;
+
+          if (flashbackSlot.type === 'learning') {
+            // Show learning flashback (teaches the puzzle answer)
+            const flashbackText = nextItem.flashback || 'A fragment of knowledge surfaces in your mind...';
+            showFlashback(flashbackText);
+          } else if (flashbackSlot.type === 'lore') {
+            // Show lore flashback + add to collection
+            const loreText = nextItem.loreFlashback || 'A distant memory flickers through your thoughts...';
+            showFlashback(loreText);
+
+            // Add to lore archive if item has loreFlashback data
+            if (nextItem.loreFlashback && nextItem.loreChronologicalOrder !== undefined) {
+              const loreId = `study_lore_${nextItem.id}`;
+              if (!gameState.collectedLore.some(l => l.id === loreId)) {
+                gameState.collectedLore.push({
+                  id: loreId,
+                  chronologicalOrder: nextItem.loreChronologicalOrder,
+                  text: nextItem.loreFlashback,
+                  source: 'study'
+                });
+                notifyTab('book');
+              }
+            }
+          }
+        }
+
+        logEvent(`Studied ${nextItem.name}... (${tracking.studyCount}/${tracking.totalStudies})  +${knowledgeGain} knowledge`);
+      } else {
+        // ── Final study: present puzzle ──
+        gameState.pendingPuzzle = { id: nextItem.id };
+        playUnlock();
+        showStudyPuzzle(nextItem);
+        logEvent(`Studied ${nextItem.name}... (${tracking.studyCount}/${tracking.totalStudies}) — Puzzle time!`);
+      }
 
       // Set study gate for next study
       setStudyGate();
 
-      // Present puzzle
-      gameState.pendingPuzzle = { id: nextItem.id };
-      playUnlock();
-      showStudyPuzzle(nextItem);
+      // Study complete — unblock events
+      gameState.isStudying = false;
 
       updateDisplay();
     }
@@ -734,117 +898,281 @@ export function study() {
 }
 
 
-// ─── Puzzle System ───────────────────────────────────────────────────────────
+// ─── Puzzle System (Multiple Choice) ─────────────────────────────────────────
 
 /**
- * Display the study puzzle popup for an item. Uses the existing puzzle-popup
- * DOM element with dataset attributes for puzzle type dispatching.
+ * Display the multiple-choice study puzzle popup for an item.
+ * Supports both new format (puzzle object with correctAnswers/wrongAnswers)
+ * and old format (puzzle string + puzzleAnswer) with auto-generated choices.
  *
- * @param {object} item - The item config object with puzzle/puzzleAnswer fields.
+ * @param {object} item - The item config object.
  */
 function showStudyPuzzle(item) {
   const popup = document.getElementById('puzzle-popup');
   if (!popup) {
-    // No popup element yet — auto-unlock the blueprint
     _unlockBlueprint(item);
     return;
   }
 
   popup.dataset.puzzleType = 'study';
   popup.dataset.itemId = item.id;
-  popup.dataset.puzzleAnswer = item.puzzleAnswer || '';
 
-  const questionEl = popup.querySelector('#puzzle-question') || popup.querySelector('.puzzle-question');
-  if (questionEl) {
-    questionEl.textContent = item.puzzle || 'What is this?';
+  const questionEl = document.getElementById('puzzle-question');
+  const choicesEl = document.getElementById('puzzle-choices');
+
+  // Build puzzle data — support new and old formats
+  let question, choices;
+
+  if (item.puzzle && typeof item.puzzle === 'object' && item.puzzle.question) {
+    // ── New format: puzzle object ──
+    question = item.puzzle.question;
+
+    // Pick 1 random correct answer
+    const correctPool = item.puzzle.correctAnswers || ['Correct'];
+    const correct = correctPool[Math.floor(Math.random() * correctPool.length)];
+
+    // Pick 2 random wrong answers
+    const wrongPool = [...(item.puzzle.wrongAnswers || ['Wrong A', 'Wrong B'])];
+    const wrongs = [];
+    for (let i = 0; i < 2 && wrongPool.length > 0; i++) {
+      const idx = Math.floor(Math.random() * wrongPool.length);
+      wrongs.push(wrongPool.splice(idx, 1)[0]);
+    }
+
+    // Combine and shuffle
+    choices = [
+      { text: correct, isCorrect: true },
+      ...wrongs.map(w => ({ text: w, isCorrect: false }))
+    ];
+    _shuffleArray(choices);
+
+  } else {
+    // ── Old format: fallback — auto-generate from puzzleAnswer ──
+    question = (typeof item.puzzle === 'string') ? item.puzzle : 'What is this?';
+    const correctText = item.puzzleAnswer || 'Unknown';
+    choices = [
+      { text: correctText, isCorrect: true },
+      { text: 'Not this one', isCorrect: false },
+      { text: 'Nor this one', isCorrect: false }
+    ];
+    _shuffleArray(choices);
   }
 
-  // Reset progressive hints container
+  // Store pending puzzle state
+  gameState.pendingPuzzle = {
+    id: item.id,
+    choices,
+    hintsUsed: 0,
+    wrongPenalty: (typeof item.puzzle === 'object') ? item.puzzle.wrongPenalty : null,
+    hints: (typeof item.puzzle === 'object') ? (item.puzzle.hints || []) : (item.hints || [])
+  };
+
+  // Render question
+  if (questionEl) questionEl.textContent = question;
+
+  // Render choice buttons
+  if (choicesEl) {
+    const buttons = choicesEl.querySelectorAll('.puzzle-choice');
+    choices.forEach((choice, i) => {
+      if (buttons[i]) {
+        buttons[i].textContent = choice.text;
+        buttons[i].dataset.choice = i;
+        buttons[i].disabled = false;
+        buttons[i].className = 'puzzle-choice'; // reset classes
+      }
+    });
+  }
+
+  // Reset hints
   const hintsEl = document.getElementById('puzzle-hints');
   if (hintsEl) {
     while (hintsEl.firstChild) hintsEl.removeChild(hintsEl.firstChild);
-    hintsEl.dataset.hintIndex = '0';
   }
 
-  // Re-enable hint button
-  const hintBtn = document.getElementById('hint-puzzle');
-  if (hintBtn) hintBtn.disabled = false;
+  // Reset feedback
+  const feedbackEl = document.getElementById('puzzle-feedback');
+  if (feedbackEl) feedbackEl.textContent = '';
 
-  const answerInput = document.getElementById('puzzle-answer');
-  if (answerInput) {
-    answerInput.value = '';
+  // Re-enable hint button
+  const hintBtn = document.getElementById('puzzle-hint');
+  if (hintBtn) {
+    hintBtn.disabled = false;
+    hintBtn.textContent = 'Hint (2)';
   }
 
   popup.style.display = 'flex';
-  if (answerInput) answerInput.focus();
 }
 
 /**
- * Submit a puzzle answer for the current pending puzzle.
- * Normalizes the answer (lowercase, strip articles) and checks against
- * the correct answer and acceptable alternatives.
- *
- * @param {string} answer - The player's answer text.
- * @returns {boolean} True if the answer was correct.
+ * Handle a multiple-choice puzzle answer.
+ * @param {number} choiceIndex - Index of the clicked choice button (0-2).
+ * @returns {boolean} True if correct.
  */
-export function submitPuzzleAnswer(answer) {
-  if (!gameState.pendingPuzzle) return false;
+export function submitPuzzleChoice(choiceIndex) {
+  if (!gameState.pendingPuzzle || !gameState.pendingPuzzle.choices) return false;
 
   const config = getConfig();
-  const itemId = gameState.pendingPuzzle.id || gameState.pendingPuzzle.itemId;
+  const itemId = gameState.pendingPuzzle.id;
   const item = config.items.find(i => i.id === itemId);
   if (!item) {
     gameState.pendingPuzzle = null;
     return false;
   }
 
-  // Normalize the answer
-  const normalizedAnswer = answer.trim().toLowerCase().replace(/^(a|an|the)\s+/i, '');
+  const choice = gameState.pendingPuzzle.choices[choiceIndex];
+  if (!choice) return false;
 
-  // Check main answer
-  const correctAnswer = (item.puzzleAnswer || '').toLowerCase();
+  const choicesEl = document.getElementById('puzzle-choices');
+  const buttons = choicesEl ? choicesEl.querySelectorAll('.puzzle-choice') : [];
+  const feedbackEl = document.getElementById('puzzle-feedback');
 
-  // Check acceptable answers
-  const acceptable = (item.acceptableAnswers || []).map(a => a.toLowerCase());
+  if (choice.isCorrect) {
+    // ── Correct! ──
+    if (buttons[choiceIndex]) buttons[choiceIndex].classList.add('correct');
 
-  if (normalizedAnswer === correctAnswer || acceptable.includes(normalizedAnswer)) {
-    // Correct! Unlock blueprint
-    _unlockBlueprint(item);
+    // Brief delay before unlocking for visual feedback
+    setTimeout(() => {
+      _unlockBlueprint(item);
+    }, 600);
+
     return true;
-  }
+  } else {
+    // ── Wrong ──
+    if (buttons[choiceIndex]) {
+      buttons[choiceIndex].classList.add('wrong');
+      buttons[choiceIndex].disabled = true;
+    }
 
-  logEvent('Incorrect answer. Try again!');
-  return false;
+    playWrong();
+
+    // Apply wrong penalty
+    if (gameState.pendingPuzzle.wrongPenalty) {
+      _applyWrongPenalty(gameState.pendingPuzzle.wrongPenalty);
+    }
+
+    if (feedbackEl) {
+      feedbackEl.textContent = 'Wrong answer — try again!';
+      feedbackEl.style.color = '#e74c3c';
+    }
+
+    return false;
+  }
 }
 
 /**
- * Get a hint for the current puzzle. Returns progressively more helpful hints.
- * @param {number} hintIndex - Which hint to show (0, 1, 2...).
- * @returns {string|null} The hint text, or null if no more hints.
+ * Apply penalty for a wrong puzzle answer.
+ * @param {object} penalty - { type, resource, amount }
  */
-export function getPuzzleHint(hintIndex) {
-  if (!gameState.pendingPuzzle) return null;
+function _applyWrongPenalty(penalty) {
+  if (!penalty || penalty.type !== 'resource') return;
 
-  const config = getConfig();
-  const itemId = gameState.pendingPuzzle.id || gameState.pendingPuzzle.itemId;
-  const item = config.items.find(i => i.id === itemId);
-  if (!item || !item.hints) return null;
+  const resource = penalty.resource || 'food';
+  const amount = penalty.amount || 2;
 
-  return item.hints[hintIndex] || null;
+  gameState.resources[resource] = Math.max(0,
+    (gameState.resources[resource] || 0) - amount);
+  logEvent(`Wrong — lost ${amount} ${resource}.`);
+  updateDisplay();
+}
+
+/**
+ * Get a hint for the current puzzle. 2 hints max, no penalty.
+ * Hint 1: clue text. Hint 2: eliminate one wrong answer.
+ * @returns {boolean} True if a hint was shown.
+ */
+export function getPuzzleHint() {
+  if (!gameState.pendingPuzzle) return false;
+
+  const pending = gameState.pendingPuzzle;
+  const hints = pending.hints || [];
+  const hintsUsed = pending.hintsUsed || 0;
+
+  if (hintsUsed >= 2 || hintsUsed >= hints.length) {
+    // No more hints
+    const hintBtn = document.getElementById('puzzle-hint');
+    if (hintBtn) hintBtn.disabled = true;
+    return false;
+  }
+
+  const hint = hints[hintsUsed];
+  const hintsEl = document.getElementById('puzzle-hints');
+
+  if (hint && hintsEl) {
+    if (hint.type === 'eliminate' || (hintsUsed === 1 && typeof hint === 'object')) {
+      // Eliminate hint: grey out one wrong answer
+      const choicesEl = document.getElementById('puzzle-choices');
+      const buttons = choicesEl ? choicesEl.querySelectorAll('.puzzle-choice') : [];
+      const choices = pending.choices || [];
+
+      // Find a wrong answer that isn't already eliminated or disabled
+      for (let i = 0; i < choices.length; i++) {
+        if (!choices[i].isCorrect && buttons[i] && !buttons[i].disabled && !buttons[i].classList.contains('eliminated')) {
+          buttons[i].classList.add('eliminated');
+          break;
+        }
+      }
+
+      const hintDiv = document.createElement('div');
+      hintDiv.style.cssText = 'color:#e2b714; font-size:0.85em; margin-top:6px; padding:6px 8px; background:rgba(226,183,20,0.08); border-left:2px solid #e2b714; border-radius:4px;';
+      hintDiv.textContent = (typeof hint === 'object' && hint.text) ? hint.text : 'One wrong answer eliminated.';
+      hintsEl.appendChild(hintDiv);
+    } else {
+      // Clue hint: show text
+      const hintText = (typeof hint === 'object' && hint.text) ? hint.text : (typeof hint === 'string' ? hint : 'Think about what you learned...');
+
+      const hintDiv = document.createElement('div');
+      hintDiv.style.cssText = 'color:#e2b714; font-size:0.85em; margin-top:6px; padding:6px 8px; background:rgba(226,183,20,0.08); border-left:2px solid #e2b714; border-radius:4px;';
+      hintDiv.textContent = hintText;
+      hintsEl.appendChild(hintDiv);
+    }
+  }
+
+  pending.hintsUsed = hintsUsed + 1;
+
+  // Update hint button text
+  const hintBtn = document.getElementById('puzzle-hint');
+  if (hintBtn) {
+    const remaining = Math.max(0, (hints.length > 2 ? 2 : hints.length) - pending.hintsUsed);
+    if (remaining <= 0) {
+      hintBtn.disabled = true;
+      hintBtn.textContent = 'No hints left';
+    } else {
+      hintBtn.textContent = `Hint (${remaining})`;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Keep old export name for backward compat — but internally uses new format.
+ * @deprecated Use submitPuzzleChoice instead.
+ */
+export function submitPuzzleAnswer(answer) {
+  // If the old text-input system somehow calls this, try to match against choices
+  if (!gameState.pendingPuzzle || !gameState.pendingPuzzle.choices) return false;
+  const normalized = (answer || '').trim().toLowerCase();
+  const choices = gameState.pendingPuzzle.choices;
+  for (let i = 0; i < choices.length; i++) {
+    if (choices[i].text.toLowerCase() === normalized) {
+      return submitPuzzleChoice(i);
+    }
+  }
+  return false;
 }
 
 /**
  * Skip the current puzzle. Saves it as pending so it re-shows on next study.
  */
 export function skipPuzzle() {
-  // pendingPuzzle stays set — it will re-show on next study() call
   const popup = document.getElementById('puzzle-popup');
   if (popup) popup.style.display = 'none';
+  // pendingPuzzle stays set — it will re-show on next study() call
 }
 
 /**
  * Internal: unlock a blueprint after correctly answering its puzzle.
- * Adds to unlockedBlueprints, discovers new resources, updates UI.
+ * Adds to unlockedBlueprints, discovers new resources, clears study tracking.
  *
  * @param {object} item - The item config object.
  */
@@ -855,6 +1183,9 @@ function _unlockBlueprint(item) {
 
   gameState.pendingPuzzle = null;
 
+  // Clear per-item study progress
+  delete gameState.itemStudyProgress[item.id];
+
   // Discover new resources from this blueprint
   const newResources = computeUnlockedResources();
   if (newResources.length > 0) {
@@ -863,8 +1194,12 @@ function _unlockBlueprint(item) {
     });
   }
 
-  logEvent(`Correct! +1 knowledge. Unlocked: ${item.name}!`);
+  logEvent(`Correct! Unlocked: ${item.name}!`);
   playUnlock();
+
+  // Notify relevant tabs about the new blueprint
+  notifyTab('crafting');
+  notifyTab('book');
 
   // Show did-you-know fact
   if (item.didYouKnow) {
@@ -875,8 +1210,18 @@ function _unlockBlueprint(item) {
   const popup = document.getElementById('puzzle-popup');
   if (popup) popup.style.display = 'none';
 
-  // Update UI
   updateDisplay();
+}
+
+/**
+ * Fisher-Yates shuffle for choice randomization.
+ * @param {Array} arr - Array to shuffle in-place.
+ */
+function _shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
 }
 
 

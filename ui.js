@@ -11,10 +11,48 @@
  * Backward-compatible exports are provided for all functions imported by other modules.
  */
 
-import { gameState, getConfig, getResourceCap, getTotalHousing, computeUnlockedResources } from './gameState.js';
+import { gameState, getConfig, getResourceCap, getTotalHousing, computeUnlockedResources, clearTabNotification } from './gameState.js';
 import { getEffect, getTotalAssignedWorkers } from './effects.js';
 import { getSettlementList, getCurrentSettlement, isSettlementUnlocked, isSupplyLinesUnlocked, getInfrastructureLevel, getTradeLevel, getTotalPopulation } from './settlements.js';
 import { getSupplyLines } from './network.js';
+import { isAlreadyBuilt } from './crafting.js';
+import { getGatherInfo } from './resources.js';
+
+
+// ─── Dirty-check helper ──────────────────────────────────────────────────────
+//
+// Prevents DOM thrashing by skipping teardown/rebuild when the data driving
+// a section hasn't changed since the last render.  Each container caches a
+// lightweight string fingerprint (_renderKey).  If the key matches, the
+// rebuild is skipped entirely — zero DOM writes.
+
+function _skipIfUnchanged(el, key) {
+    if (!el) return true;
+    if (el._renderKey === key) return true;
+    el._renderKey = key;
+    return false;
+}
+
+
+// ─── Tab Badge Rendering ─────────────────────────────────────────────────────
+
+/**
+ * Update all tab notification badges from gameState.tabNotifications.
+ * Called every tick by updateDisplay() and on tab switch.
+ */
+function updateTabBadges() {
+    const notifs = gameState.tabNotifications || {};
+    document.querySelectorAll('.nav-badge[data-badge-tab]').forEach(badge => {
+        const tab = badge.dataset.badgeTab;
+        const count = notifs[tab] || 0;
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99' : String(count);
+            badge.classList.add('visible');
+        } else {
+            badge.classList.remove('visible');
+        }
+    });
+}
 
 
 // ─── Effect Labels (for tooltip/building display) ─────────────────────────────
@@ -138,6 +176,18 @@ export function switchTab(tabName) {
     const btn = document.querySelector('.nav-btn[data-tab="' + tabName + '"]');
     if (btn) btn.classList.add('active');
 
+    // Clear notification badge for this tab
+    clearTabNotification(tabName);
+    updateTabBadges();
+
+    // Reset pseudo-tabs when switching back to their parent tab
+    if (tabName === 'settlement') {
+        const worldView = document.getElementById('world-view');
+        const campMain = document.getElementById('camp-main-content');
+        if (worldView) worldView.style.display = 'none';
+        if (campMain) campMain.style.display = '';
+    }
+
     // Scroll to top of content when switching tabs
     const gc = document.getElementById('game-container');
     if (gc) gc.scrollTop = 0;
@@ -242,9 +292,236 @@ export function updateHUD() {
  * Full update of the Settlement tab contents.
  */
 export function updateSettlementTab() {
+    updateAdvisor();
+    updateCampStatus();
     updateBuiltBuildings();
     updateGatheringButtons();
-    updateQuickStats();
+}
+
+// ─── Advisor ─────────────────────────────────────────────────────────────────
+
+function getAdvisorTips() {
+    let config;
+    try { config = getConfig(); } catch { return []; }
+
+    const tips = [];
+    const blueprints = gameState.unlockedBlueprints || [];
+    const buildings = gameState.buildings || {};
+    const tools = gameState.tools || {};
+    const knowledge = gameState.knowledge || 0;
+    const food = gameState.resources?.food || 0;
+    const water = gameState.resources?.water || 0;
+    const pop = gameState.population || 1;
+
+    const hasWorkbench = buildings.workbench && buildings.workbench.level > 0;
+    const hasShelter = (buildings.shelter && buildings.shelter.level > 0)
+        || (gameState.multipleBuildings?.shelter?.length > 0);
+    const hasCuttingTools = tools.cutting_tools && tools.cutting_tools.level > 0;
+
+    // ── Urgent warnings (always show) ──
+    if (food < 15) tips.push({ cat: 'Survival', text: 'Food is running low. Gather food before your people starve.', urgent: true });
+    if (water < 10) tips.push({ cat: 'Survival', text: 'Water is dangerously low. Find water immediately.', urgent: true });
+
+    // ── Recommended next step (progression) ──
+    if (blueprints.length === 0) {
+        tips.push({ cat: 'Next Step', text: 'Open the Book and study to learn your first blueprint.' });
+    } else if (!hasWorkbench) {
+        if (blueprints.includes('crude_workbench')) {
+            const wb = config.items?.find(i => i.id === 'crude_workbench');
+            const cost = wb?.requirements || {};
+            const canAfford = Object.entries(cost).every(([r, n]) => (gameState.resources[r] || 0) >= n);
+            if (canAfford) {
+                tips.push({ cat: 'Next Step', text: 'You have enough sticks. Build a Crude Workbench to start crafting.' });
+            } else {
+                const need = Object.entries(cost).filter(([r, n]) => (gameState.resources[r] || 0) < n)
+                    .map(([r, n]) => (n - Math.floor(gameState.resources[r] || 0)) + ' more ' + r);
+                tips.push({ cat: 'Next Step', text: 'Gather ' + need.join(' and ') + ' to build a workbench.' });
+            }
+        } else {
+            tips.push({ cat: 'Next Step', text: 'Study the Book to learn how to build a workbench.' });
+        }
+    } else if (!hasCuttingTools) {
+        const hasToolBlueprint = blueprints.some(b => {
+            const it = config.items?.find(i => i.id === b);
+            return it && it.chain === 'cutting_tools';
+        });
+        if (hasToolBlueprint) {
+            tips.push({ cat: 'Next Step', text: 'Craft a cutting tool to unlock new resources like fiber and wood.' });
+        } else {
+            tips.push({ cat: 'Next Step', text: 'Study to discover how to make cutting tools.' });
+        }
+    } else if (!hasShelter) {
+        const hasShelterBlueprint = blueprints.some(b => {
+            const it = config.items?.find(i => i.id === b);
+            return it && it.chain === 'shelter';
+        });
+        if (hasShelterBlueprint) {
+            tips.push({ cat: 'Next Step', text: 'Build a shelter to reduce resource consumption and house more people.' });
+        } else {
+            tips.push({ cat: 'Next Step', text: 'Study to learn how to build shelter for your settlement.' });
+        }
+    }
+
+    // ── Growth suggestions ──
+    if (hasWorkbench && hasCuttingTools && hasShelter) {
+        // Check for craftable upgrades the player hasn't built yet
+        const unbuiltBlueprints = blueprints.filter(bId => {
+            const item = config.items?.find(i => i.id === bId);
+            if (!item) return false;
+            const chain = item.chain;
+            const chainConfig = config.chains?.[chain];
+            if (!chainConfig) return false;
+            if (chainConfig.type === 'SINGLE') {
+                const stateKey = chain;
+                if (buildings[stateKey]?.level >= item.level) return false;
+                if (tools[stateKey]?.level >= item.level) return false;
+            }
+            return true;
+        });
+        if (unbuiltBlueprints.length > 0) {
+            const next = config.items?.find(i => i.id === unbuiltBlueprints[0]);
+            if (next) {
+                tips.push({ cat: 'Growth', text: 'You have blueprints ready to craft. Try building a ' + next.name + '.' });
+            }
+        }
+
+        // Suggest food production if population growing
+        const hasFarm = (buildings.farming && buildings.farming.level > 0)
+            || (gameState.multipleBuildings?.farming?.length > 0);
+        if (pop >= 2 && !hasFarm) {
+            tips.push({ cat: 'Growth', text: 'With ' + pop + ' mouths to feed, consider building a farm for steady food.' });
+        }
+    }
+
+    // ── Knowledge ──
+    // Study gate: tell the player what to gather before they can study again
+    const gateProgress = gameState.studyGateProgress || {};
+    const gateRemaining = Object.entries(gateProgress).filter(([, v]) => v > 0);
+    if (gateRemaining.length > 0) {
+        const needs = gateRemaining
+            .map(([r, v]) => '<span style="color:#f1c40f;font-weight:600;">' + v + ' ' + r.charAt(0).toUpperCase() + r.slice(1) + '</span>')
+            .join(' and ');
+        tips.push({ cat: 'Knowledge', html: true, text: 'The Book wants you to put knowledge into practice \u2014 gather ' + needs + ' before your next study session.' });
+    }
+
+    const studyable = config.items?.filter(i =>
+        i.chapter <= (gameState.currentChapter || 1) &&
+        !blueprints.includes(i.id) &&
+        (knowledge >= (i.knowledgeRequired || 0))
+    );
+    if (studyable && studyable.length > 0 && !tips.some(t => t.cat === 'Next Step' && t.text.includes('Study'))) {
+        tips.push({ cat: 'Knowledge', text: 'The Book has more to teach. ' + studyable.length + ' blueprint' + (studyable.length > 1 ? 's' : '') + ' ready to discover.' });
+    }
+
+    // ── Quest hint ──
+    const quests = gameState.activeQuests || [];
+    if (quests.length > 0) {
+        tips.push({ cat: 'Quest', text: quests[0].name + ' \u2014 ' + (quests[0].description || '') });
+    }
+
+    // ── Fallback ──
+    if (tips.length === 0) {
+        tips.push({ cat: 'Advisor', text: 'Your settlement is thriving. Explore, study, and keep expanding.' });
+    }
+
+    return tips;
+}
+
+function updateAdvisor() {
+    const container = document.getElementById('goal-content');
+    if (!container) return;
+
+    const tips = getAdvisorTips();
+    const key = tips.map(t => t.cat + t.text + (t.urgent || '')).join('|');
+    if (_skipIfUnchanged(container, key)) return;
+
+    while (container.firstChild) container.removeChild(container.firstChild);
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'font-size:0.65em; color:#e2b714; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px;';
+    header.textContent = 'Advisor';
+    container.appendChild(header);
+
+    // Show up to 4 tips
+    const shown = tips.slice(0, 4);
+    for (let i = 0; i < shown.length; i++) {
+        const tip = shown[i];
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; align-items:flex-start; gap:8px; padding:5px 0;'
+            + (i < shown.length - 1 ? ' border-bottom:1px solid rgba(255,255,255,0.05);' : '');
+
+        const badge = document.createElement('span');
+        badge.style.cssText = 'font-size:0.6em; padding:2px 6px; border-radius:3px; white-space:nowrap; margin-top:1px; flex-shrink:0; background:'
+            + (tip.urgent ? 'rgba(231,76,60,0.2); color:#e74c3c;'
+            : tip.cat === 'Next Step' ? 'rgba(0,255,255,0.12); color:#00ffcc;'
+            : tip.cat === 'Growth' ? 'rgba(46,204,113,0.12); color:#2ecc71;'
+            : tip.cat === 'Knowledge' ? 'rgba(155,89,182,0.15); color:#bb86fc;'
+            : tip.cat === 'Quest' ? 'rgba(226,183,20,0.15); color:#e2b714;'
+            : 'rgba(255,255,255,0.08); color:#7f8c8d;');
+        badge.textContent = tip.urgent ? 'Urgent' : tip.cat;
+        row.appendChild(badge);
+
+        const text = document.createElement('span');
+        text.style.cssText = 'font-size:0.8em; color:' + (tip.urgent ? '#e74c3c' : '#bdc3c7') + ';';
+        if (tip.html) {
+            text.innerHTML = tip.text;
+        } else {
+            text.textContent = tip.text;
+        }
+        row.appendChild(text);
+
+        container.appendChild(row);
+    }
+}
+
+// ─── Camp Status Bar ──────────────────────────────────────────────────────────
+
+function updateCampStatus() {
+    const container = document.getElementById('camp-status-bar');
+    if (!container) return;
+
+    const pop = gameState.population || 1;
+    const housing = getTotalHousing();
+    const workers = gameState.availableWorkers ?? pop;
+    const assigned = getTotalAssignedWorkers ? getTotalAssignedWorkers() : 0;
+    const blueprintCount = (gameState.unlockedBlueprints || []).length;
+    const buildingCount = Object.values(gameState.buildings || {}).filter(b => b.level > 0).length
+        + Object.values(gameState.multipleBuildings || {}).reduce((sum, arr) => sum + arr.length, 0);
+    const toolCount = Object.values(gameState.tools || {}).filter(t => t.level > 0).length;
+
+    const key = pop + ',' + housing + ',' + workers + ',' + assigned + ',' + blueprintCount + ',' + buildingCount + ',' + toolCount;
+    if (_skipIfUnchanged(container, key)) return;
+
+    while (container.firstChild) container.removeChild(container.firstChild);
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px; font-size:0.75em;';
+
+    const items = [
+        ['\u{1F465}', 'Pop', pop + '/' + Math.max(housing, pop)],
+        ['\u{1F477}', 'Workers', (workers - assigned) + ' free'],
+        ['\u{1F4D0}', 'Blueprints', '' + blueprintCount],
+        ['\u{1F3D7}', 'Buildings', '' + buildingCount],
+        ['\u{1F529}', 'Tools', '' + toolCount],
+        ['\u{1F4DA}', 'Knowledge', '' + Math.floor(gameState.knowledge || 0)],
+    ];
+
+    for (const [emoji, label, value] of items) {
+        const cell = document.createElement('div');
+        cell.style.cssText = 'text-align:center; padding:6px 4px; background:rgba(0,255,255,0.04); border-radius:4px; border:1px solid rgba(0,255,255,0.08);';
+        const valDiv = document.createElement('div');
+        valDiv.style.cssText = 'color:#00ffff; font-weight:bold; font-size:1.1em;';
+        valDiv.textContent = emoji + ' ' + value;
+        cell.appendChild(valDiv);
+        const labelDiv = document.createElement('div');
+        labelDiv.style.cssText = 'color:#7f8c8d; font-size:0.85em; margin-top:2px;';
+        labelDiv.textContent = label;
+        cell.appendChild(labelDiv);
+        grid.appendChild(cell);
+    }
+
+    container.appendChild(grid);
 }
 
 function updateBuiltBuildings() {
@@ -253,6 +530,12 @@ function updateBuiltBuildings() {
 
     let config;
     try { config = getConfig(); } catch { container.textContent = ''; return; }
+
+    // Fingerprint: building levels + itemIds + tool levels + multiple building counts
+    const bKey = Object.keys(gameState.buildings).map(k => k + ':' + (gameState.buildings[k].level || 0) + ':' + (gameState.buildings[k].itemId || '')).join(',');
+    const mKey = Object.keys(gameState.multipleBuildings).map(k => k + ':' + gameState.multipleBuildings[k].length).join(',');
+    const tKey = Object.keys(gameState.tools).map(k => k + ':' + (gameState.tools[k].level || 0)).join(',');
+    if (_skipIfUnchanged(container, bKey + '|' + mKey + '|' + tKey)) return;
 
     // Build DOM nodes safely without innerHTML
     while (container.firstChild) container.removeChild(container.firstChild);
@@ -332,14 +615,13 @@ function updateBuiltBuildings() {
 
 /**
  * Render gathering buttons for all unlocked resources.
- * Exported for backward compatibility with crafting.js/game.js.
+ * Full-width buttons with resource count and modifier badges inside.
  */
 export function updateGatheringButtons() {
     const container = document.getElementById('gathering-buttons');
     if (!container) return;
 
     computeUnlockedResources();
-    // Use the full list from state
     const resources = gameState.unlockedResources || ['sticks', 'food', 'water'];
 
     // Remove buttons for resources no longer in the unlocked set
@@ -356,13 +638,37 @@ export function updateGatheringButtons() {
         const atCap = current >= cap;
         const noWorkers = gameState.availableWorkers <= 0;
 
+        // Get modifier info for this resource
+        const info = getGatherInfo(resource);
+
         // Check if this button already exists (preserve progress bars during gathers)
         const existingBtn = document.getElementById('gather-' + resource);
         if (existingBtn) {
-            // Update existing button state without destroying the DOM
             existingBtn.disabled = atCap || noWorkers;
-            const countSpan = existingBtn.parentElement.querySelector('.resource-count');
-            if (countSpan) countSpan.textContent = current + '/' + cap;
+            // Update count
+            const countEl = existingBtn.querySelector('.resource-count');
+            if (countEl) countEl.textContent = current + '/' + cap;
+            // Update multiplier badge
+            const multEl = existingBtn.querySelector('.gather-btn-mult');
+            if (multEl) {
+                if (info.speedMult > 1) {
+                    multEl.textContent = 'x' + info.speedMult.toFixed(1);
+                    multEl.title = info.bonuses.join(', ');
+                    multEl.style.display = '';
+                } else {
+                    multEl.style.display = 'none';
+                }
+            }
+            // Update amount badge
+            const amtEl = existingBtn.querySelector('.gather-btn-amount');
+            if (amtEl) {
+                if (info.amount > 1) {
+                    amtEl.textContent = '+' + info.amount;
+                    amtEl.style.display = '';
+                } else {
+                    amtEl.style.display = 'none';
+                }
+            }
             continue;
         }
 
@@ -375,18 +681,53 @@ export function updateGatheringButtons() {
         btn.className = 'gather-btn';
         btn.dataset.resource = resource;
         btn.disabled = atCap || noWorkers;
-        btn.textContent = 'Gather ' + capitalize(resource);
+
+        // Left side: name + speed multiplier
+        const left = document.createElement('span');
+        left.className = 'gather-btn-left';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'gather-btn-name';
+        nameSpan.textContent = 'Gather ' + capitalize(resource);
+        left.appendChild(nameSpan);
+
+        const multSpan = document.createElement('span');
+        multSpan.className = 'gather-btn-mult';
+        if (info.speedMult > 1) {
+            multSpan.textContent = 'x' + info.speedMult.toFixed(1);
+            multSpan.title = info.bonuses.join(', ');
+        } else {
+            multSpan.style.display = 'none';
+        }
+        left.appendChild(multSpan);
+
+        // Right side: amount badge + count
+        const right = document.createElement('span');
+        right.className = 'gather-btn-right';
+
+        const amtSpan = document.createElement('span');
+        amtSpan.className = 'gather-btn-amount';
+        if (info.amount > 1) {
+            amtSpan.textContent = '+' + info.amount;
+        } else {
+            amtSpan.style.display = 'none';
+        }
+        right.appendChild(amtSpan);
 
         const countSpan = document.createElement('span');
         countSpan.className = 'resource-count';
         countSpan.textContent = current + '/' + cap;
+        right.appendChild(countSpan);
 
+        btn.appendChild(left);
+        btn.appendChild(right);
+
+        // Progress bars container below the button
         const barsContainer = document.createElement('div');
         barsContainer.id = resource + '-bars';
-        barsContainer.style.cssText = 'flex:1;min-width:0;';
+        barsContainer.style.cssText = 'width:100%;';
 
         gatherAction.appendChild(btn);
-        gatherAction.appendChild(countSpan);
         gatherAction.appendChild(barsContainer);
         container.appendChild(gatherAction);
     }
@@ -397,6 +738,8 @@ function updateQuickStats() {
     if (!container) return;
 
     const stats = gameState.stats || {};
+    const key = (stats.totalGathered || 0) + ',' + (stats.totalCrafted || 0) + ',' + (stats.totalStudied || 0) + ',' + (stats.totalExplored || 0);
+    if (_skipIfUnchanged(container, key)) return;
 
     while (container.firstChild) container.removeChild(container.firstChild);
 
@@ -432,6 +775,7 @@ export function updateBookTab() {
     updateChapterNav();
     updateStudySection();
     updateUnlockedBlueprints();
+    updateLoreArchive();
 }
 
 function updateChapterNav() {
@@ -445,6 +789,11 @@ function updateChapterNav() {
     const chapters = config.chapters || [{ id: 1, name: 'Basics' }];
     const knowledgeLevel = gameState.buildings.knowledge ? gameState.buildings.knowledge.level : 0;
     const maxChapter = knowledgeLevel + 1;
+
+    const loreArchive = document.getElementById('lore-archive');
+    const loreActive = loreArchive && loreArchive.classList.contains('active') ? '1' : '0';
+    const key = gameState.currentChapter + ',' + knowledgeLevel + ',' + loreActive;
+    if (_skipIfUnchanged(container, key)) return;
 
     while (container.firstChild) container.removeChild(container.firstChild);
 
@@ -469,19 +818,61 @@ function updateChapterNav() {
 
         container.appendChild(btn);
     }
+
+    // Add Memories button
+    const memoriesBtn = document.createElement('button');
+    memoriesBtn.className = 'chapter-btn memories-btn';
+    memoriesBtn.textContent = 'Memories';
+    if (loreArchive && loreArchive.classList.contains('active')) {
+        memoriesBtn.classList.add('active');
+    }
+    memoriesBtn.addEventListener('click', () => {
+        const archive = document.getElementById('lore-archive');
+        const bookMain = document.getElementById('book-main-content');
+        if (archive) {
+            const isActive = archive.classList.toggle('active');
+            memoriesBtn.classList.toggle('active', isActive);
+            if (bookMain) bookMain.style.display = isActive ? 'none' : '';
+        }
+    });
+    container.appendChild(memoriesBtn);
 }
 
 function updateStudySection() {
     const progressBar = document.getElementById('study-progress');
-    if (progressBar) progressBar.value = gameState.studyProgress || 0;
+    if (progressBar) progressBar.value = gameState.studyBarProgress || 0;
 
     const gateInfo = document.getElementById('study-gate-info');
     if (gateInfo) {
         if (gameState.pendingPuzzle) {
             gateInfo.textContent = 'Puzzle waiting! Answer to unlock a blueprint.';
             gateInfo.style.color = '#e2b714';
+        } else if (gameState.studyGateProgress && Object.values(gameState.studyGateProgress).some(v => v > 0)) {
+            // Study gate not met — show what's needed
+            const remaining = Object.entries(gameState.studyGateProgress)
+                .filter(([, v]) => v > 0)
+                .map(([r, v]) => `${v} ${r.charAt(0).toUpperCase() + r.slice(1)}`)
+                .join(', ');
+            gateInfo.textContent = `Gather ${remaining} before next study.`;
+            gateInfo.style.color = '#f39c12';
         } else {
-            gateInfo.textContent = '';
+            // Show per-item study progress if currently studying something
+            const inProgress = Object.entries(gameState.itemStudyProgress || {});
+            if (inProgress.length > 0) {
+                let config;
+                try { config = getConfig(); } catch { return; }
+
+                const [itemId, tracking] = inProgress[0]; // Show first active item
+                const item = config.items ? config.items.find(i => i.id === itemId) : null;
+                if (item && tracking.studyCount > 0) {
+                    gateInfo.textContent = `Studying ${item.name} (${tracking.studyCount}/${tracking.totalStudies})`;
+                    gateInfo.style.color = '#00ffff';
+                } else {
+                    gateInfo.textContent = '';
+                }
+            } else {
+                gateInfo.textContent = '';
+            }
         }
     }
 }
@@ -497,6 +888,9 @@ function updateUnlockedBlueprints() {
     const chapterItems = config.items
         ? config.items.filter(i => i.chapter === gameState.currentChapter)
         : [];
+
+    const key = gameState.currentChapter + ',' + gameState.unlockedBlueprints.length + ',' + gameState.unlockedBlueprints.join(':');
+    if (_skipIfUnchanged(container, key)) return;
 
     while (container.firstChild) container.removeChild(container.firstChild);
 
@@ -521,6 +915,158 @@ function updateUnlockedBlueprints() {
 }
 
 
+// ─── Flashback Popup ──────────────────────────────────────────────────────────
+
+/**
+ * Show a flashback popup (learning, lore, or event). Fades in with the
+ * sepia/amber flashback styling. Player must click "Return to the present."
+ *
+ * @param {string} text - The flashback narrative text.
+ */
+export function showFlashback(text) {
+    const popup = document.getElementById('flashback-popup');
+    if (!popup) return;
+
+    const textEl = document.getElementById('flashback-text');
+    if (textEl) textEl.textContent = text;
+
+    popup.style.display = 'flex';
+    // Re-trigger the fade-in animation
+    popup.style.animation = 'none';
+    popup.offsetHeight; // force reflow
+    popup.style.animation = '';
+}
+
+
+// ─── Lore Archive ─────────────────────────────────────────────────────────────
+
+/** Currently viewed slideshow index (within sorted collected lore). */
+let _loreSlideshowIndex = 0;
+
+/**
+ * Update the lore archive grid in the Book tab.
+ * Shows collected/undiscovered lore slots in chronological order.
+ */
+function updateLoreArchive() {
+    const grid = document.getElementById('lore-grid');
+    const counterText = document.getElementById('lore-counter-text');
+    if (!grid) return;
+
+    const collected = gameState.collectedLore || [];
+    const key = collected.length + ',' + collected.map(l => l.id).join(':');
+    if (_skipIfUnchanged(grid, key)) return;
+
+    let config;
+    try { config = getConfig(); } catch { return; }
+
+    // Total lore count: lore events + study lore flashbacks from hardness 3 items
+    const loreEvents = config.loreEvents || [];
+    const studyLoreItems = (config.items || []).filter(i =>
+        i.hardness >= 3 && i.loreFlashback && i.loreChronologicalOrder !== undefined
+    );
+
+    // Build full timeline: all possible lore slots
+    const allSlots = [];
+    for (const le of loreEvents) {
+        allSlots.push({ id: le.id, order: le.chronologicalOrder, source: 'event' });
+    }
+    for (const item of studyLoreItems) {
+        allSlots.push({ id: 'study_lore_' + item.id, order: item.loreChronologicalOrder, source: 'study' });
+    }
+    allSlots.sort((a, b) => a.order - b.order);
+
+    const collectedIds = new Set(collected.map(l => l.id));
+
+    // Clear and rebuild grid
+    while (grid.firstChild) grid.removeChild(grid.firstChild);
+
+    for (let i = 0; i < allSlots.length; i++) {
+        const slot = allSlots[i];
+        const cell = document.createElement('div');
+        cell.className = 'lore-cell';
+
+        if (collectedIds.has(slot.id)) {
+            cell.classList.add('collected');
+            cell.textContent = i + 1;
+            cell.title = 'Click to read';
+            cell.dataset.loreId = slot.id;
+            cell.addEventListener('click', () => {
+                const lore = collected.find(l => l.id === slot.id);
+                if (lore) showFlashback(lore.text);
+            });
+        } else {
+            cell.classList.add('undiscovered');
+            cell.textContent = '?';
+        }
+
+        grid.appendChild(cell);
+    }
+
+    if (counterText) {
+        const collectedCount = allSlots.filter(s => collectedIds.has(s.id)).length;
+        counterText.textContent = 'Collected: ' + collectedCount + ' / ' + allSlots.length;
+    }
+
+    // Enable/disable play button
+    const playBtn = document.getElementById('lore-play-btn');
+    if (playBtn) {
+        const hasAny = collected.length > 0;
+        playBtn.disabled = !hasAny;
+        playBtn.style.opacity = hasAny ? '1' : '0.3';
+    }
+}
+
+/**
+ * Start the lore slideshow — auto-advances through collected snippets
+ * in chronological order.
+ */
+export function startLoreSlideshow() {
+    const collected = [...(gameState.collectedLore || [])];
+    if (collected.length === 0) return;
+
+    collected.sort((a, b) => a.chronologicalOrder - b.chronologicalOrder);
+    _loreSlideshowIndex = 0;
+
+    const slideshow = document.getElementById('lore-slideshow');
+    if (slideshow) {
+        slideshow.classList.add('active');
+        _renderLoreSlide(collected);
+    }
+}
+
+/**
+ * Navigate lore slideshow.
+ * @param {number} delta - +1 for next, -1 for prev
+ */
+export function navigateLoreSlideshow(delta) {
+    const collected = [...(gameState.collectedLore || [])];
+    collected.sort((a, b) => a.chronologicalOrder - b.chronologicalOrder);
+
+    _loreSlideshowIndex = Math.max(0, Math.min(collected.length - 1, _loreSlideshowIndex + delta));
+    _renderLoreSlide(collected);
+}
+
+/**
+ * Close the lore slideshow.
+ */
+export function closeLoreSlideshow() {
+    const slideshow = document.getElementById('lore-slideshow');
+    if (slideshow) slideshow.classList.remove('active');
+}
+
+function _renderLoreSlide(collected) {
+    const textEl = document.getElementById('lore-slideshow-text');
+    const counterEl = document.getElementById('lore-slide-counter');
+
+    if (textEl && collected[_loreSlideshowIndex]) {
+        textEl.textContent = collected[_loreSlideshowIndex].text;
+    }
+    if (counterEl) {
+        counterEl.textContent = (_loreSlideshowIndex + 1) + ' / ' + collected.length;
+    }
+}
+
+
 // ─── Crafting Tab ──────────────────────────────────────────────────────────────
 
 /**
@@ -541,7 +1087,7 @@ export function updateCraftingTab() {
     document.querySelectorAll('.cat-btn[data-category]').forEach(btn => {
         const cat = btn.dataset.category;
         const count = config.items
-            ? config.items.filter(i => gameState.unlockedBlueprints.includes(i.id) && matchCategory(i, cat)).length
+            ? config.items.filter(i => gameState.unlockedBlueprints.includes(i.id) && matchCategory(i, cat) && !isAlreadyBuilt(i)).length
             : 0;
         const label = btn.dataset.label || btn.textContent.replace(/\s*\(\d+\)$/, '');
         btn.dataset.label = label;
@@ -552,13 +1098,22 @@ export function updateCraftingTab() {
     const activeBtn = document.querySelector('.cat-btn.active');
     const category = activeBtn ? activeBtn.dataset.category : 'tools';
 
-    // Filter unlocked blueprints by category
+    // Filter unlocked blueprints by category, excluding already-built SINGLE items
     const items = config.items
         ? config.items.filter(i =>
             gameState.unlockedBlueprints.includes(i.id) &&
-            matchCategory(i, category)
+            matchCategory(i, category) &&
+            !isAlreadyBuilt(i)
           )
         : [];
+
+    // Fingerprint: category + items + resource amounts (affect "can afford" state)
+    const resKey = items.map(i => {
+        const cost = i.requirements || i.cost || {};
+        return i.id + ':' + Object.keys(cost).map(r => Math.floor(gameState.resources[r] || 0)).join('/');
+    }).join(',');
+    const key = category + '|' + gameState.unlockedBlueprints.length + '|' + resKey;
+    if (_skipIfUnchanged(container, key)) return;
 
     while (container.firstChild) container.removeChild(container.firstChild);
 
@@ -571,7 +1126,7 @@ export function updateCraftingTab() {
     }
 
     for (const item of items) {
-        const cost = item.cost || {};
+        const cost = item.requirements || item.cost || {};
         const canAfford = checkCost(cost);
         const effectText = formatEffectsText(item.effect || {});
 
@@ -628,12 +1183,28 @@ export function updateCraftingTab() {
             card.appendChild(costList);
         }
 
-        // Effects
-        if (effectText) {
-            const effectEl = document.createElement('div');
-            effectEl.style.cssText = 'font-size:0.75em; color:#e2b714; margin-top:4px;';
-            effectEl.textContent = effectText;
-            card.appendChild(effectEl);
+        // Effects as styled tags
+        const effectEntries = Object.entries(item.effect || {}).filter(e => e[1] !== 0 && e[1] !== null);
+        if (effectEntries.length > 0) {
+            const effectList = document.createElement('div');
+            effectList.style.cssText = 'display:flex; flex-wrap:wrap; gap:4px 8px; margin-top:4px;';
+
+            for (const [key, val] of effectEntries) {
+                const label = EFFECT_LABELS[key] || camelToLabel(key);
+                const isPositive = val > 0;
+                const sign = isPositive ? '+' : '';
+                // Format: multipliers as x, others as raw number
+                const display = key.includes('Multiplier') ? sign + val + 'x' : sign + val;
+
+                const tag = document.createElement('span');
+                tag.style.cssText = 'font-size:0.78em; padding:2px 7px; border-radius:3px; background:' +
+                    (isPositive ? 'rgba(226,183,20,0.15)' : 'rgba(231,76,60,0.15)') + '; color:' +
+                    (isPositive ? '#e2b714' : '#e74c3c') + ';';
+                tag.textContent = label + ' ' + display;
+                effectList.appendChild(tag);
+            }
+
+            card.appendChild(effectList);
         }
 
         // Craft time
@@ -723,6 +1294,25 @@ export function updateCraftingQueueDisplay() {
     let config;
     try { config = getConfig(); } catch { return; }
 
+    // Structure key: queue item IDs (for full rebuild check)
+    const structKey = gameState.craftingQueue.map(e => e.itemId).join(',');
+
+    // If queue structure hasn't changed, just update progress values in place
+    if (container._queueKey === structKey) {
+        const rows = container.querySelectorAll('.queue-item');
+        for (let idx = 0; idx < gameState.craftingQueue.length && idx < rows.length; idx++) {
+            const entry = gameState.craftingQueue[idx];
+            const duration = entry.duration || 1;
+            const pct = Math.min(100, ((entry.progress || 0) / duration) * 100);
+            const prog = rows[idx].querySelector('progress');
+            if (prog) prog.value = pct;
+            const pctSpan = rows[idx].querySelectorAll('span')[1];
+            if (pctSpan) pctSpan.textContent = Math.floor(pct) + '%';
+        }
+        return;
+    }
+    container._queueKey = structKey;
+
     while (container.firstChild) container.removeChild(container.firstChild);
 
     for (const entry of gameState.craftingQueue) {
@@ -770,6 +1360,9 @@ function updateWorkerSummary() {
     const total = gameState.population;
     const available = gameState.availableWorkers;
 
+    const key = total + ',' + assigned + ',' + available;
+    if (_skipIfUnchanged(container, key)) return;
+
     container.textContent = '';
     const totalSpan = document.createElement('span');
     totalSpan.textContent = 'Total: ' + total;
@@ -794,6 +1387,15 @@ function updateProductionAssignments() {
 
     let config;
     try { config = getConfig(); } catch { return; }
+
+    // Fingerprint: building levels + worker assignments + available workers
+    const aKey = JSON.stringify(gameState.automationAssignments || {});
+    const bLevels = Object.keys(gameState.buildings).map(k => k + ':' + (gameState.buildings[k].level || 0)).join(',');
+    const mWorkers = Object.keys(gameState.multipleBuildings).map(k =>
+        k + ':' + gameState.multipleBuildings[k].map(i => (i.workersAssigned || 0)).join('/')
+    ).join(',');
+    const key = bLevels + '|' + mWorkers + '|' + aKey + '|' + gameState.availableWorkers;
+    if (_skipIfUnchanged(container, key)) return;
 
     while (container.firstChild) container.removeChild(container.firstChild);
 
@@ -910,6 +1512,8 @@ function updateExplorationLocations() {
     try { config = getConfig(); } catch { return; }
 
     const locations = config.explorationLocations || [];
+    const key = (gameState.discoveredLocations || []).join(',') + '|' + locations.length;
+    if (_skipIfUnchanged(container, key)) return;
 
     while (container.firstChild) container.removeChild(container.firstChild);
 
@@ -952,15 +1556,34 @@ function updateActiveExplorations() {
     const container = document.getElementById('active-explorations');
     if (!container) return;
 
-    while (container.firstChild) container.removeChild(container.firstChild);
-
     if (!gameState.explorations || gameState.explorations.length === 0) {
-        const p = document.createElement('p');
-        p.className = 'dim';
-        p.textContent = 'No active expeditions.';
-        container.appendChild(p);
+        if (!container.querySelector('.dim')) {
+            while (container.firstChild) container.removeChild(container.firstChild);
+            const p = document.createElement('p');
+            p.className = 'dim';
+            p.textContent = 'No active expeditions.';
+            container.appendChild(p);
+        }
         return;
     }
+
+    // Structure key for full rebuild
+    const structKey = gameState.explorations.map(e => e.locationId).join(',');
+
+    // If structure hasn't changed, just update progress
+    if (container._expKey === structKey) {
+        const expeditions = container.querySelectorAll('.active-expedition');
+        for (let i = 0; i < gameState.explorations.length && i < expeditions.length; i++) {
+            const exp = gameState.explorations[i];
+            const pct = exp.duration > 0 ? Math.min(100, ((exp.progress || 0) / exp.duration) * 100) : 0;
+            const prog = expeditions[i].querySelector('progress');
+            if (prog) prog.value = pct;
+        }
+        return;
+    }
+    container._expKey = structKey;
+
+    while (container.firstChild) container.removeChild(container.firstChild);
 
     for (const exp of gameState.explorations) {
         const pct = exp.duration > 0 ? Math.min(100, ((exp.progress || 0) / exp.duration) * 100) : 0;
@@ -986,6 +1609,7 @@ function updateActiveExplorations() {
 // ─── World Tab ─────────────────────────────────────────────────────────────────
 
 export function updateWorldTab() {
+    updatePopulationSection();
     updateTradingSection();
     updateFactionsSection();
     updateQuestsSection();
@@ -1215,57 +1839,115 @@ export function showVictory() {
 /**
  * Update day/night visual overlay based on current time-of-day.
  */
+/**
+ * Dynamic sun arc lighting effect.
+ *
+ * The sun moves right → overhead → left across a half-circle arc.
+ * progress 0.0 = midnight, 0.25 = sunrise (right), 0.5 = noon (top), 0.75 = sunset (left), 1.0 = midnight.
+ *
+ * A radial gradient follows the sun position with warm tint (sunrise/sunset)
+ * or bright top-light (midday). Night uses a dark blue overlay.
+ */
 export function updateDayNightCycle() {
     const el = document.getElementById('day-night-cycle');
     if (!el) return;
 
-    let config;
-    try { config = getConfig(); } catch { return; }
+    const daySpeed = gameState.settings?.daySpeed || 600;
+    const progress = (gameState.time % daySpeed) / daySpeed;
+    // progress: 0 = midnight, 0.25 = 6am sunrise, 0.5 = noon, 0.75 = 6pm sunset, 1.0 = midnight
 
-    const dayLength = config.constants ? (config.constants.DAY_LENGTH || 600) : 600;
-    const isNight = gameState.time > dayLength / 2;
-    el.classList.toggle('night', isNight);
+    // Night: 0.0–0.20 and 0.80–1.0
+    if (progress < 0.20 || progress >= 0.80) {
+        // Deep night — dark blue overlay, slightly lighter toward top
+        const nightDepth = (progress < 0.20)
+            ? 1 - (progress / 0.20)      // 0.0→0.20: fading from deep night to pre-dawn
+            : (progress - 0.80) / 0.20;  // 0.80→1.0: deepening into night
+        const alpha = 0.15 + nightDepth * 0.30;  // 0.15 (twilight edge) to 0.45 (deep midnight)
+        el.style.background = `radial-gradient(ellipse 120% 80% at 50% 20%, rgba(10,10,40,${(alpha * 0.5).toFixed(3)}), rgba(0,0,20,${alpha.toFixed(3)}))`;
+        return;
+    }
+
+    // Daytime: 0.20–0.80
+    // Map to sun angle: 0.20=sunrise(right), 0.50=noon(top), 0.80=sunset(left)
+    const dayProgress = (progress - 0.20) / 0.60;  // 0→1 across the day
+
+    // Sun position along an arc (right → top → left)
+    // X: 90% (right) → 50% (center) → 10% (left)
+    const sunX = 90 - dayProgress * 80;
+    // Y: arc — lowest at edges, highest (5%) at midday
+    const arcAngle = dayProgress * Math.PI;
+    const sunY = 85 - Math.sin(arcAngle) * 80;  // 85% at horizon → 5% at zenith
+
+    // Color temperature shifts through the day
+    let tintR, tintG, tintB, tintAlpha;
+    let ambientAlpha;
+
+    if (dayProgress < 0.20) {
+        // Sunrise — warm amber/pink glow from the right
+        const t = dayProgress / 0.20;
+        tintR = 255;
+        tintG = Math.round(120 + t * 80);  // 120→200 (deep amber → golden)
+        tintB = Math.round(40 + t * 60);   // 40→100
+        tintAlpha = 0.25 - t * 0.12;       // 0.25→0.13 (strong at horizon, fading as sun rises)
+        ambientAlpha = 0.10 - t * 0.08;    // slight overall darkness fading away
+    } else if (dayProgress > 0.80) {
+        // Sunset — warm orange/red glow from the left
+        const t = (dayProgress - 0.80) / 0.20;
+        tintR = 255;
+        tintG = Math.round(170 - t * 60);  // 170→110 (golden → deep orange)
+        tintB = Math.round(70 - t * 40);   // 70→30
+        tintAlpha = 0.13 + t * 0.15;       // 0.13→0.28 (intensifying into dusk)
+        ambientAlpha = t * 0.10;            // darkness creeping in
+    } else {
+        // Midday — gentle warm overhead light
+        const midT = Math.abs(dayProgress - 0.5) / 0.3; // 0 at noon, 1 at edges
+        tintR = 255;
+        tintG = 245;
+        tintB = 210;
+        tintAlpha = 0.06 + (1 - midT) * 0.04; // 0.06→0.10 brightest at noon
+        ambientAlpha = 0;
+    }
+
+    const tint = `rgba(${tintR},${tintG},${tintB},${tintAlpha.toFixed(3)})`;
+    const clear = 'rgba(0,0,0,0)';
+    const ambient = ambientAlpha > 0 ? `rgba(10,10,30,${ambientAlpha.toFixed(3)})` : clear;
+
+    // Radial gradient centered on sun position — large ellipse radiating warmth outward
+    el.style.background = `radial-gradient(ellipse 80% 70% at ${sunX.toFixed(1)}% ${sunY.toFixed(1)}%, ${tint}, ${clear} 70%), linear-gradient(to bottom, ${clear}, ${ambient})`;
 }
 
 
-// ─── Time Display (backward compat) ───────────────────────────────────────────
+// ─── Time Display ────────────────────────────────────────────────────────────
 
 /**
- * Update time display in HUD. In the new layout, time is embedded in the day display.
- * Kept for backward compatibility with game.js.
+ * Update time display in HUD — shows fake in-game 24h clock.
+ * Uses gameState.time % daySpeed so the clock wraps each game day.
  */
 export function updateTimeDisplay() {
-    // The new HUD doesn't have a separate time-display span.
-    // If one exists (from old HTML), update it.
     const el = document.getElementById('time-display');
     if (!el) return;
 
-    let config;
-    try { config = getConfig(); } catch { return; }
-
-    const dayLength = config.constants ? (config.constants.DAY_LENGTH || 600) : 600;
-    const hours = Math.floor((gameState.time / dayLength) * 24);
-    const minutes = Math.floor(((gameState.time / dayLength) * 24 - hours) * 60);
+    const daySpeed = gameState.settings?.daySpeed || 600;
+    const timeInDay = gameState.time % daySpeed;
+    const hours = Math.floor((timeInDay / daySpeed) * 24);
+    const minutes = Math.floor(((timeInDay / daySpeed) * 24 - hours) * 60);
     el.textContent = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
 }
 
 /**
- * Update time emoji in HUD (backward compat).
+ * Update time emoji in HUD — reflects in-game time of day.
  */
 export function updateTimeEmoji() {
     const el = document.getElementById('time-emoji');
     if (!el) return;
 
-    let config;
-    try { config = getConfig(); } catch { return; }
+    const daySpeed = gameState.settings?.daySpeed || 600;
+    const progress = (gameState.time % daySpeed) / daySpeed;
 
-    const dayLength = config.constants ? (config.constants.DAY_LENGTH || 600) : 600;
-    const progress = gameState.time / dayLength;
-
-    if (progress < 0.25) el.textContent = '\u{1F305}';
-    else if (progress < 0.5) el.textContent = '\u{2600}\uFE0F';
-    else if (progress < 0.75) el.textContent = '\u{1F307}';
-    else el.textContent = '\u{1F319}';
+    if (progress < 0.25) el.textContent = '\u{1F305}';       // 00:00-06:00 sunrise
+    else if (progress < 0.5) el.textContent = '\u{2600}\uFE0F'; // 06:00-12:00 daytime
+    else if (progress < 0.75) el.textContent = '\u{1F307}';  // 12:00-18:00 sunset
+    else el.textContent = '\u{1F319}';                        // 18:00-24:00 night
 }
 
 
@@ -1292,6 +1974,10 @@ export function updateGatheringVisibility() {
 export function updateTradingSection() {
     const container = document.getElementById('trader-list');
     if (!container) return;
+
+    const traders = gameState.traderVisits || [];
+    const key = traders.map(t => (t.name || '') + ':' + (t.offers ? t.offers.length : 0)).join(',');
+    if (_skipIfUnchanged(container, key)) return;
 
     while (container.firstChild) container.removeChild(container.firstChild);
 
@@ -1336,6 +2022,10 @@ export function updateQuestsSection() {
     const container = document.getElementById('quest-list');
     if (!container) return;
 
+    const quests = gameState.activeQuests || [];
+    const key = quests.map(q => q.id || q.name || '').join(',');
+    if (_skipIfUnchanged(container, key)) return;
+
     while (container.firstChild) container.removeChild(container.firstChild);
 
     if (!gameState.activeQuests || gameState.activeQuests.length === 0) {
@@ -1372,6 +2062,9 @@ export function updateAchievementsSection() {
     const container = document.getElementById('achievement-list');
     if (!container) return;
 
+    const key = (gameState.achievements || []).length.toString();
+    if (_skipIfUnchanged(container, key)) return;
+
     while (container.firstChild) container.removeChild(container.firstChild);
 
     if (!gameState.achievements || gameState.achievements.length === 0) {
@@ -1407,6 +2100,8 @@ export function updatePopulationSection() {
     if (!container) return;
 
     const members = gameState.populationMembers || [];
+    const key = members.map(m => (m.name || '') + ':' + Math.round(m.health || 0) + ':' + Math.round(m.happiness || 0) + ':' + (m.sick ? 1 : 0) + ':' + (m.assignment || '')).join(',');
+    if (_skipIfUnchanged(container, key)) return;
 
     while (container.firstChild) container.removeChild(container.firstChild);
 
@@ -1486,6 +2181,10 @@ export function updateFactionsSection() {
     const container = document.getElementById('faction-list');
     if (!container) return;
 
+    const factions = gameState.factions || [];
+    const key = factions.map(f => (f.id || '') + ':' + (f.trust || 0)).join(',');
+    if (_skipIfUnchanged(container, key)) return;
+
     while (container.firstChild) container.removeChild(container.firstChild);
 
     if (!gameState.factions || gameState.factions.length === 0) {
@@ -1532,6 +2231,9 @@ export function updateStatsSection() {
         ['Total Traded', s.totalTraded || 0],
         ['Total Studied', s.totalStudied || 0]
     ];
+
+    const key = entries.map(e => e[1]).join(',');
+    if (_skipIfUnchanged(statsGrid, key)) return;
 
     while (statsGrid.firstChild) statsGrid.removeChild(statsGrid.firstChild);
 
@@ -1623,6 +2325,12 @@ export function updateNetworkTab() {
     const canFoundSettlement = isSettlementUnlocked();
     const canCreateSupplyLine = isSupplyLinesUnlocked();
     const currentSettlement = getCurrentSettlement();
+
+    // Fingerprint: settlement data + supply lines
+    const sKey = settlements.map(s => s.id + ':' + s.population + ':' + s.food + ':' + s.water + ':' + s.craftedCount).join(',');
+    const slKey = supplyLines.map(sl => sl.from + '-' + sl.to).join(',');
+    const key = sKey + '|' + slKey + '|' + canFoundSettlement + '|' + canCreateSupplyLine;
+    if (_skipIfUnchanged(networkMap, key)) return;
 
     // ── Settlement List ──────────────────────────────────────────────────
     const parts = [];
@@ -1761,12 +2469,34 @@ function escapeHtml(str) {
 
 
 /**
+ * Pre-render ALL tabs so their content is ready before the player sees anything.
+ * Called once during initialization, behind the splash screen.
+ */
+export function preRenderAllTabs() {
+    updateHUD();
+    updateDayNightCycle();
+    updateTimeDisplay();
+    updateTimeEmoji();
+    updateTabBadges();
+    updateSettlementTab();
+    updateBookTab();
+    updateCraftingTab();
+    updateProductionTab();
+    updateExplorationTab();
+    updateWorldTab();
+    updateNetworkTab();
+    updateCraftingQueueDisplay();
+    updateGatheringButtons();
+}
+
+/**
  * Master display update function. Called by the game loop every tick.
  * Updates the HUD always, and only renders the active tab for performance.
  */
 export function updateDisplay() {
     updateHUD();
     updateDayNightCycle();
+    updateTabBadges();
 
     // Only update the active tab for performance
     const activeTab = document.querySelector('.tab-panel.active');
@@ -1775,6 +2505,10 @@ export function updateDisplay() {
     switch (activeTab.id) {
         case 'tab-settlement':
             updateSettlementTab();
+            // World pseudo-tab lives inside settlement tab
+            if (document.getElementById('world-view')?.style.display !== 'none') {
+                updateWorldTab();
+            }
             break;
         case 'tab-book':
             updateBookTab();
@@ -1817,4 +2551,13 @@ export function initUI() {
 function capitalize(str) {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function camelToLabel(str) {
+    return str
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/Multiplier$|Rate$|Bonus$/, '')
+        .trim()
+        .toLowerCase()
+        .replace(/^./, c => c.toUpperCase());
 }
