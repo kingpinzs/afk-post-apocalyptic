@@ -251,6 +251,11 @@ export function getConfig() {
   return gameConfig;
 }
 
+/** Non-throwing version for debug checks. Returns null if config not loaded. */
+export function getConfigSafe() {
+  return gameConfig || null;
+}
+
 
 // ─── Resource Discovery ──────────────────────────────────────────────────────
 

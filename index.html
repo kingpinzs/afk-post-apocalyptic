@@ -1774,6 +1774,56 @@
             window.dispatchEvent(new CustomEvent('manual-save'));
         });
     </script>
+    <script>
+        // Debug overlay — catches errors that are invisible in Android WebView
+        (function() {
+            var dbg = document.createElement('div');
+            dbg.id = 'debug-log';
+            dbg.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:30vh;overflow:auto;background:rgba(0,0,0,0.9);color:#0f0;font:11px monospace;padding:6px;z-index:99999;display:none;';
+            document.body.appendChild(dbg);
+
+            function log(msg, color) {
+                dbg.style.display = 'block';
+                var line = document.createElement('div');
+                line.style.color = color || '#0f0';
+                line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+                dbg.appendChild(line);
+                dbg.scrollTop = dbg.scrollHeight;
+            }
+
+            window.addEventListener('error', function(e) {
+                log('ERROR: ' + e.message + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno, '#ff4444');
+            });
+            window.addEventListener('unhandledrejection', function(e) {
+                log('PROMISE: ' + (e.reason?.message || e.reason || 'unknown'), '#ff8800');
+            });
+
+            // Expose for modules to call
+            window.__dbg = log;
+
+            // Detect if the ES6 module fails to load entirely
+            window.__moduleLoaded = false;
+            setTimeout(function() {
+                if (!window.__moduleLoaded) {
+                    log('CRITICAL: game.js module never loaded! ES6 modules may not be supported.', '#ff0000');
+                    log('UA: ' + navigator.userAgent, '#ffaa00');
+
+                    // Emergency fallback: attach click handler directly
+                    var btn = document.getElementById('start-game');
+                    if (btn) {
+                        log('Attaching emergency click handler to New Game button', '#ffaa00');
+                        btn.addEventListener('click', function() {
+                            log('Emergency handler: New Game clicked, but game module not loaded', '#ff4444');
+                        });
+                    }
+                }
+            }, 5000);
+        })();
+    </script>
     <script type="module" src="game.js"></script>
+    <script nomodule>
+        // Fallback for browsers/WebViews that don't support ES6 modules at all
+        if (window.__dbg) window.__dbg('ES6 modules NOT supported in this browser/WebView!', '#ff0000');
+    </script>
 </body>
 </html>

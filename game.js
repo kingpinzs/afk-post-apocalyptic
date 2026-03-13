@@ -12,7 +12,7 @@
 
 // ─── Imports ──────────────────────────────────────────────────────────────────
 
-import { gameState, loadGameConfig, getConfig, computeUnlockedResources, getWorkbenchLevel, resetSettlementState } from './gameState.js';
+import { gameState, loadGameConfig, getConfig, getConfigSafe, computeUnlockedResources, getWorkbenchLevel, resetSettlementState } from './gameState.js';
 import { gatherResource, consumeResources, capResources, checkPopulationGrowth, study, submitPuzzleAnswer, clearActiveIntervals, resetGathering, getGatherCount, skipPuzzle, getPuzzleHint } from './resources.js';
 import { getCraftableItems, startCrafting, getUpgradeOptions, clearCraftingInterval, getCraftingQueue } from './crafting.js';
 import { runDailyProduction, getProductionSummary, assignWorkerToSingle, assignWorkerToMultiple, unassignAllWorkers } from './automation.js';
@@ -42,8 +42,11 @@ let saveInterval = null;
 // ─── Game Initialization ──────────────────────────────────────────────────────
 
 async function initializeGame() {
+  if (window.__dbg) window.__dbg('initializeGame() started');
+
   // ── Load config first ──────────────────────────────────────────────
   await loadGameConfig();
+  if (window.__dbg) window.__dbg('loadGameConfig() done, config loaded: ' + !!getConfigSafe());
 
   // Config-dependent early init (wrapped so button handlers still attach on failure)
   try {
@@ -61,8 +64,10 @@ async function initializeGame() {
     // Compute initial resource visibility
     computeUnlockedResources();
     updateGatheringVisibility();
+    if (window.__dbg) window.__dbg('Config init complete');
   } catch (err) {
     console.error('[init] Config-dependent init failed:', err);
+    if (window.__dbg) window.__dbg('Config init FAILED: ' + err.message, '#ff4444');
   }
 
   // ── Everything below is pure DOM wiring — must always run ──────────
@@ -188,10 +193,18 @@ async function initializeGame() {
   });
 
   // ── New Game Button ───────────────────────────────────────────────────
-  document.getElementById('start-game')?.addEventListener('click', () => {
-    initAudio();
-    playClick();
-    startNewGame();
+  const startBtn = document.getElementById('start-game');
+  if (window.__dbg) window.__dbg('start-game button found: ' + !!startBtn);
+  startBtn?.addEventListener('click', () => {
+    if (window.__dbg) window.__dbg('New Game clicked!');
+    try {
+      initAudio();
+      playClick();
+      startNewGame();
+    } catch (err) {
+      if (window.__dbg) window.__dbg('startNewGame FAILED: ' + err.message + ' @ ' + err.stack?.split('\n')[1], '#ff4444');
+      console.error('[start] Failed:', err);
+    }
   });
 
   // ── Continue Game Button ──────────────────────────────────────────────
@@ -508,6 +521,8 @@ async function initializeGame() {
       gatherResource(btn.dataset.resource);
     });
   }
+
+  if (window.__dbg) window.__dbg('All event listeners attached ✓', '#00ff88');
 }
 
 
@@ -917,4 +932,11 @@ function resetGame() {
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-initializeGame().catch(err => console.error('[bootstrap] initializeGame failed:', err));
+// Signal to the non-module debug script that the ES6 module loaded successfully
+window.__moduleLoaded = true;
+if (window.__dbg) window.__dbg('game.js module loaded successfully');
+
+initializeGame().catch(err => {
+  console.error('[bootstrap] initializeGame failed:', err);
+  if (window.__dbg) window.__dbg('BOOTSTRAP FAILED: ' + err.message, '#ff4444');
+});
