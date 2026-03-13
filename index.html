@@ -1774,8 +1774,8 @@
             window.dispatchEvent(new CustomEvent('manual-save'));
         });
     </script>
+    <!-- DEBUG OVERLAY — uncomment to enable on-screen error reporting
     <script>
-        // Debug overlay — catches errors that are invisible in Android WebView
         (function() {
             var dbg = document.createElement('div');
             dbg.id = 'debug-log';
@@ -1798,17 +1798,13 @@
                 log('PROMISE: ' + (e.reason?.message || e.reason || 'unknown'), '#ff8800');
             });
 
-            // Expose for modules to call
             window.__dbg = log;
 
-            // Detect if the ES6 module fails to load entirely
             window.__moduleLoaded = false;
             setTimeout(function() {
                 if (!window.__moduleLoaded) {
-                    log('CRITICAL: game.js module never loaded! ES6 modules may not be supported.', '#ff0000');
+                    log('CRITICAL: game.js module never loaded!', '#ff0000');
                     log('UA: ' + navigator.userAgent, '#ffaa00');
-
-                    // Emergency fallback: attach click handler directly
                     var btn = document.getElementById('start-game');
                     if (btn) {
                         log('Attaching emergency click handler to New Game button', '#ffaa00');
@@ -1819,6 +1815,8 @@
                 }
             }, 5000);
         })();
+    </script>
+    END DEBUG OVERLAY -->
     </script>
     <script src="bundle.js"></script>
 </body>
