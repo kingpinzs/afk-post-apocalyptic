@@ -7,7 +7,7 @@
  * and game lifecycle (new game, continue, reset).
  *
  * The game loop runs once per second. Day advancement is controlled by
- * gameState.settings.daySpeed (seconds per day, default 30).
+ * gameState.settings.daySpeed (seconds per day, default 60).
  */
 
 // ─── Imports ──────────────────────────────────────────────────────────────────

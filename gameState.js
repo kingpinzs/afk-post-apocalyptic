@@ -43,7 +43,7 @@ export const gameState = {
 
   difficulty: 'normal',
   settings: {
-    daySpeed: 30                // seconds per game day
+    daySpeed: 60                // seconds per game day
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -626,7 +626,7 @@ export function deserializeState(saveData) {
   gameState.totalDaysPlayed = g.totalDaysPlayed ?? 0;
   gameState.toolLevels = g.toolLevels ?? { cutting: 0, chopping: 0, mining: 0, construction: 0, farming: 0, fishing: 0, hunting: 0 };
   gameState.difficulty = g.difficulty ?? 'normal';
-  gameState.settings = g.settings ?? { daySpeed: 30 };
+  gameState.settings = g.settings ?? { daySpeed: 60 };
   gameState.factions = g.factions ?? [];
 
   // Tools (global, portable)

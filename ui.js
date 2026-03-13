@@ -537,6 +537,17 @@ export function updateCraftingTab() {
         return;
     }
 
+    // Update category badge counts
+    document.querySelectorAll('.cat-btn[data-category]').forEach(btn => {
+        const cat = btn.dataset.category;
+        const count = config.items
+            ? config.items.filter(i => gameState.unlockedBlueprints.includes(i.id) && matchCategory(i, cat)).length
+            : 0;
+        const label = btn.dataset.label || btn.textContent.replace(/\s*\(\d+\)$/, '');
+        btn.dataset.label = label;
+        btn.textContent = count > 0 ? `${label} (${count})` : label;
+    });
+
     // Get active category
     const activeBtn = document.querySelector('.cat-btn.active');
     const category = activeBtn ? activeBtn.dataset.category : 'tools';
