@@ -1820,7 +1820,17 @@
             }, 5000);
         })();
     </script>
-    <script type="module" src="game.js"></script>
+    <script type="module">
+        // Dynamic import so we can catch the ACTUAL error if the module fails
+        import('./game.js').catch(function(err) {
+            if (window.__dbg) {
+                window.__dbg('MODULE LOAD FAILED: ' + err.message, '#ff4444');
+                window.__dbg('Error type: ' + err.constructor.name, '#ff4444');
+                if (err.stack) window.__dbg('Stack: ' + err.stack.split('\n').slice(0,3).join(' | '), '#ff8800');
+            }
+            console.error('[module] Failed to load game.js:', err);
+        });
+    </script>
     <script nomodule>
         // Fallback for browsers/WebViews that don't support ES6 modules at all
         if (window.__dbg) window.__dbg('ES6 modules NOT supported in this browser/WebView!', '#ff0000');
