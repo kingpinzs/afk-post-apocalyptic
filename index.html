@@ -1432,8 +1432,8 @@
 
         .tutorial-steps {
             text-align: left;
-            margin: 12px 0;
-            line-height: 2;
+            margin: 4px 0;
+            line-height: 1.9;
             font-size: 0.75em;
         }
 
@@ -1448,6 +1448,27 @@
             margin-right: 6px;
             font-size: 0.8em;
             color: #00ffff;
+        }
+
+        .tutorial-updates {
+            text-align: left;
+            margin: 4px 0;
+            font-size: 0.7em;
+            line-height: 1.8;
+            color: #e0e4e8;
+        }
+
+        .tutorial-updates p {
+            margin: 0;
+            padding-left: 14px;
+            position: relative;
+        }
+
+        .tutorial-updates p::before {
+            content: '\2022';
+            position: absolute;
+            left: 0;
+            color: #f39c12;
         }
 
         /* ================================================================
@@ -1780,17 +1801,35 @@
          TUTORIAL OVERLAY
          ============================================================ -->
     <div id="tutorial-overlay">
-        <div class="tutorial-card">
-            <h2>How to Survive</h2>
+        <div class="tutorial-card" style="max-width:400px;">
+            <h2 style="margin-bottom:6px;">Post-Apocalyptic Survival</h2>
+            <p style="font-size:0.7em; color:#8494a7; margin:0 0 14px; line-height:1.5; text-align:left;">
+                The world has ended. You wake alone in the wasteland with nothing but a worn book.
+                Study its pages to rediscover lost knowledge, gather resources, craft tools, and
+                rebuild civilization from the ashes. Can you lead humanity from stone age to the stars?
+            </p>
+
+            <div style="font-size:0.6em; color:#00ffff; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px; text-align:left;">How to Survive</div>
             <div class="tutorial-steps">
-                <p><span>1</span> Study the book to gain knowledge</p>
-                <p><span>2</span> Solve puzzles to unlock new abilities</p>
-                <p><span>3</span> Gather unlocked resources from the wasteland</p>
-                <p><span>4</span> Craft tools &amp; buildings to unlock more</p>
+                <p><span>1</span> Study the Book to gain knowledge and unlock resources</p>
+                <p><span>2</span> Solve puzzles to prove mastery and advance</p>
+                <p><span>3</span> Gather resources from the wasteland</p>
+                <p><span>4</span> Craft tools, shelters, and infrastructure</p>
                 <p><span>5</span> Assign workers to automate production</p>
-                <p><span>6</span> Rebuild civilization -- reach the stars!</p>
+                <p><span>6</span> Expand settlements and rebuild civilization</p>
             </div>
-            <p style="color:#7f8c8d; font-size:0.65em;">Keep food and water above zero or it's game over.</p>
+
+            <div style="font-size:0.6em; color:#f39c12; text-transform:uppercase; letter-spacing:2px; margin:12px 0 6px; text-align:left;">What's New</div>
+            <div class="tutorial-updates">
+                <p>Advisor system guides your next steps</p>
+                <p>Sun arc lighting with sunrise/sunset effects</p>
+                <p>3-meal daily consumption for realistic pacing</p>
+                <p>AFK offline progression with welcome-back summary</p>
+                <p>Dev tools in Settings for testing game mechanics</p>
+                <p>Improved text contrast for better readability</p>
+            </div>
+
+            <p style="color:#e74c3c; font-size:0.65em; margin:12px 0 4px;">Keep food and water above zero or it's game over.</p>
             <button id="tutorial-dismiss">Begin Survival</button>
         </div>
     </div>
@@ -1859,7 +1898,7 @@
             <!-- Camp main content (hidden when World pseudo-tab is active) -->
             <div id="camp-main-content">
                 <!-- Current Objective -->
-                <div id="current-goal" class="game-card" style="border-color:rgba(226,183,20,0.3); background:rgba(226,183,20,0.04);">
+                <div id="current-goal" class="game-card" style="border-color:rgba(226,183,20,0.4); background:rgba(226,183,20,0.08);">
                     <div id="goal-content"></div>
                 </div>
 
@@ -2245,11 +2284,11 @@
         <button id="restart-game">Restart Game</button>
     </div>
 
-    <div id="welcome-back-popup" class="popup" style="max-width:360px; text-align:left;">
-        <h2 style="text-align:center; margin-bottom:12px;">Welcome Back</h2>
-        <div id="welcome-back-content" style="font-size:0.8em; line-height:1.6;"></div>
-        <div style="text-align:center; margin-top:16px;">
-            <button id="welcome-back-dismiss">Continue</button>
+    <div id="welcome-back-popup" class="popup" style="max-width:380px; text-align:left; width:90vw;">
+        <h2 style="text-align:center; margin:0 0 4px; font-size:0.95em; color:#00ffff;">Welcome Back, Survivor</h2>
+        <div id="welcome-back-content" style="font-size:0.85em; line-height:1.5;"></div>
+        <div style="text-align:center; margin-top:14px;">
+            <button id="welcome-back-dismiss" style="padding:10px 32px; font-size:0.85em;">Continue</button>
         </div>
     </div>
 

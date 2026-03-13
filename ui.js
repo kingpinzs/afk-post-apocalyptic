@@ -452,18 +452,18 @@ function updateAdvisor() {
             + (i < shown.length - 1 ? ' border-bottom:1px solid rgba(255,255,255,0.05);' : '');
 
         const badge = document.createElement('span');
-        badge.style.cssText = 'font-size:0.6em; padding:2px 6px; border-radius:3px; white-space:nowrap; margin-top:1px; flex-shrink:0; background:'
-            + (tip.urgent ? 'rgba(231,76,60,0.2); color:#e74c3c;'
-            : tip.cat === 'Next Step' ? 'rgba(0,255,255,0.12); color:#00ffcc;'
-            : tip.cat === 'Growth' ? 'rgba(46,204,113,0.12); color:#2ecc71;'
-            : tip.cat === 'Knowledge' ? 'rgba(155,89,182,0.15); color:#bb86fc;'
-            : tip.cat === 'Quest' ? 'rgba(226,183,20,0.15); color:#e2b714;'
-            : 'rgba(255,255,255,0.08); color:#7f8c8d;');
+        badge.style.cssText = 'font-size:0.65em; padding:2px 8px; border-radius:3px; white-space:nowrap; margin-top:2px; flex-shrink:0; font-weight:500; background:'
+            + (tip.urgent ? 'rgba(231,76,60,0.25); color:#ff6b6b;'
+            : tip.cat === 'Next Step' ? 'rgba(0,255,255,0.15); color:#33ffdd;'
+            : tip.cat === 'Growth' ? 'rgba(46,204,113,0.15); color:#5dde9e;'
+            : tip.cat === 'Knowledge' ? 'rgba(155,89,182,0.2); color:#cc99ff;'
+            : tip.cat === 'Quest' ? 'rgba(226,183,20,0.2); color:#f0d050;'
+            : 'rgba(255,255,255,0.1); color:#a0aab4;');
         badge.textContent = tip.urgent ? 'Urgent' : tip.cat;
         row.appendChild(badge);
 
         const text = document.createElement('span');
-        text.style.cssText = 'font-size:0.8em; color:' + (tip.urgent ? '#e74c3c' : '#bdc3c7') + ';';
+        text.style.cssText = 'font-size:0.85em; color:' + (tip.urgent ? '#ff6b6b' : '#e0e4e8') + '; line-height:1.4;';
         if (tip.html) {
             text.innerHTML = tip.text;
         } else {

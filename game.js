@@ -897,58 +897,109 @@ function showWelcomeBack(summary) {
   const content = document.getElementById('welcome-back-content');
   if (!popup || !content) return;
 
-  const lines = [];
-  lines.push(`You were away for <strong>${summary.daysAdvanced} game days</strong>.`);
-  if (summary.capped) {
-    lines.push(`<em>(capped from ${summary.rawDays} days)</em>`);
-  }
-  lines.push('');
-  lines.push(`<span style="color:#f39c12">Food:</span> ${summary.foodBefore} &rarr; ${summary.foodAfter}`);
-  lines.push(`<span style="color:#3498db">Water:</span> ${summary.waterBefore} &rarr; ${summary.waterAfter}`);
-  if (summary.foodProduced > 0 || summary.waterProduced > 0) {
-    lines.push('');
-    lines.push(`Workers produced: +${summary.foodProduced} food, +${summary.waterProduced} water`);
-  }
-  if (summary.populationBefore !== summary.populationAfter) {
-    lines.push(`<span style="color:#e74c3c">Population:</span> ${summary.populationBefore} &rarr; ${summary.populationAfter}`);
-  }
-
   content.textContent = '';
-  const div = document.createElement('div');
-  // Build content safely from the summary data
-  const p1 = document.createElement('p');
-  p1.textContent = `You were away for ${summary.daysAdvanced} game days.`;
+  const wrap = document.createElement('div');
+
+  // Time away header
+  const timeRow = document.createElement('div');
+  timeRow.style.cssText = 'text-align:center; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(0,255,255,0.15);';
+  const dayText = document.createElement('div');
+  dayText.style.cssText = 'font-size:1.8em; font-weight:700; color:#00ffff;';
+  dayText.textContent = `${summary.daysAdvanced}`;
+  timeRow.appendChild(dayText);
+  const dayLabel = document.createElement('div');
+  dayLabel.style.cssText = 'font-size:0.7em; color:#8494a7; text-transform:uppercase; letter-spacing:2px;';
+  dayLabel.textContent = summary.daysAdvanced === 1 ? 'day passed' : 'days passed';
+  timeRow.appendChild(dayLabel);
   if (summary.capped) {
-    p1.textContent += ` (capped from ${summary.rawDays})`;
+    const capNote = document.createElement('div');
+    capNote.style.cssText = 'font-size:0.6em; color:#f39c12; margin-top:4px;';
+    capNote.textContent = `(capped from ${summary.rawDays} days)`;
+    timeRow.appendChild(capNote);
   }
-  div.appendChild(p1);
+  wrap.appendChild(timeRow);
 
-  const stats = document.createElement('div');
-  stats.style.cssText = 'margin-top:8px; display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:0.9em;';
-
-  const addStat = (label, before, after, color) => {
+  // Resource changes
+  const buildRow = (icon, label, before, after, color) => {
+    const net = after - before;
     const row = document.createElement('div');
-    row.style.cssText = `grid-column: 1 / -1; color:${color};`;
-    row.textContent = `${label}: ${before} \u2192 ${after}`;
-    stats.appendChild(row);
+    row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.04);';
+
+    const left = document.createElement('div');
+    left.style.cssText = 'display:flex; align-items:center; gap:8px;';
+    const iconEl = document.createElement('span');
+    iconEl.style.cssText = `font-size:1em;`;
+    iconEl.textContent = icon;
+    left.appendChild(iconEl);
+    const labelEl = document.createElement('span');
+    labelEl.style.cssText = `font-size:0.85em; color:${color}; font-weight:500;`;
+    labelEl.textContent = label;
+    left.appendChild(labelEl);
+    row.appendChild(left);
+
+    const right = document.createElement('div');
+    right.style.cssText = 'display:flex; align-items:center; gap:8px;';
+    const vals = document.createElement('span');
+    vals.style.cssText = 'font-size:0.8em; color:#bdc3c7;';
+    vals.textContent = `${before} \u2192 ${after}`;
+    right.appendChild(vals);
+    const netEl = document.createElement('span');
+    const netColor = net > 0 ? '#2ecc71' : net < 0 ? '#e74c3c' : '#7f8c8d';
+    const netSign = net > 0 ? '+' : '';
+    netEl.style.cssText = `font-size:0.75em; padding:2px 6px; border-radius:4px; font-weight:600; color:${netColor}; background:${net > 0 ? 'rgba(46,204,113,0.12)' : net < 0 ? 'rgba(231,76,60,0.12)' : 'rgba(127,140,141,0.1)'};`;
+    netEl.textContent = `${netSign}${net}`;
+    right.appendChild(netEl);
+    row.appendChild(right);
+
+    return row;
   };
 
-  addStat('Food', summary.foodBefore, summary.foodAfter, '#f39c12');
-  addStat('Water', summary.waterBefore, summary.waterAfter, '#3498db');
+  const statsSection = document.createElement('div');
+  statsSection.style.cssText = 'margin-bottom:10px;';
+  statsSection.appendChild(buildRow('\uD83C\uDF3E', 'Food', summary.foodBefore, summary.foodAfter, '#f39c12'));
+  statsSection.appendChild(buildRow('\uD83D\uDCA7', 'Water', summary.waterBefore, summary.waterAfter, '#3498db'));
   if (summary.populationBefore !== summary.populationAfter) {
-    addStat('Population', summary.populationBefore, summary.populationAfter, '#e74c3c');
+    statsSection.appendChild(buildRow('\uD83D\uDC65', 'Population', summary.populationBefore, summary.populationAfter, '#bb86fc'));
   }
+  wrap.appendChild(statsSection);
 
+  // Production breakdown if workers produced anything
   if (summary.foodProduced > 0 || summary.waterProduced > 0) {
-    const prod = document.createElement('div');
-    prod.style.cssText = 'grid-column: 1 / -1; color:#2ecc71; margin-top:6px;';
-    prod.textContent = `Workers produced: +${summary.foodProduced} food, +${summary.waterProduced} water`;
-    stats.appendChild(prod);
+    const prodSection = document.createElement('div');
+    prodSection.style.cssText = 'background:rgba(46,204,113,0.06); border:1px solid rgba(46,204,113,0.15); border-radius:8px; padding:8px 10px; margin-bottom:10px;';
+    const prodTitle = document.createElement('div');
+    prodTitle.style.cssText = 'font-size:0.6em; color:#2ecc71; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;';
+    prodTitle.textContent = 'Worker Production';
+    prodSection.appendChild(prodTitle);
+    const prodDetails = document.createElement('div');
+    prodDetails.style.cssText = 'font-size:0.8em; color:#e0e4e8;';
+    const parts = [];
+    if (summary.foodProduced > 0) parts.push(`+${summary.foodProduced} food`);
+    if (summary.waterProduced > 0) parts.push(`+${summary.waterProduced} water`);
+    prodDetails.textContent = parts.join('  \u00B7  ');
+    prodSection.appendChild(prodDetails);
+    wrap.appendChild(prodSection);
   }
 
-  div.appendChild(stats);
-  content.appendChild(div);
+  // Consumption breakdown
+  if (summary.foodConsumed > 0 || summary.waterConsumed > 0) {
+    const consSection = document.createElement('div');
+    consSection.style.cssText = 'background:rgba(231,76,60,0.06); border:1px solid rgba(231,76,60,0.15); border-radius:8px; padding:8px 10px;';
+    const consTitle = document.createElement('div');
+    consTitle.style.cssText = 'font-size:0.6em; color:#e74c3c; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;';
+    consTitle.textContent = 'Consumed';
+    consSection.appendChild(consTitle);
+    const consDetails = document.createElement('div');
+    consDetails.style.cssText = 'font-size:0.8em; color:#e0e4e8;';
+    const parts = [];
+    if (summary.foodConsumed > 0) parts.push(`-${summary.foodConsumed} food`);
+    if (summary.waterConsumed > 0) parts.push(`-${summary.waterConsumed} water`);
+    consDetails.textContent = parts.join('  \u00B7  ');
+    consSection.appendChild(consDetails);
+    wrap.appendChild(consSection);
+  }
 
+  content.appendChild(wrap);
   popup.style.display = 'flex';
 
   document.getElementById('welcome-back-dismiss')?.addEventListener('click', () => {
@@ -1005,11 +1056,7 @@ async function handleModFile(e, statusElId) {
 // ─── Reset Game ───────────────────────────────────────────────────────────────
 
 function resetGame() {
-  // Close any open popups
-  const puzzlePopup = document.getElementById('puzzle-popup');
-  if (puzzlePopup) puzzlePopup.style.display = 'none';
-
-  // Clear all intervals
+  // Stop everything
   if (gameLoopInterval) {
     clearInterval(gameLoopInterval);
     gameLoopInterval = null;
@@ -1023,63 +1070,35 @@ function resetGame() {
   resetGathering();
   resetActiveEvents();
 
-  // Reset state to defaults using resetSettlementState (preserves structure)
-  resetSettlementState();
-
-  // Also reset global state for a full reset
-  gameState.knowledge = 0;
-  gameState.maxKnowledge = 0;
-  gameState.unlockedBlueprints = [];
-  gameState.currency = 0;
-  gameState.achievements = [];
-  gameState.completedQuests = [];
-  gameState.totalDaysPlayed = 0;
-  gameState.toolLevels = {
-    cutting: 0, chopping: 0, mining: 0,
-    construction: 0, farming: 0, fishing: 0, hunting: 0
-  };
-  for (const chainId of Object.keys(gameState.tools)) {
-    gameState.tools[chainId] = { level: 0, itemId: null };
-  }
-  gameState.factions = [];
-  gameState.settlements = [];
-  gameState.supplyLines = [];
-  gameState.collectedLore = [];
-  gameState.seenLoreEvents = [];
-  gameState.tabNotifications = {};
-  gameState.isStudying = false;
-  gameState._pendingEventCheck = false;
-
-  gameState.isGameOver = false;
-  gameState.gameStarted = true;
-  gameState.sandboxMode = false;
-
-  gameState.availableWorkers = gameState.population;
-
-  // Re-initialise settlement/network systems
-  initSettlements();
-  initNetwork();
-
-  // Initialize new population
-  initializePopulationMembers();
-  initializeFactions();
-
-  // Delete save
+  // Delete save and clear tutorial flag so intro shows again
   deleteSave();
+  localStorage.removeItem('postapoc_tutorial_seen');
 
-  // Update all UI
-  clearEventLog();
-  computeUnlockedResources();
-  updateGatheringVisibility();
-  preRenderAllTabs();
-  checkQuestAvailability();
+  // Show splash screen with fresh loading animation, then reload
+  const splash = document.getElementById('splash-screen');
+  if (splash) {
+    splash.style.display = '';
+    splash.classList.remove('dismissed');
+    const statusText = document.getElementById('splash-status-text');
+    if (statusText) statusText.textContent = 'Restarting';
+  }
 
-  logEvent('You wake up alone in the wilderness. You have nothing but a worn book.', 'story');
-  logEvent('Study the Book to learn how to survive.', 'info');
+  // Hide game UI behind splash
+  document.getElementById('game-container').style.display = 'none';
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('bottom-nav').style.display = 'none';
 
-  // Restart game loop
-  startGameLoop();
-  startAutoSave();
+  // Close any open popups
+  document.querySelectorAll('.popup').forEach(p => p.style.display = 'none');
+  const gameOverPopup = document.getElementById('game-over-popup');
+  if (gameOverPopup) gameOverPopup.style.display = 'none';
+  const restartPopup = document.getElementById('restart-confirm-popup');
+  if (restartPopup) restartPopup.style.display = 'none';
+
+  // Reload the page after a brief splash display — full clean start
+  setTimeout(() => {
+    window.location.reload();
+  }, 1500);
 }
 
 
