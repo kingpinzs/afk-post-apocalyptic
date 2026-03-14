@@ -2045,7 +2045,7 @@ function weatherRenderLoop() {
                 x: Math.random() * W,
                 y: -5,
                 speed: 0.4 + Math.random() * 0.8,
-                size: 1.5 + Math.random() * 2,
+                size: 1 + Math.random() * 1.2,
                 drift: (Math.random() - 0.5) * 0.4,
                 wobble: Math.random() * Math.PI * 2,
                 alpha: 0.4 + Math.random() * 0.4,
