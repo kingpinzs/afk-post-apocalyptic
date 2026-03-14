@@ -163,6 +163,54 @@ The Shelter's `resourceConsumptionMultiplier` (0.5) halves all consumption. With
 ### Game Over
 If food or water drops to 0, the game ends. A game-over popup is displayed with a restart option. The save file is deleted on game over.
 
+### Health & Disease
+
+Each population member has an individual **health** (0–100) and may become **sick**.
+
+#### How Members Get Sick
+- **Base infection chance**: 2% per day, increased by:
+  - **Winter season**: +2% extra chance
+  - **Overcrowding**: >1.5× housing capacity adds a +3% spread bonus
+  - **Difficulty**: higher difficulty scales the chance up
+- **Food poisoning**: 3% daily chance if food spoils (reduced by a Granary); sets `sickDaysRemaining = 2`
+- Sick members show a 🤒 badge with the days remaining on the Population tab
+
+#### How to Heal Sick Members
+
+| Condition | Recovery |
+|-----------|----------|
+| **No medical building** | Very slow natural recovery (`healRate = 0.3 days/day`); untreated members lose 5 health/day and risk death when health ≤ 20 |
+| **Medical building built** (Healer's Tent → … → Medical Center) | Faster recovery (`0.5 + medicalLevel × 0.2 days/day`); each building level can treat 3 patients per day |
+| **Medical building + Medicine resource** | Fastest recovery (`1 + medicalLevel × 0.5 days/day`); consumes 1 Medicine per sick member per day |
+
+**Step-by-step guide:**
+1. **Craft a Healer's Tent** (Crafting tab, Survival tier) — this is your first medical building and immediately begins treating sick members.
+2. **Produce Medicine** — craft an Herbalist's Hut (Survival tier) and upgrade it to an **Apothecary** (Settlement tier). Assign workers to the Apothecary to convert Herbs into Medicine.
+3. **Upgrade the medical chain** — Sick Bay → Clinic → Hospital → Medical Center — for higher treatment capacity and faster recovery.
+
+#### Medical Building Chain
+
+| Building | Tier | Patients/day | Recovery speed | Notes |
+|----------|------|--------------|----------------|-------|
+| Healer's Tent | Survival | 3 | 0.7×/day | First medical building |
+| Sick Bay | Settlement | 6 | 0.9×/day | Requires Healer's Tent |
+| Clinic | Village | 15 | 1.1×/day | Requires Sick Bay |
+| Hospital | Town | 45 | 1.5×/day | Requires Clinic |
+| Medical Center | Civilization | 90 | 2.0×/day | Requires Hospital |
+
+#### Medicine Production
+
+| Building | Input | Output | Notes |
+|----------|-------|--------|-------|
+| Herbalist's Hut | — | 1 Medicine/day (passive) | Survival tier |
+| Apothecary | 6 Herbs | 6 Medicine/day | Settlement tier; requires workers |
+
+#### Sick Member Status in the UI
+
+When a member is sick, their card on the Population tab shows:
+- A **🩺 Sick (Xd)** badge (hover for a tooltip explaining what to do)
+- A **💡 hint** describing the current treatment status and the next step to improve care
+
 ## 8. Automation
 
 Workers can be assigned to buildings that have `foodProductionRate` or `waterProductionRate` effects. Currently, two buildings support automation:
