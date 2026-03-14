@@ -361,21 +361,58 @@ async function initializeGame() {
     toggleTechTree();
   });
 
-  // ── Auto-save on Tab Close / Background ───────────────────────────────
+  // ── Auto-save & AFK Detection (browser + Android Capacitor) ──────────
+  // Shared handlers for going AFK and coming back
+  function onGoingAway() {
+    if (!gameState.gameStarted || gameState._restarting) return;
+    gameState._wentAfkAt = Date.now();
+    saveGame();
+  }
+
+  function onComingBack() {
+    if (!gameState.gameStarted || gameState._restarting || !gameState._wentAfkAt) return;
+    handleAfkReturn();
+  }
+
+  // Browser: tab close
   window.addEventListener('beforeunload', () => {
     if (gameState.gameStarted && !gameState._restarting) saveGame();
   });
+
+  // Browser: tab visibility (works in Chrome, Firefox, Safari)
   document.addEventListener('visibilitychange', () => {
-    if (gameState._restarting) return;
-    if (document.hidden && gameState.gameStarted) {
-      // Going away — save and record timestamp
-      gameState._wentAfkAt = Date.now();
-      saveGame();
-    } else if (!document.hidden && gameState.gameStarted && gameState._wentAfkAt) {
-      // Coming back — check how long we were away
+    if (document.hidden) onGoingAway();
+    else onComingBack();
+  });
+
+  // Android Capacitor: app backgrounded/foregrounded
+  // These fire on WebView pause/resume which visibilitychange may miss
+  document.addEventListener('pause', onGoingAway);
+  document.addEventListener('resume', onComingBack);
+
+  // iOS Capacitor / PWA: page show/hide (bfcache, app switching)
+  window.addEventListener('pagehide', onGoingAway);
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) onComingBack(); // restored from bfcache
+  });
+
+  // Fallback: detect long gaps between game loop ticks
+  // If the loop fires and >30s passed since last tick, treat as AFK return
+  let lastTickTime = Date.now();
+  const origSetInterval = gameLoopInterval; // will be set by startGameLoop
+  const AFK_GAP_MS = 30000;
+  window._checkTickGap = function () {
+    const now = Date.now();
+    const gap = now - lastTickTime;
+    lastTickTime = now;
+    if (gap > AFK_GAP_MS && gameState.gameStarted && !gameState._restarting) {
+      // Big gap detected — browser throttled the interval while away
+      if (!gameState._wentAfkAt) {
+        gameState._wentAfkAt = now - gap;
+      }
       handleAfkReturn();
     }
-  });
+  };
 
   // ── Mod File Handlers ─────────────────────────────────────────────────
   document.getElementById('mod-file')?.addEventListener('change', async (e) => {
@@ -752,6 +789,9 @@ function startGameLoop() {
 
   gameLoopInterval = setInterval(() => {
     if (!gameState.gameStarted || gameState.isGameOver) return;
+
+    // Check for long tick gaps (browser throttled while backgrounded)
+    if (window._checkTickGap) window._checkTickGap();
 
     gameState.time++;
     dayTickCounter++;

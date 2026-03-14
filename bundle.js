@@ -5829,18 +5829,42 @@
     document.getElementById("tech-tree-close")?.addEventListener("click", () => {
       toggleTechTree();
     });
+    function onGoingAway() {
+      if (!gameState.gameStarted || gameState._restarting) return;
+      gameState._wentAfkAt = Date.now();
+      saveGame();
+    }
+    function onComingBack() {
+      if (!gameState.gameStarted || gameState._restarting || !gameState._wentAfkAt) return;
+      handleAfkReturn();
+    }
     window.addEventListener("beforeunload", () => {
       if (gameState.gameStarted && !gameState._restarting) saveGame();
     });
     document.addEventListener("visibilitychange", () => {
-      if (gameState._restarting) return;
-      if (document.hidden && gameState.gameStarted) {
-        gameState._wentAfkAt = Date.now();
-        saveGame();
-      } else if (!document.hidden && gameState.gameStarted && gameState._wentAfkAt) {
+      if (document.hidden) onGoingAway();
+      else onComingBack();
+    });
+    document.addEventListener("pause", onGoingAway);
+    document.addEventListener("resume", onComingBack);
+    window.addEventListener("pagehide", onGoingAway);
+    window.addEventListener("pageshow", (e) => {
+      if (e.persisted) onComingBack();
+    });
+    let lastTickTime = Date.now();
+    const origSetInterval = gameLoopInterval;
+    const AFK_GAP_MS = 3e4;
+    window._checkTickGap = function() {
+      const now = Date.now();
+      const gap = now - lastTickTime;
+      lastTickTime = now;
+      if (gap > AFK_GAP_MS && gameState.gameStarted && !gameState._restarting) {
+        if (!gameState._wentAfkAt) {
+          gameState._wentAfkAt = now - gap;
+        }
         handleAfkReturn();
       }
-    });
+    };
     document.getElementById("mod-file")?.addEventListener("change", async (e) => {
       await handleModFile(e, "mod-status");
     });
@@ -6145,6 +6169,7 @@
     mealsEatenToday = 0;
     gameLoopInterval = setInterval(() => {
       if (!gameState.gameStarted || gameState.isGameOver) return;
+      if (window._checkTickGap) window._checkTickGap();
       gameState.time++;
       dayTickCounter++;
       const daySpeed = gameState.settings?.daySpeed || 600;
