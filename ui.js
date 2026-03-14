@@ -191,6 +191,9 @@ export function switchTab(tabName) {
     // Scroll to top of content when switching tabs
     const gc = document.getElementById('game-container');
     if (gc) gc.scrollTop = 0;
+
+    // Immediately refresh the newly-active tab so stale content isn't shown.
+    updateDisplay();
 }
 
 function toggleMoreDrawer() {
@@ -1302,11 +1305,17 @@ function matchCategory(item, category) {
             case 'tools':
                 return normalized === 'tool' || normalized === 'tools';
             case 'workstations':
-                return normalized === 'workstation' || normalized === 'workstations';
+                // 'processing' covers kiln/forge/sawmill/loom/tannery/etc.
+                // Exclude the workbench chain which has its own tab.
+                return ['workstation', 'workstations', 'processing'].includes(normalized)
+                    && item.chain !== 'workbench';
             case 'workbench':
-                return normalized === 'workbench';
+                // The workbench chain carries category 'workstation'; match by chain ID instead.
+                return item.chain === 'workbench';
             case 'buildings':
-                return normalized === 'building' || normalized === 'buildings';
+                // Catch-all: everything that isn't tools, workstations/processing, or workbench.
+                return !['tool', 'tools', 'workstation', 'workstations', 'processing'].includes(normalized)
+                    && item.chain !== 'workbench';
             default:
                 // For any future categories, fall back to simple equality.
                 return normalized === category;
@@ -1327,14 +1336,14 @@ function matchCategory(item, category) {
         case 'tools':
             return isTools;
         case 'workstations':
-            return isWorkstation;
+            return isWorkstation && !isWorkbench;
         case 'workbench':
             return isWorkbench;
         case 'buildings':
             // Any item that is not a tool, workstation, or workbench belongs here
             return !isTools && !isWorkstation && !isWorkbench;
         default:
-            return true;
+            return false;
     }
 }
 
