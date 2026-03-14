@@ -529,6 +529,10 @@ export function getUpgradeOptions(chain, instanceId) {
   const instance = instances?.find(i => i.id === instanceId);
   if (!instance) return [];
 
+  // If an upgrade for this instance is already queued, show no options
+  const alreadyQueued = gameState.craftingQueue.some(q => q.targetInstanceId === instanceId);
+  if (alreadyQueued) return [];
+
   // Find next level items in this chain that are unlocked
   return config.items
     .filter(item => item.chain === chain && item.level === instance.level + 1)
