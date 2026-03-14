@@ -868,13 +868,8 @@ function advanceDay() {
     addPopulationMember();
   }
 
-  // Weather update
+  // Weather update (also detects and logs season transitions)
   updateWeather();
-
-  // Season advance (every 30 days)
-  if (gameState.day % 30 === 0) {
-    advanceSeason();
-  }
 
   // Events — defer new event checks while the player is studying
   updateActiveEvents();

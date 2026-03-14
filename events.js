@@ -142,7 +142,11 @@ export function updateWeather() {
     if (!gameState._seasonOverride) {
         const totalSeasonLength = weatherConfig.seasonLength;
         const seasonIndex = Math.floor(((gameState.day - 1) % (totalSeasonLength * 4)) / totalSeasonLength);
-        gameState.currentSeason = weatherConfig.seasons[seasonIndex];
+        const newSeason = weatherConfig.seasons[seasonIndex];
+        if (newSeason && newSeason !== gameState.currentSeason) {
+            gameState.currentSeason = newSeason;
+            logEvent(`Season changed to ${gameState.currentSeason}.`, 'season');
+        }
     }
 
     // Roll weather based on season weights (unless dev override)
