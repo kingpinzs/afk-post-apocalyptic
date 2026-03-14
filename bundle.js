@@ -973,7 +973,11 @@
     if (!gameState._seasonOverride) {
       const totalSeasonLength = weatherConfig.seasonLength;
       const seasonIndex = Math.floor((gameState.day - 1) % (totalSeasonLength * 4) / totalSeasonLength);
-      gameState.currentSeason = weatherConfig.seasons[seasonIndex];
+      const newSeason = weatherConfig.seasons[seasonIndex];
+      if (newSeason && newSeason !== gameState.currentSeason) {
+        gameState.currentSeason = newSeason;
+        logEvent(`Season changed to ${gameState.currentSeason}.`, "season");
+      }
     }
     if (!gameState._weatherOverride) {
       const weights = weatherConfig.seasonWeatherWeights[gameState.currentSeason];
@@ -4804,6 +4808,15 @@
     const minPopulation = Math.max(1, Math.ceil(startPop * popFloor));
     gameState.population = Math.max(gameState.population, minPopulation);
     recalculateAvailableWorkers();
+    const weatherConfig = config.weather;
+    if (weatherConfig && !gameState._seasonOverride) {
+      const totalSeasonLength = weatherConfig.seasonLength || 30;
+      const seasonIndex = Math.floor((gameState.day - 1) % (totalSeasonLength * 4) / totalSeasonLength);
+      const newSeason = weatherConfig.seasons?.[seasonIndex];
+      if (newSeason) {
+        gameState.currentSeason = newSeason;
+      }
+    }
     return {
       days,
       rawDays,
@@ -6364,9 +6377,6 @@
       addPopulationMember();
     }
     updateWeather();
-    if (gameState.day % 30 === 0) {
-      advanceSeason();
-    }
     updateActiveEvents();
     if (!gameState.isStudying) {
       checkForEvents();
@@ -6402,12 +6412,6 @@
         "info"
       );
     }
-  }
-  function advanceSeason() {
-    const seasons = ["spring", "summer", "autumn", "winter"];
-    const currentIdx = seasons.indexOf(gameState.currentSeason);
-    gameState.currentSeason = seasons[(currentIdx + 1) % 4];
-    logEvent(`Season changed to ${gameState.currentSeason}.`, "season");
   }
   function checkSurvival() {
     if (gameState.resources.food <= 0 && gameState.resources.water <= 0 && gameState.population <= 0) {
