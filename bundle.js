@@ -2466,25 +2466,28 @@
   function matchCategory(item, category) {
     const type = item.type || item.category || "";
     const chain = item.chain || "";
+    const isTools = type === "tool" || chain.includes("tool");
+    const isWorkstation = type === "workstation" || [
+      "kiln",
+      "forge",
+      "sawmill",
+      "loom",
+      "tannery",
+      "glassworks",
+      "charcoal_pit",
+      "herbalist_hut",
+      "paper_mill"
+    ].includes(chain);
+    const isWorkbench = chain === "workbench" || type === "workbench";
     switch (category) {
       case "tools":
-        return type === "tool" || chain.includes("tool");
-      case "buildings":
-        return type === "building" || type === "shelter" || type === "defense" || chain.includes("shelter") || chain.includes("food_") || chain.includes("water") || chain.includes("defense");
+        return isTools;
       case "workstations":
-        return type === "workstation" || [
-          "kiln",
-          "forge",
-          "sawmill",
-          "loom",
-          "tannery",
-          "glassworks",
-          "charcoal_pit",
-          "herbalist_hut",
-          "paper_mill"
-        ].includes(chain);
+        return isWorkstation;
       case "workbench":
-        return chain === "workbench" || type === "workbench";
+        return isWorkbench;
+      case "buildings":
+        return !isTools && !isWorkstation && !isWorkbench;
       default:
         return true;
     }
@@ -3363,10 +3366,21 @@
       const nameSpan = document.createElement("span");
       nameSpan.style.cssText = "font-weight:700; color:#00ffff; min-width:60px;";
       nameSpan.textContent = member.name || "Survivor";
+      let healHintText = null;
       if (member.sick) {
+        const medCapacity = getEffect("medicalCapacity");
+        const hasMedicine = (gameState.resources.medicine || 0) > 0;
+        if (medCapacity === 0) {
+          healHintText = "No medical building! Craft a Healer's Tent (Crafting tab) to treat sick members. An Herbalist's Hut or Apothecary can also produce Medicine to speed recovery.";
+        } else if (!hasMedicine) {
+          healHintText = "Under basic care. Build an Herbalist's Hut \u2192 Apothecary to produce Medicine for faster recovery.";
+        } else {
+          healHintText = "Being treated with Medicine \u2014 recovery in progress.";
+        }
         const sickBadge = document.createElement("span");
-        sickBadge.style.cssText = "color:#e74c3c; font-size:0.85em; margin-left:6px;";
+        sickBadge.style.cssText = "color:#e74c3c; font-size:0.85em; margin-left:6px; cursor:help;";
         sickBadge.textContent = "\u{1FA7A} Sick (" + (member.sickDaysRemaining || "?") + "d)";
+        sickBadge.title = healHintText;
         nameSpan.appendChild(sickBadge);
       }
       card.appendChild(nameSpan);
@@ -3397,6 +3411,12 @@
         const skillList = Object.entries(skills).map(([k, v]) => capitalize(k) + ":" + v).join("  ");
         skillSpan.textContent = skillList;
         card.appendChild(skillSpan);
+      }
+      if (member.sick && healHintText) {
+        const hintSpan = document.createElement("span");
+        hintSpan.style.cssText = "color:#e67e22; font-size:0.78em; width:100%; margin-top:2px;";
+        hintSpan.textContent = "\u{1F4A1} " + healHintText;
+        card.appendChild(hintSpan);
       }
       container.appendChild(card);
     }

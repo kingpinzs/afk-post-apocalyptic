@@ -1299,23 +1299,55 @@ export function updateCraftingTab() {
 }
 
 function matchCategory(item, category) {
-    // Map item types/chains to UI categories
+    // Prefer authoritative category from config chains, fall back to legacy heuristics.
+    let chainCategory = '';
+    try {
+        const cfg = getConfig && getConfig();
+        if (cfg && cfg.chains && item.chain && cfg.chains[item.chain]) {
+            chainCategory = cfg.chains[item.chain].category || '';
+        }
+    } catch {
+        // If config isn't available for any reason, we'll fall back to heuristics below.
+    }
+
+    if (chainCategory) {
+        // Normalize for minor singular/plural differences between config and UI.
+        const normalized = String(chainCategory).toLowerCase();
+        switch (category) {
+            case 'tools':
+                return normalized === 'tool' || normalized === 'tools';
+            case 'workstations':
+                return normalized === 'workstation' || normalized === 'workstations';
+            case 'workbench':
+                return normalized === 'workbench';
+            case 'buildings':
+                return normalized === 'building' || normalized === 'buildings';
+            default:
+                // For any future categories, fall back to simple equality.
+                return normalized === category;
+        }
+    }
+
+    // Legacy heuristic mapping based on item type/chain.
     const type = item.type || item.category || '';
     const chain = item.chain || '';
 
+    const isTools = type === 'tool' || chain.includes('tool');
+    const isWorkstation = type === 'workstation' ||
+           ['kiln', 'forge', 'sawmill', 'loom', 'tannery', 'glassworks',
+            'charcoal_pit', 'herbalist_hut', 'paper_mill'].includes(chain);
+    const isWorkbench = chain === 'workbench' || type === 'workbench';
+
     switch (category) {
         case 'tools':
-            return type === 'tool' || chain.includes('tool');
-        case 'buildings':
-            return type === 'building' || type === 'shelter' || type === 'defense' ||
-                   chain.includes('shelter') || chain.includes('food_') ||
-                   chain.includes('water') || chain.includes('defense');
+            return isTools;
         case 'workstations':
-            return type === 'workstation' ||
-                   ['kiln', 'forge', 'sawmill', 'loom', 'tannery', 'glassworks',
-                    'charcoal_pit', 'herbalist_hut', 'paper_mill'].includes(chain);
+            return isWorkstation;
         case 'workbench':
-            return chain === 'workbench' || type === 'workbench';
+            return isWorkbench;
+        case 'buildings':
+            // Any item that is not a tool, workstation, or workbench belongs here
+            return !isTools && !isWorkstation && !isWorkbench;
         default:
             return true;
     }
