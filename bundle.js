@@ -1822,21 +1822,18 @@
     const key = tips.map((t) => t.cat + t.text + (t.urgent || "")).join("|");
     if (_skipIfUnchanged(container, key)) return;
     while (container.firstChild) container.removeChild(container.firstChild);
-    const header = document.createElement("div");
-    header.style.cssText = "font-size:0.65em; color:#e2b714; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px;";
-    header.textContent = "Advisor";
-    container.appendChild(header);
     const shown = tips.slice(0, 4);
     for (let i = 0; i < shown.length; i++) {
       const tip = shown[i];
       const row = document.createElement("div");
-      row.style.cssText = "display:flex; align-items:flex-start; gap:8px; padding:5px 0;" + (i < shown.length - 1 ? " border-bottom:1px solid rgba(255,255,255,0.05);" : "");
-      const badge = document.createElement("span");
-      badge.style.cssText = "font-size:0.65em; padding:2px 8px; border-radius:3px; white-space:nowrap; margin-top:2px; flex-shrink:0; font-weight:500; background:" + (tip.urgent ? "rgba(231,76,60,0.25); color:#ff6b6b;" : tip.cat === "Next Step" ? "rgba(0,255,255,0.15); color:#33ffdd;" : tip.cat === "Growth" ? "rgba(46,204,113,0.15); color:#5dde9e;" : tip.cat === "Knowledge" ? "rgba(155,89,182,0.2); color:#cc99ff;" : tip.cat === "Quest" ? "rgba(226,183,20,0.2); color:#f0d050;" : "rgba(255,255,255,0.1); color:#a0aab4;");
-      badge.textContent = tip.urgent ? "Urgent" : tip.cat;
-      row.appendChild(badge);
+      row.style.cssText = "padding:3px 0; font-size:0.78em; line-height:1.35;" + (i < shown.length - 1 ? " border-bottom:1px solid rgba(255,255,255,0.04);" : "");
+      const catColor = tip.urgent ? "#ff6b6b" : tip.cat === "Next Step" ? "#33ffdd" : tip.cat === "Growth" ? "#5dde9e" : tip.cat === "Knowledge" ? "#cc99ff" : tip.cat === "Quest" ? "#f0d050" : "#a0aab4";
+      const prefix = document.createElement("span");
+      prefix.style.cssText = `color:${catColor}; font-weight:600; font-size:0.85em; margin-right:4px;`;
+      prefix.textContent = (tip.urgent ? "\u26A0" : "\u2022") + " ";
+      row.appendChild(prefix);
       const text = document.createElement("span");
-      text.style.cssText = "font-size:0.85em; color:" + (tip.urgent ? "#ff6b6b" : "#e0e4e8") + "; line-height:1.4;";
+      text.style.cssText = "color:" + (tip.urgent ? "#ff6b6b" : "#d0d4d8") + ";";
       if (tip.html) {
         text.innerHTML = tip.text;
       } else {
@@ -1856,24 +1853,21 @@
     if (_skipIfUnchanged(container, key)) return;
     while (container.firstChild) container.removeChild(container.firstChild);
     const row = document.createElement("div");
-    row.style.cssText = "display:flex; gap:8px; font-size:0.75em;";
+    row.style.cssText = "display:flex; gap:10px; font-size:0.75em; align-items:center;";
     const items = [
-      ["\u{1F4D0}", "Blueprints", "" + blueprintCount],
-      ["\u{1F3D7}", "Buildings", "" + buildingCount],
-      ["\u{1F529}", "Tools", "" + toolCount]
+      ["\u{1F4D0}", "Blueprints", blueprintCount],
+      ["\u{1F3D7}", "Buildings", buildingCount],
+      ["\u{1F529}", "Tools", toolCount]
     ];
     for (const [emoji, label, value] of items) {
-      const cell = document.createElement("div");
-      cell.style.cssText = "flex:1; text-align:center; padding:4px; background:rgba(0,255,255,0.04); border-radius:4px; border:1px solid rgba(0,255,255,0.08);";
-      const valDiv = document.createElement("div");
-      valDiv.style.cssText = "color:#00ffff; font-weight:bold; font-size:1.05em;";
-      valDiv.textContent = emoji + " " + value;
-      cell.appendChild(valDiv);
-      const labelDiv = document.createElement("div");
-      labelDiv.style.cssText = "color:#7f8c8d; font-size:0.8em; margin-top:1px;";
-      labelDiv.textContent = label;
-      cell.appendChild(labelDiv);
-      row.appendChild(cell);
+      const chip = document.createElement("span");
+      chip.style.cssText = "color:#8494a7; font-size:0.9em;";
+      const valSpan = document.createElement("span");
+      valSpan.style.cssText = "color:#00ffff; font-weight:600;";
+      valSpan.textContent = value;
+      chip.textContent = label + " ";
+      chip.appendChild(valSpan);
+      row.appendChild(chip);
     }
     container.appendChild(row);
   }

@@ -968,21 +968,25 @@
            BOOK / CHAPTERS
            ================================================================ */
         .chapter-btn {
-            font-size: 10px;
-            padding: 6px 10px;
-            min-height: 36px;
-            border-radius: 16px;
-            margin: 2px;
+            font-size: 9px;
+            padding: 4px 10px;
+            border-radius: 10px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            border: 1px solid rgba(0,255,255,0.15);
+            background: rgba(0,255,255,0.04);
+            color: #8494a7;
         }
 
         .chapter-btn.active {
             background-color: rgba(155, 89, 182, 0.3);
             border-color: #b07cc6;
             color: #b07cc6;
+            font-weight: 600;
         }
 
         .chapter-btn.locked {
-            opacity: 0.4;
+            opacity: 0.35;
         }
 
         .blueprint {
@@ -2271,14 +2275,14 @@
             <!-- Book main content (hidden when Memories pseudo-tab is active) -->
             <div id="book-main-content">
                 <div class="game-card">
-                    <h3>The Book</h3>
-                    <div id="book-chapter-nav"></div>
-                </div>
-                <div class="game-card">
-                    <div id="study-section">
-                        <button id="study-btn" class="action-btn">Study the Book</button>
-                        <progress id="study-progress" value="0" max="100" style="width:100%; margin-top:8px;"></progress>
-                        <div id="study-gate-info"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <h3 style="margin:0;">The Book</h3>
+                    </div>
+                    <div id="book-chapter-nav" style="display:flex; gap:4px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;"></div>
+                    <div id="study-section" style="margin-top:8px;">
+                        <button id="study-btn" class="action-btn" style="width:100%;">Study the Book</button>
+                        <progress id="study-progress" value="0" max="100" style="width:100%; margin-top:6px;"></progress>
+                        <div id="study-gate-info" style="font-size:0.75em; margin-top:4px;"></div>
                     </div>
                 </div>
                 <div class="game-card">
