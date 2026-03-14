@@ -238,6 +238,21 @@ async function initializeGame() {
     }
   });
 
+  // ── Built Buildings Upgrade Clicks (delegated) ────────────────────────
+  document.getElementById('built-buildings')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-item-id]');
+    if (btn && btn.dataset.itemId) {
+      initAudio();
+      const upgradeId = btn.dataset.upgradeInstanceId || null;
+      if (startCrafting(btn.dataset.itemId, upgradeId)) {
+        playCraft();
+        logEvent(`Started crafting: ${btn.dataset.itemName || btn.dataset.itemId}`, 'craft');
+        updateSettlementTab();
+        updateCraftingQueueDisplay();
+      }
+    }
+  });
+
   // ── Production Worker Assignment (delegated) ──────────────────────────
   document.getElementById('production-assignments')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.worker-btn') || e.target.closest('button[data-chain-id]');

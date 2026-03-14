@@ -15,7 +15,7 @@ import { gameState, getConfig, getResourceCap, getTotalHousing, computeUnlockedR
 import { getEffect, getTotalAssignedWorkers } from './effects.js';
 import { getSettlementList, getCurrentSettlement, isSettlementUnlocked, isSupplyLinesUnlocked, getInfrastructureLevel, getTradeLevel, getTotalPopulation } from './settlements.js';
 import { getSupplyLines } from './network.js';
-import { isAlreadyBuilt } from './crafting.js';
+import { isAlreadyBuilt, getUpgradeOptions } from './crafting.js';
 import { getGatherInfo } from './resources.js';
 
 
@@ -518,11 +518,12 @@ function updateBuiltBuildings() {
     let config;
     try { config = getConfig(); } catch { container.textContent = ''; return; }
 
-    // Fingerprint: building levels + itemIds + tool levels + multiple building counts
+    // Fingerprint: building levels + itemIds + tool levels + multiple building counts + unlocked blueprints
     const bKey = Object.keys(gameState.buildings).map(k => k + ':' + (gameState.buildings[k].level || 0) + ':' + (gameState.buildings[k].itemId || '')).join(',');
     const mKey = Object.keys(gameState.multipleBuildings).map(k => k + ':' + gameState.multipleBuildings[k].length).join(',');
     const tKey = Object.keys(gameState.tools).map(k => k + ':' + (gameState.tools[k].level || 0)).join(',');
-    if (_skipIfUnchanged(container, bKey + '|' + mKey + '|' + tKey)) return;
+    const bpKey = (gameState.unlockedBlueprints || []).length;
+    if (_skipIfUnchanged(container, bKey + '|' + mKey + '|' + tKey + '|' + bpKey)) return;
 
     // Build DOM nodes safely without innerHTML
     while (container.firstChild) container.removeChild(container.firstChild);
@@ -567,6 +568,23 @@ function updateBuiltBuildings() {
                 infoSpan.textContent = workers > 0 ? (workers + ' workers') : '';
                 card.appendChild(nameSpan);
                 card.appendChild(infoSpan);
+
+                // Show upgrade button if a next-level blueprint is unlocked
+                const upgradeOptions = getUpgradeOptions(chainId, instance.id);
+                if (upgradeOptions.length > 0) {
+                    const nextUpgrade = upgradeOptions[0];
+                    const upgradeBtn = document.createElement('button');
+                    upgradeBtn.className = 'craft-item-btn upgrade-btn';
+                    upgradeBtn.dataset.itemId = nextUpgrade.id;
+                    upgradeBtn.dataset.upgradeInstanceId = instance.id;
+                    upgradeBtn.dataset.itemName = nextUpgrade.name;
+                    upgradeBtn.disabled = !nextUpgrade.canCraft;
+                    upgradeBtn.textContent = nextUpgrade.canCraft
+                        ? '\u2191 Upgrade to ' + nextUpgrade.name
+                        : '\u2191 Upgrade (Need Resources)';
+                    card.appendChild(upgradeBtn);
+                }
+
                 container.appendChild(card);
             }
         }
