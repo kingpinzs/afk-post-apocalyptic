@@ -518,12 +518,13 @@ function updateBuiltBuildings() {
     let config;
     try { config = getConfig(); } catch { container.textContent = ''; return; }
 
-    // Fingerprint: building levels + itemIds + tool levels + multiple building counts + unlocked blueprints
+    // Fingerprint: building levels + itemIds + tool levels + multiple building counts + unlocked blueprints + crafting queue
     const bKey = Object.keys(gameState.buildings).map(k => k + ':' + (gameState.buildings[k].level || 0) + ':' + (gameState.buildings[k].itemId || '')).join(',');
-    const mKey = Object.keys(gameState.multipleBuildings).map(k => k + ':' + gameState.multipleBuildings[k].length).join(',');
+    const mKey = Object.keys(gameState.multipleBuildings).map(k => k + ':' + gameState.multipleBuildings[k].map(i => i.id + '=' + (i.itemId || '') + '@' + (i.level || 0)).join(';')).join(',');
     const tKey = Object.keys(gameState.tools).map(k => k + ':' + (gameState.tools[k].level || 0)).join(',');
     const bpKey = (gameState.unlockedBlueprints || []).length;
-    if (_skipIfUnchanged(container, bKey + '|' + mKey + '|' + tKey + '|' + bpKey)) return;
+    const qKey = (gameState.craftingQueue || []).map(q => (q.targetInstanceId || '') + ':' + q.itemId).join(',');
+    if (_skipIfUnchanged(container, bKey + '|' + mKey + '|' + tKey + '|' + bpKey + '|' + qKey)) return;
 
     // Build DOM nodes safely without innerHTML
     while (container.firstChild) container.removeChild(container.firstChild);
