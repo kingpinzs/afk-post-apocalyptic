@@ -1864,6 +1864,9 @@ export function updateDayNightCycle() {
             : (progress - 0.80) / 0.20;  // 0.80→1.0: deepening into night
         const alpha = 0.15 + nightDepth * 0.30;  // 0.15 (twilight edge) to 0.45 (deep midnight)
         el.style.background = `radial-gradient(ellipse 120% 80% at 50% 20%, rgba(10,10,40,${(alpha * 0.5).toFixed(3)}), rgba(0,0,20,${alpha.toFixed(3)}))`;
+        // Clear sun glow on cards at night
+        const container = document.getElementById('game-container');
+        if (container) container.style.setProperty('--sun-glow', '0 0 0 transparent');
         return;
     }
 
@@ -1914,6 +1917,265 @@ export function updateDayNightCycle() {
 
     // Radial gradient centered on sun position — large ellipse radiating warmth outward
     el.style.background = `radial-gradient(ellipse 80% 70% at ${sunX.toFixed(1)}% ${sunY.toFixed(1)}%, ${tint}, ${clear} 70%), linear-gradient(to bottom, ${clear}, ${ambient})`;
+
+    // Apply sun glow tint to game card edges
+    // Sunrise: glow on right edge. Sunset: glow on left edge. Midday: subtle top glow.
+    const container = document.getElementById('game-container');
+    if (container) {
+        let glowX, glowAlpha;
+        if (dayProgress < 0.20) {
+            // Sunrise — warm glow on right side
+            const t = dayProgress / 0.20;
+            glowX = 8;
+            glowAlpha = (0.35 - t * 0.15).toFixed(3);  // 0.35→0.20
+        } else if (dayProgress > 0.80) {
+            // Sunset — red/orange glow on left side
+            const t = (dayProgress - 0.80) / 0.20;
+            glowX = -8;
+            glowAlpha = (0.20 + t * 0.20).toFixed(3);  // 0.20→0.40
+        } else {
+            // Midday — no directional glow
+            glowX = 0;
+            glowAlpha = 0;
+        }
+
+        if (glowAlpha > 0) {
+            container.style.setProperty('--sun-glow',
+                `${glowX}px 0 20px rgba(${tintR},${tintG},${tintB},${glowAlpha})`);
+        } else {
+            container.style.setProperty('--sun-glow', '0 0 0 transparent');
+        }
+    }
+}
+
+
+// ─── Weather Effects ─────────────────────────────────────────────────────────
+
+const _weather = {
+    canvas: null,
+    ctx: null,
+    particles: [],
+    snowPile: [],
+    drops: [],
+    leaves: [],
+    currentWeather: null,
+    animRunning: false,
+    initialized: false,
+};
+
+function initWeatherCanvas() {
+    if (_weather.initialized) return;
+    _weather.canvas = document.getElementById('weather-canvas');
+    if (!_weather.canvas) return;
+    _weather.ctx = _weather.canvas.getContext('2d');
+    _weather.initialized = true;
+    resizeWeatherCanvas();
+    window.addEventListener('resize', resizeWeatherCanvas);
+}
+
+function resizeWeatherCanvas() {
+    if (!_weather.canvas) return;
+    _weather.canvas.width = window.innerWidth;
+    _weather.canvas.height = window.innerHeight;
+    _weather.snowPile = new Array(Math.ceil(window.innerWidth / 4)).fill(0);
+}
+
+/**
+ * Called from game tick — syncs weather state and ensures animation loop is running.
+ */
+export function updateWeatherEffects() {
+    initWeatherCanvas();
+    if (!_weather.ctx) return;
+
+    const weather = gameState.currentWeather || 'Clear';
+    if (weather !== _weather.currentWeather) {
+        _weather.currentWeather = weather;
+        _weather.particles = [];
+        _weather.leaves = [];
+    }
+
+    // Start the 60fps render loop if not already running
+    if (!_weather.animRunning) {
+        _weather.animRunning = true;
+        requestAnimationFrame(weatherRenderLoop);
+    }
+}
+
+function weatherRenderLoop() {
+    if (!_weather.ctx || !_weather.canvas) return;
+
+    const weather = (_weather.currentWeather || 'clear').toLowerCase();
+    const W = _weather.canvas.width;
+    const H = _weather.canvas.height;
+    const ctx = _weather.ctx;
+
+    // Spawn particles each frame
+    if (weather === 'rain' || weather === 'storm') {
+        const count = weather === 'storm' ? 4 : 2;
+        for (let i = 0; i < count; i++) {
+            _weather.particles.push({
+                x: Math.random() * (W + 40) - 20,
+                y: -10,
+                speed: 8 + Math.random() * 6,
+                length: 12 + Math.random() * 18,
+                wind: weather === 'storm' ? -2.5 + Math.random() * 0.5 : -0.5,
+                alpha: 0.2 + Math.random() * 0.15,
+            });
+        }
+    } else if (weather === 'snow') {
+        if (Math.random() < 0.15) {
+            _weather.particles.push({
+                x: Math.random() * W,
+                y: -5,
+                speed: 0.4 + Math.random() * 0.8,
+                size: 1.5 + Math.random() * 2,
+                drift: (Math.random() - 0.5) * 0.4,
+                wobble: Math.random() * Math.PI * 2,
+                alpha: 0.4 + Math.random() * 0.4,
+            });
+        }
+    } else if (weather === 'wind') {
+        if (Math.random() < 0.008) {
+            _weather.leaves.push({
+                x: W + 10,
+                y: H - 90 - Math.random() * 80,
+                speed: 1.5 + Math.random() * 2.5,
+                rot: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 0.12,
+                size: 5 + Math.random() * 5,
+                color: ['#8B6914', '#6B8E23', '#CD853F', '#A0522D'][Math.floor(Math.random() * 4)],
+                wobble: Math.random() * Math.PI * 2,
+                alpha: 0.5 + Math.random() * 0.3,
+            });
+        }
+    }
+
+    // Clear
+    ctx.clearRect(0, 0, W, H);
+
+    // Rain / Storm
+    if (weather === 'rain' || weather === 'storm') {
+        ctx.lineWidth = 1.5;
+        _weather.particles = _weather.particles.filter(p => {
+            p.y += p.speed;
+            p.x += p.wind;
+            if (p.y > H) {
+                if (Math.random() < 0.03) {
+                    _weather.drops.push({
+                        x: p.x, y: 70 + Math.random() * (H - 200),
+                        r: 2 + Math.random() * 3, alpha: 0.2, life: 200 + Math.random() * 300
+                    });
+                }
+                return false;
+            }
+            ctx.strokeStyle = `rgba(180,215,255,${p.alpha})`;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.x + p.wind * 3, p.y + p.length);
+            ctx.stroke();
+            return true;
+        });
+    }
+
+    // Snow
+    if (weather === 'snow') {
+        _weather.particles = _weather.particles.filter(p => {
+            p.y += p.speed;
+            p.wobble += 0.015;
+            p.x += p.drift + Math.sin(p.wobble) * 0.3;
+            const col = Math.floor(p.x / 4);
+            const pileY = H - (_weather.snowPile[col] || 0);
+            if (p.y >= pileY - 2) {
+                if (p.y >= H - 55 && col >= 0 && col < _weather.snowPile.length) {
+                    _weather.snowPile[col] = Math.min(10, (_weather.snowPile[col] || 0) + 0.15);
+                }
+                return false;
+            }
+            ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            return true;
+        });
+    }
+
+    // Snow pile (draw even when not snowing — melts slowly)
+    if (weather !== 'snow') {
+        for (let i = 0; i < _weather.snowPile.length; i++) {
+            if (_weather.snowPile[i] > 0) _weather.snowPile[i] = Math.max(0, _weather.snowPile[i] - 0.003);
+        }
+    }
+    const hasPile = _weather.snowPile.some(h => h > 0.3);
+    if (hasPile) {
+        ctx.fillStyle = weather === 'snow' ? 'rgba(240,245,255,0.7)' : 'rgba(240,245,255,0.5)';
+        ctx.beginPath();
+        ctx.moveTo(0, H);
+        for (let i = 0; i < _weather.snowPile.length; i++) {
+            ctx.lineTo(i * 4, H - 48 - (_weather.snowPile[i] || 0));
+        }
+        ctx.lineTo(W, H);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Rain droplets on glass
+    if (_weather.drops.length > 0) {
+        ctx.lineWidth = 0.5;
+        _weather.drops = _weather.drops.filter(d => {
+            d.life--;
+            d.alpha *= 0.998;
+            if (d.life <= 0 || d.alpha < 0.015) return false;
+            ctx.strokeStyle = `rgba(180,210,240,${d.alpha})`;
+            ctx.beginPath();
+            ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+            ctx.stroke();
+            return true;
+        });
+    }
+
+    // Wind leaves
+    if (_weather.leaves.length > 0) {
+        _weather.leaves = _weather.leaves.filter(l => {
+            l.x -= l.speed;
+            l.wobble += 0.04;
+            l.y += Math.sin(l.wobble) * 0.8;
+            l.rot += l.rotSpeed;
+            if (l.x < -20) return false;
+            ctx.save();
+            ctx.translate(l.x, l.y);
+            ctx.rotate(l.rot);
+            ctx.globalAlpha = l.alpha;
+            ctx.fillStyle = l.color;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, l.size, l.size * 0.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(-l.size, 0);
+            ctx.lineTo(l.size, 0);
+            ctx.stroke();
+            ctx.restore();
+            ctx.globalAlpha = 1;
+            return true;
+        });
+    }
+
+    // Fog
+    if (weather === 'fog') {
+        ctx.fillStyle = 'rgba(180,190,200,0.04)';
+        ctx.fillRect(0, 0, W, H);
+    }
+
+    // Keep animating while game is active
+    if (weather !== 'clear' && weather !== 'heatwave' && weather !== 'drought'
+        || _weather.particles.length > 0 || _weather.drops.length > 0
+        || _weather.leaves.length > 0 || hasPile) {
+        requestAnimationFrame(weatherRenderLoop);
+    } else {
+        ctx.clearRect(0, 0, W, H);
+        _weather.animRunning = false;
+    }
 }
 
 

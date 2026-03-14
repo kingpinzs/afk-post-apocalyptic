@@ -17,7 +17,7 @@ import { gatherResource, consumeResources, capResources, checkPopulationGrowth, 
 import { getCraftableItems, startCrafting, getUpgradeOptions, clearCraftingInterval, getCraftingQueue } from './crafting.js';
 import { runDailyProduction, getProductionSummary, assignWorkerToSingle, assignWorkerToMultiple, unassignAllWorkers } from './automation.js';
 import { checkForEvents, updateActiveEvents, resetActiveEvents, updateWeather, checkMilestoneEvents } from './events.js';
-import { updateDisplay, logEvent, initUI, switchTab, updateHUD, showPuzzlePopup, hidePuzzlePopup, showGameOver, showVictory, showAchievementToast, updateGatheringButtons, updateCraftingQueueDisplay, updateSettlementTab, updateBookTab, updateCraftingTab, updateProductionTab, updateExplorationTab, updateWorldTab, clearEventLog, updateDayNightCycle, updateTimeDisplay, updateTimeEmoji, updateGatheringVisibility, updateTradingSection, updateExplorationSection, updateQuestsSection, updateAchievementsSection, updatePopulationSection, updateFactionsSection, updateStatsSection, getShareableStats, showUnlockPuzzle, showItemUnlockPuzzle, submitUnlockPuzzleAnswer, submitItemUnlockPuzzleAnswer, findNextItemUnlock, updateWorkingSection, updateNetworkTab, showFlashback, startLoreSlideshow, navigateLoreSlideshow, closeLoreSlideshow, preRenderAllTabs } from './ui.js';
+import { updateDisplay, logEvent, initUI, switchTab, updateHUD, showPuzzlePopup, hidePuzzlePopup, showGameOver, showVictory, showAchievementToast, updateGatheringButtons, updateCraftingQueueDisplay, updateSettlementTab, updateBookTab, updateCraftingTab, updateProductionTab, updateExplorationTab, updateWorldTab, clearEventLog, updateDayNightCycle, updateTimeDisplay, updateTimeEmoji, updateGatheringVisibility, updateTradingSection, updateExplorationSection, updateQuestsSection, updateAchievementsSection, updatePopulationSection, updateFactionsSection, updateStatsSection, getShareableStats, showUnlockPuzzle, showItemUnlockPuzzle, submitUnlockPuzzleAnswer, submitItemUnlockPuzzleAnswer, findNextItemUnlock, updateWorkingSection, updateNetworkTab, showFlashback, startLoreSlideshow, navigateLoreSlideshow, closeLoreSlideshow, preRenderAllTabs, updateWeatherEffects } from './ui.js';
 import { saveGame, loadGame, hasSave, deleteSave, exportSave, importSave } from './save.js';
 import { updatePopulation, initializePopulationMembers, addPopulationMember } from './population.js';
 import { initAudio, initMuteState, playClick, playGameOver, playVictory, playGather, playCraft, playUnlock, playWrong, toggleMute, isMuted } from './audio.js';
@@ -421,6 +421,7 @@ async function initializeGame() {
         updateGatheringVisibility();
         updateDisplay();
         updateDayNightCycle();
+        updateWeatherEffects();
         updateTradingSection();
         updateExplorationSection();
         updateQuestsSection();
@@ -723,6 +724,7 @@ function startGameLoop() {
     updateTimeEmoji();
     updateTimeDisplay();
     updateDayNightCycle();
+    updateWeatherEffects();
     checkQuestCompletion();
     checkSurvival();
     updateDisplay();

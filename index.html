@@ -542,9 +542,11 @@
             border-radius: 12px;
             padding: 12px;
             margin-bottom: 10px;
-            box-shadow: 0 0 12px rgba(0, 255, 255, 0.15);
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.15),
+                        var(--sun-glow, 0 0 0 transparent);
             backdrop-filter: blur(10px);
             color: #00ffff;
+            transition: box-shadow 2s ease;
         }
 
         /* Override old hover scale - bad on mobile */
@@ -1657,6 +1659,16 @@
             transition: background 1.5s ease;
         }
 
+        #weather-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
         /* ================================================================
            RESPONSIVE: LARGER SCREENS
            ================================================================ */
@@ -2304,6 +2316,7 @@
          DAY/NIGHT CYCLE
          ============================================================ -->
     <div id="day-night-cycle"></div>
+    <canvas id="weather-canvas"></canvas>
 
     <!-- ============================================================
          INLINE SCRIPT: collapsible sections, tutorial, layout,
