@@ -577,6 +577,36 @@ function setupDevTools() {
     }
   });
 
+  // Weather override
+  document.getElementById('dev-weather')?.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (val) {
+      gameState.currentWeather = val;
+      gameState._weatherOverride = val;
+      logEvent(`[Dev] Weather forced to ${val}.`);
+    } else {
+      delete gameState._weatherOverride;
+      logEvent('[Dev] Weather set to auto.');
+    }
+    updateDisplay();
+    updateDayNightCycle();
+    updateWeatherEffects();
+  });
+
+  // Season override
+  document.getElementById('dev-season')?.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (val) {
+      gameState.currentSeason = val;
+      gameState._seasonOverride = val;
+      logEvent(`[Dev] Season forced to ${val}.`);
+    } else {
+      delete gameState._seasonOverride;
+      logEvent('[Dev] Season set to auto.');
+    }
+    updateDisplay();
+  });
+
   // Skip days
   document.getElementById('dev-skip-day')?.addEventListener('click', () => {
     advanceDay();

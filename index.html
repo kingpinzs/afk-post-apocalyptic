@@ -2034,6 +2034,7 @@
                             <div class="settings-row">
                                 <label style="font-size:0.7em; color:#bdc3c7; min-width:70px;">Day Speed</label>
                                 <select id="dev-day-speed" style="font-size:11px; padding:4px 6px; background:#1a1a2e; color:#eee; border:1px solid rgba(0,255,255,0.2); border-radius:4px;">
+                                    <option value="1">Instant (1s)</option>
                                     <option value="10">Hyper (10s)</option>
                                     <option value="30">Fast (30s)</option>
                                     <option value="60">Quick (60s)</option>
@@ -2044,6 +2045,36 @@
                             <div class="settings-row" style="margin-top:4px;">
                                 <button id="dev-skip-day" style="font-size:10px; padding:4px 8px;">Skip 1 Day</button>
                                 <button id="dev-skip-week" style="font-size:10px; padding:4px 8px;">Skip 7 Days</button>
+                            </div>
+                        </div>
+
+                        <!-- Weather & Season -->
+                        <div style="margin-bottom:10px;">
+                            <div style="font-size:0.65em; color:#e2b714; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Weather &amp; Season</div>
+                            <div class="settings-row">
+                                <label style="font-size:0.7em; color:#bdc3c7; min-width:70px;">Weather</label>
+                                <select id="dev-weather" style="font-size:11px; padding:4px 6px; background:#1a1a2e; color:#eee; border:1px solid rgba(0,255,255,0.2); border-radius:4px;">
+                                    <option value="">Auto</option>
+                                    <option value="clear">Clear</option>
+                                    <option value="cloudy">Cloudy</option>
+                                    <option value="rain">Rain</option>
+                                    <option value="storm">Storm</option>
+                                    <option value="snow">Snow</option>
+                                    <option value="fog">Fog</option>
+                                    <option value="wind">Wind</option>
+                                    <option value="heatwave">Heatwave</option>
+                                    <option value="drought">Drought</option>
+                                </select>
+                            </div>
+                            <div class="settings-row" style="margin-top:4px;">
+                                <label style="font-size:0.7em; color:#bdc3c7; min-width:70px;">Season</label>
+                                <select id="dev-season" style="font-size:11px; padding:4px 6px; background:#1a1a2e; color:#eee; border:1px solid rgba(0,255,255,0.2); border-radius:4px;">
+                                    <option value="">Auto</option>
+                                    <option value="spring">Spring</option>
+                                    <option value="summer">Summer</option>
+                                    <option value="autumn">Autumn</option>
+                                    <option value="winter">Winter</option>
+                                </select>
                             </div>
                         </div>
 

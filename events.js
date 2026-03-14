@@ -138,20 +138,24 @@ export function updateWeather() {
     const weatherConfig = config.weather;
     if (!weatherConfig) return;
 
-    // Determine season from day
-    const totalSeasonLength = weatherConfig.seasonLength;
-    const seasonIndex = Math.floor(((gameState.day - 1) % (totalSeasonLength * 4)) / totalSeasonLength);
-    gameState.currentSeason = weatherConfig.seasons[seasonIndex];
+    // Determine season from day (unless dev override)
+    if (!gameState._seasonOverride) {
+        const totalSeasonLength = weatherConfig.seasonLength;
+        const seasonIndex = Math.floor(((gameState.day - 1) % (totalSeasonLength * 4)) / totalSeasonLength);
+        gameState.currentSeason = weatherConfig.seasons[seasonIndex];
+    }
 
-    // Roll weather based on season weights
-    const weights = weatherConfig.seasonWeatherWeights[gameState.currentSeason];
-    const roll = Math.random();
-    let cumulative = 0;
-    for (const [type, weight] of Object.entries(weights)) {
-        cumulative += weight;
-        if (roll <= cumulative) {
-            gameState.currentWeather = type;
-            break;
+    // Roll weather based on season weights (unless dev override)
+    if (!gameState._weatherOverride) {
+        const weights = weatherConfig.seasonWeatherWeights[gameState.currentSeason];
+        const roll = Math.random();
+        let cumulative = 0;
+        for (const [type, weight] of Object.entries(weights)) {
+            cumulative += weight;
+            if (roll <= cumulative) {
+                gameState.currentWeather = type;
+                break;
+            }
         }
     }
 

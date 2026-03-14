@@ -970,17 +970,21 @@
     const config = getConfig();
     const weatherConfig = config.weather;
     if (!weatherConfig) return;
-    const totalSeasonLength = weatherConfig.seasonLength;
-    const seasonIndex = Math.floor((gameState.day - 1) % (totalSeasonLength * 4) / totalSeasonLength);
-    gameState.currentSeason = weatherConfig.seasons[seasonIndex];
-    const weights = weatherConfig.seasonWeatherWeights[gameState.currentSeason];
-    const roll = Math.random();
-    let cumulative = 0;
-    for (const [type, weight] of Object.entries(weights)) {
-      cumulative += weight;
-      if (roll <= cumulative) {
-        gameState.currentWeather = type;
-        break;
+    if (!gameState._seasonOverride) {
+      const totalSeasonLength = weatherConfig.seasonLength;
+      const seasonIndex = Math.floor((gameState.day - 1) % (totalSeasonLength * 4) / totalSeasonLength);
+      gameState.currentSeason = weatherConfig.seasons[seasonIndex];
+    }
+    if (!gameState._weatherOverride) {
+      const weights = weatherConfig.seasonWeatherWeights[gameState.currentSeason];
+      const roll = Math.random();
+      let cumulative = 0;
+      for (const [type, weight] of Object.entries(weights)) {
+        cumulative += weight;
+        if (roll <= cumulative) {
+          gameState.currentWeather = type;
+          break;
+        }
       }
     }
     const effects = weatherConfig.effects[gameState.currentWeather];
@@ -6001,6 +6005,32 @@
         gameState.settings.daySpeed = speed;
         logEvent(`[Dev] Day speed set to ${speed}s.`);
       }
+    });
+    document.getElementById("dev-weather")?.addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (val) {
+        gameState.currentWeather = val;
+        gameState._weatherOverride = val;
+        logEvent(`[Dev] Weather forced to ${val}.`);
+      } else {
+        delete gameState._weatherOverride;
+        logEvent("[Dev] Weather set to auto.");
+      }
+      updateDisplay();
+      updateDayNightCycle();
+      updateWeatherEffects();
+    });
+    document.getElementById("dev-season")?.addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (val) {
+        gameState.currentSeason = val;
+        gameState._seasonOverride = val;
+        logEvent(`[Dev] Season forced to ${val}.`);
+      } else {
+        delete gameState._seasonOverride;
+        logEvent("[Dev] Season set to auto.");
+      }
+      updateDisplay();
     });
     document.getElementById("dev-skip-day")?.addEventListener("click", () => {
       advanceDay();
