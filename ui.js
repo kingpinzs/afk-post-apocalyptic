@@ -2551,10 +2551,21 @@ export function updatePopulationSection() {
         const nameSpan = document.createElement('span');
         nameSpan.style.cssText = 'font-weight:700; color:#00ffff; min-width:60px;';
         nameSpan.textContent = member.name || 'Survivor';
+        let healHintText = null;
         if (member.sick) {
+            const medCapacity = getEffect('medicalCapacity');
+            const hasMedicine = (gameState.resources.medicine || 0) > 0;
+            if (medCapacity === 0) {
+                healHintText = 'No medical building! Craft a Healer\'s Tent (Crafting tab) to treat sick members. An Herbalist\'s Hut or Apothecary can also produce Medicine to speed recovery.';
+            } else if (!hasMedicine) {
+                healHintText = 'Under basic care. Build an Herbalist\'s Hut \u2192 Apothecary to produce Medicine for faster recovery.';
+            } else {
+                healHintText = 'Being treated with Medicine \u2014 recovery in progress.';
+            }
             const sickBadge = document.createElement('span');
-            sickBadge.style.cssText = 'color:#e74c3c; font-size:0.85em; margin-left:6px;';
+            sickBadge.style.cssText = 'color:#e74c3c; font-size:0.85em; margin-left:6px; cursor:help;';
             sickBadge.textContent = '\uD83E\uDE7A Sick (' + (member.sickDaysRemaining || '?') + 'd)';
+            sickBadge.title = healHintText;
             nameSpan.appendChild(sickBadge);
         }
         card.appendChild(nameSpan);
@@ -2598,6 +2609,14 @@ export function updatePopulationSection() {
                 .join('  ');
             skillSpan.textContent = skillList;
             card.appendChild(skillSpan);
+        }
+
+        // Healing hint for sick members
+        if (member.sick && healHintText) {
+            const hintSpan = document.createElement('span');
+            hintSpan.style.cssText = 'color:#e67e22; font-size:0.78em; width:100%; margin-top:2px;';
+            hintSpan.textContent = '\uD83D\uDCA1 ' + healHintText;
+            card.appendChild(hintSpan);
         }
 
         container.appendChild(card);
