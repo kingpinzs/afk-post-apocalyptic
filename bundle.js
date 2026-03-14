@@ -1849,40 +1849,33 @@
   function updateCampStatus() {
     const container = document.getElementById("camp-status-bar");
     if (!container) return;
-    const pop = gameState.population || 1;
-    const housing = getTotalHousing();
-    const workers = gameState.availableWorkers ?? pop;
-    const assigned = getTotalAssignedWorkers ? getTotalAssignedWorkers() : 0;
     const blueprintCount = (gameState.unlockedBlueprints || []).length;
     const buildingCount = Object.values(gameState.buildings || {}).filter((b) => b.level > 0).length + Object.values(gameState.multipleBuildings || {}).reduce((sum, arr) => sum + arr.length, 0);
     const toolCount = Object.values(gameState.tools || {}).filter((t) => t.level > 0).length;
-    const key = pop + "," + housing + "," + workers + "," + assigned + "," + blueprintCount + "," + buildingCount + "," + toolCount;
+    const key = blueprintCount + "," + buildingCount + "," + toolCount;
     if (_skipIfUnchanged(container, key)) return;
     while (container.firstChild) container.removeChild(container.firstChild);
-    const grid = document.createElement("div");
-    grid.style.cssText = "display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px; font-size:0.75em;";
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex; gap:8px; font-size:0.75em;";
     const items = [
-      ["\u{1F465}", "Pop", pop + "/" + Math.max(housing, pop)],
-      ["\u{1F477}", "Workers", workers - assigned + " free"],
       ["\u{1F4D0}", "Blueprints", "" + blueprintCount],
       ["\u{1F3D7}", "Buildings", "" + buildingCount],
-      ["\u{1F529}", "Tools", "" + toolCount],
-      ["\u{1F4DA}", "Knowledge", "" + Math.floor(gameState.knowledge || 0)]
+      ["\u{1F529}", "Tools", "" + toolCount]
     ];
     for (const [emoji, label, value] of items) {
       const cell = document.createElement("div");
-      cell.style.cssText = "text-align:center; padding:6px 4px; background:rgba(0,255,255,0.04); border-radius:4px; border:1px solid rgba(0,255,255,0.08);";
+      cell.style.cssText = "flex:1; text-align:center; padding:4px; background:rgba(0,255,255,0.04); border-radius:4px; border:1px solid rgba(0,255,255,0.08);";
       const valDiv = document.createElement("div");
-      valDiv.style.cssText = "color:#00ffff; font-weight:bold; font-size:1.1em;";
+      valDiv.style.cssText = "color:#00ffff; font-weight:bold; font-size:1.05em;";
       valDiv.textContent = emoji + " " + value;
       cell.appendChild(valDiv);
       const labelDiv = document.createElement("div");
-      labelDiv.style.cssText = "color:#7f8c8d; font-size:0.85em; margin-top:2px;";
+      labelDiv.style.cssText = "color:#7f8c8d; font-size:0.8em; margin-top:1px;";
       labelDiv.textContent = label;
       cell.appendChild(labelDiv);
-      grid.appendChild(cell);
+      row.appendChild(cell);
     }
-    container.appendChild(grid);
+    container.appendChild(row);
   }
   function updateBuiltBuildings() {
     const container = document.getElementById("built-buildings");
