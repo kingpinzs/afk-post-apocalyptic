@@ -2802,7 +2802,14 @@
     canvas: null,
     ctx: null,
     particles: [],
-    snowPile: [],
+    pileBottom: [],
+    // snow/frost accumulation per column on bottom edge
+    pileTop: [],
+    // per column on top edge
+    pileLeft: [],
+    // per row on left edge
+    pileRight: [],
+    // per row on right edge
     drops: [],
     leaves: [],
     currentWeather: null,
@@ -2822,7 +2829,12 @@
     if (!_weather.canvas) return;
     _weather.canvas.width = window.innerWidth;
     _weather.canvas.height = window.innerHeight;
-    _weather.snowPile = new Array(Math.ceil(window.innerWidth / 4)).fill(0);
+    const cols = Math.ceil(window.innerWidth / 4);
+    const rows = Math.ceil(window.innerHeight / 4);
+    _weather.pileBottom = new Array(cols).fill(0);
+    _weather.pileTop = new Array(cols).fill(0);
+    _weather.pileLeft = new Array(rows).fill(0);
+    _weather.pileRight = new Array(rows).fill(0);
   }
   function updateWeatherEffects() {
     initWeatherCanvas();
@@ -2889,7 +2901,7 @@
       _weather.particles = _weather.particles.filter((p) => {
         p.y += p.speed;
         p.x += p.wind;
-        if (p.y > H) {
+        if (p.y > H || p.x < 0) {
           if (Math.random() < 0.03) {
             _weather.drops.push({
               x: p.x,
@@ -2897,6 +2909,24 @@
               r: 2 + Math.random() * 3,
               alpha: 0.2,
               life: 200 + Math.random() * 300
+            });
+          }
+          if (Math.random() < 0.01) {
+            _weather.drops.push({
+              x: Math.random() * W,
+              y: H - 52 + Math.random() * 4,
+              r: 1.5 + Math.random() * 2,
+              alpha: 0.15,
+              life: 300 + Math.random() * 200
+            });
+          }
+          if (Math.random() < 5e-3) {
+            _weather.drops.push({
+              x: 2 + Math.random() * 4,
+              y: Math.random() * H,
+              r: 1 + Math.random() * 1.5,
+              alpha: 0.12,
+              life: 250 + Math.random() * 200
             });
           }
           return false;
@@ -2915,11 +2945,21 @@
         p.wobble += 0.015;
         p.x += p.drift + Math.sin(p.wobble) * 0.3;
         const col = Math.floor(p.x / 4);
-        const pileY = H - (_weather.snowPile[col] || 0);
-        if (p.y >= pileY - 2) {
-          if (p.y >= H - 55 && col >= 0 && col < _weather.snowPile.length) {
-            _weather.snowPile[col] = Math.min(10, (_weather.snowPile[col] || 0) + 0.15);
-          }
+        const row = Math.floor(p.y / 4);
+        const maxPile = 12;
+        if (p.y >= H - 50 - (_weather.pileBottom[col] || 0)) {
+          if (col >= 0 && col < _weather.pileBottom.length)
+            _weather.pileBottom[col] = Math.min(maxPile, (_weather.pileBottom[col] || 0) + 0.12);
+          return false;
+        }
+        if (p.x <= 6 + (_weather.pileLeft[row] || 0)) {
+          if (row >= 0 && row < _weather.pileLeft.length)
+            _weather.pileLeft[row] = Math.min(maxPile, (_weather.pileLeft[row] || 0) + 0.08);
+          return false;
+        }
+        if (p.x >= W - 6 - (_weather.pileRight[row] || 0)) {
+          if (row >= 0 && row < _weather.pileRight.length)
+            _weather.pileRight[row] = Math.min(maxPile, (_weather.pileRight[row] || 0) + 0.08);
           return false;
         }
         ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
@@ -2928,23 +2968,64 @@
         ctx.fill();
         return true;
       });
-    }
-    if (weather !== "snow") {
-      for (let i = 0; i < _weather.snowPile.length; i++) {
-        if (_weather.snowPile[i] > 0) _weather.snowPile[i] = Math.max(0, _weather.snowPile[i] - 3e-3);
+      for (let i = 0; i < _weather.pileTop.length; i++) {
+        if (Math.random() < 1e-3)
+          _weather.pileTop[i] = Math.min(8, (_weather.pileTop[i] || 0) + 0.05);
       }
     }
-    const hasPile = _weather.snowPile.some((h) => h > 0.3);
+    const meltRate = weather === "snow" ? 0 : 3e-3;
+    const piles = [_weather.pileBottom, _weather.pileTop, _weather.pileLeft, _weather.pileRight];
+    if (meltRate > 0) {
+      for (const pile of piles) {
+        for (let i = 0; i < pile.length; i++) {
+          if (pile[i] > 0) pile[i] = Math.max(0, pile[i] - meltRate);
+        }
+      }
+    }
+    const hasPile = piles.some((pile) => pile.some((h) => h > 0.3));
     if (hasPile) {
-      ctx.fillStyle = weather === "snow" ? "rgba(240,245,255,0.7)" : "rgba(240,245,255,0.5)";
-      ctx.beginPath();
-      ctx.moveTo(0, H);
-      for (let i = 0; i < _weather.snowPile.length; i++) {
-        ctx.lineTo(i * 4, H - 48 - (_weather.snowPile[i] || 0));
+      const fillColor = weather === "snow" ? "rgba(240,245,255,0.7)" : "rgba(240,245,255,0.5)";
+      ctx.fillStyle = fillColor;
+      if (_weather.pileBottom.some((h) => h > 0.3)) {
+        ctx.beginPath();
+        ctx.moveTo(0, H);
+        for (let i = 0; i < _weather.pileBottom.length; i++) {
+          ctx.lineTo(i * 4, H - 48 - (_weather.pileBottom[i] || 0));
+        }
+        ctx.lineTo(W, H);
+        ctx.closePath();
+        ctx.fill();
       }
-      ctx.lineTo(W, H);
-      ctx.closePath();
-      ctx.fill();
+      if (_weather.pileTop.some((h) => h > 0.3)) {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        for (let i = 0; i < _weather.pileTop.length; i++) {
+          ctx.lineTo(i * 4, _weather.pileTop[i] || 0);
+        }
+        ctx.lineTo(W, 0);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (_weather.pileLeft.some((h) => h > 0.3)) {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        for (let i = 0; i < _weather.pileLeft.length; i++) {
+          ctx.lineTo(_weather.pileLeft[i] || 0, i * 4);
+        }
+        ctx.lineTo(0, H);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (_weather.pileRight.some((h) => h > 0.3)) {
+        ctx.beginPath();
+        ctx.moveTo(W, 0);
+        for (let i = 0; i < _weather.pileRight.length; i++) {
+          ctx.lineTo(W - (_weather.pileRight[i] || 0), i * 4);
+        }
+        ctx.lineTo(W, H);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
     if (_weather.drops.length > 0) {
       ctx.lineWidth = 0.5;
