@@ -2012,22 +2012,14 @@
         if (countEl) countEl.textContent = current + "/" + cap;
         const multEl = existingBtn.querySelector(".gather-btn-mult");
         if (multEl) {
-          if (info.speedMult > 1) {
-            multEl.textContent = "x" + info.speedMult.toFixed(1);
-            multEl.title = info.bonuses.join(", ");
-            multEl.style.display = "";
-          } else {
-            multEl.style.display = "none";
-          }
+          multEl.textContent = "x" + info.speedMult.toFixed(1);
+          multEl.title = info.bonuses.length > 0 ? info.bonuses.join(", ") : "Base speed";
+          multEl.style.display = "";
         }
         const amtEl = existingBtn.querySelector(".gather-btn-amount");
         if (amtEl) {
-          if (info.amount > 1) {
-            amtEl.textContent = "+" + info.amount;
-            amtEl.style.display = "";
-          } else {
-            amtEl.style.display = "none";
-          }
+          amtEl.textContent = "+" + info.amount;
+          amtEl.style.display = "";
         }
         continue;
       }
@@ -2047,22 +2039,14 @@
       left.appendChild(nameSpan);
       const multSpan = document.createElement("span");
       multSpan.className = "gather-btn-mult";
-      if (info.speedMult > 1) {
-        multSpan.textContent = "x" + info.speedMult.toFixed(1);
-        multSpan.title = info.bonuses.join(", ");
-      } else {
-        multSpan.style.display = "none";
-      }
+      multSpan.textContent = "x" + info.speedMult.toFixed(1);
+      multSpan.title = info.bonuses.length > 0 ? info.bonuses.join(", ") : "Base speed";
       left.appendChild(multSpan);
       const right = document.createElement("span");
       right.className = "gather-btn-right";
       const amtSpan = document.createElement("span");
       amtSpan.className = "gather-btn-amount";
-      if (info.amount > 1) {
-        amtSpan.textContent = "+" + info.amount;
-      } else {
-        amtSpan.style.display = "none";
-      }
+      amtSpan.textContent = "+" + info.amount;
       right.appendChild(amtSpan);
       const countSpan = document.createElement("span");
       countSpan.className = "resource-count";
