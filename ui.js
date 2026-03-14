@@ -779,14 +779,28 @@ function updateChapterNav() {
 
     const loreArchive = document.getElementById('lore-archive');
     const loreActive = loreArchive && loreArchive.classList.contains('active') ? '1' : '0';
-    const key = gameState.currentChapter + ',' + knowledgeLevel + ',' + loreActive;
+    const key = gameState.currentChapter + ',' + knowledgeLevel + ',' + loreActive + ',' + gameState.unlockedBlueprints.length;
     if (_skipIfUnchanged(container, key)) return;
 
     while (container.firstChild) container.removeChild(container.firstChild);
 
+    // Pre-compute unlocked set and per-chapter item lists for efficient lookup
+    const unlockedSet = new Set(gameState.unlockedBlueprints);
+    const itemsByChapter = {};
+    if (config.items) {
+        for (const item of config.items) {
+            (itemsByChapter[item.chapter] = itemsByChapter[item.chapter] || []).push(item);
+        }
+    }
+
     for (const chapter of chapters) {
         const accessible = chapter.id <= maxChapter;
         const active = chapter.id === gameState.currentChapter;
+
+        // Check if all blueprints in this chapter are unlocked
+        const chapterItems = itemsByChapter[chapter.id] || [];
+        const allDone = chapterItems.length > 0 &&
+            chapterItems.every(i => unlockedSet.has(i.id));
 
         const btn = document.createElement('button');
         btn.className = 'chapter-btn';
@@ -794,7 +808,7 @@ function updateChapterNav() {
         if (!accessible) btn.classList.add('locked');
         btn.dataset.chapter = chapter.id;
         btn.disabled = !accessible;
-        btn.textContent = 'Ch.' + chapter.id + ': ' + chapter.name;
+        btn.textContent = (allDone ? '\u2713 ' : '') + 'Ch.' + chapter.id + ': ' + chapter.name;
 
         if (accessible) {
             btn.addEventListener('click', () => {
@@ -891,12 +905,71 @@ function updateUnlockedBlueprints() {
         p.textContent = 'No blueprints in this chapter.';
         container.appendChild(p);
     } else {
+        const unlockedSet = new Set(gameState.unlockedBlueprints);
+        const unlockedCount = chapterItems.filter(i => unlockedSet.has(i.id)).length;
+
+        // Progress summary
+        const progress = document.createElement('div');
+        progress.style.cssText = 'font-size:0.8em; color:#aaa; margin-bottom:6px;';
+        progress.textContent = `${unlockedCount} / ${chapterItems.length} blueprints found`;
+        container.appendChild(progress);
+
         for (const item of chapterItems) {
-            const unlocked = gameState.unlockedBlueprints.includes(item.id);
+            const unlocked = unlockedSet.has(item.id);
             const div = document.createElement('div');
             div.className = 'blueprint ' + (unlocked ? 'unlocked' : 'locked');
             div.textContent = (unlocked ? '\u2713 ' : '? ') + (unlocked ? item.name : '???');
             container.appendChild(div);
+        }
+
+        // Show chapter-complete guidance when all blueprints in the current chapter are found
+        const knowledgeLevel = gameState.buildings.knowledge ? gameState.buildings.knowledge.level : 0;
+        const maxAccessibleChapter = knowledgeLevel + 1;
+        const allUnlocked = unlockedCount === chapterItems.length;
+        if (allUnlocked && gameState.currentChapter === maxAccessibleChapter) {
+            const chapters = config.chapters || [];
+            const nextChapter = chapters.find(c => c.id === gameState.currentChapter + 1);
+
+            const banner = document.createElement('div');
+            banner.style.cssText = [
+                'margin-top:12px',
+                'padding:10px',
+                'background:rgba(0,255,0,0.08)',
+                'border:1px solid #00ff88',
+                'border-radius:6px',
+                'text-align:center',
+            ].join(';');
+
+            const title = document.createElement('div');
+            title.style.cssText = 'font-size:1em; color:#00ff88; font-weight:bold; margin-bottom:4px;';
+            title.textContent = `\u2605 Chapter ${gameState.currentChapter} Complete! \u2605`;
+            banner.appendChild(title);
+
+            if (nextChapter) {
+                // Look up the display name of the required building from config.items
+                const reqId = nextChapter.knowledgeBuildingRequired;
+                let buildingName = reqId ? reqId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : null;
+                if (reqId && config.items) {
+                    const buildingItem = config.items.find(i => i.id === reqId);
+                    if (buildingItem) buildingName = buildingItem.name;
+                }
+
+                const msg = document.createElement('div');
+                msg.style.cssText = 'font-size:0.8em; color:#e2b714; line-height:1.4;';
+                if (buildingName) {
+                    msg.textContent = `Build a ${buildingName} to unlock Chapter ${nextChapter.id}: ${nextChapter.name}.`;
+                } else {
+                    msg.textContent = `Chapter ${nextChapter.id}: ${nextChapter.name} is now available!`;
+                }
+                banner.appendChild(msg);
+            } else {
+                const msg = document.createElement('div');
+                msg.style.cssText = 'font-size:0.8em; color:#e2b714;';
+                msg.textContent = 'You have mastered all chapters!';
+                banner.appendChild(msg);
+            }
+
+            container.appendChild(banner);
         }
     }
 }
