@@ -255,12 +255,12 @@ async function initializeGame() {
 
   // ── Production Worker Assignment (delegated) ──────────────────────────
   document.getElementById('production-assignments')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('.worker-btn') || e.target.closest('button[data-chain-id]');
+    const btn = e.target.closest('.assign-worker-btn');
     if (btn) {
       initAudio();
-      const chainId = btn.dataset.chainId;
-      const instanceId = btn.dataset.instanceId;
-      const delta = parseInt(btn.dataset.delta);
+      const chainId = btn.dataset.chain;
+      const instanceId = btn.dataset.instance;
+      const delta = btn.dataset.action === 'add' ? 1 : -1;
       if (instanceId) {
         assignWorkerToMultiple(chainId, instanceId, delta);
       } else {
