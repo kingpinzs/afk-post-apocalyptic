@@ -363,10 +363,10 @@ async function initializeGame() {
 
   // ── Auto-save on Tab Close / Background ───────────────────────────────
   window.addEventListener('beforeunload', () => {
-    if (gameState.gameStarted) saveGame();
+    if (gameState.gameStarted && !gameState._restarting) saveGame();
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && gameState.gameStarted) saveGame();
+    if (document.hidden && gameState.gameStarted && !gameState._restarting) saveGame();
   });
 
   // ── Mod File Handlers ─────────────────────────────────────────────────
@@ -1056,6 +1056,9 @@ async function handleModFile(e, statusElId) {
 // ─── Reset Game ───────────────────────────────────────────────────────────────
 
 function resetGame() {
+  // Prevent beforeunload from re-saving
+  gameState._restarting = true;
+
   // Stop everything
   if (gameLoopInterval) {
     clearInterval(gameLoopInterval);

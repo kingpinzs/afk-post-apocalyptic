@@ -1828,11 +1828,11 @@
       const row = document.createElement("div");
       row.style.cssText = "display:flex; align-items:flex-start; gap:8px; padding:5px 0;" + (i < shown.length - 1 ? " border-bottom:1px solid rgba(255,255,255,0.05);" : "");
       const badge = document.createElement("span");
-      badge.style.cssText = "font-size:0.6em; padding:2px 6px; border-radius:3px; white-space:nowrap; margin-top:1px; flex-shrink:0; background:" + (tip.urgent ? "rgba(231,76,60,0.2); color:#e74c3c;" : tip.cat === "Next Step" ? "rgba(0,255,255,0.12); color:#00ffcc;" : tip.cat === "Growth" ? "rgba(46,204,113,0.12); color:#2ecc71;" : tip.cat === "Knowledge" ? "rgba(155,89,182,0.15); color:#bb86fc;" : tip.cat === "Quest" ? "rgba(226,183,20,0.15); color:#e2b714;" : "rgba(255,255,255,0.08); color:#7f8c8d;");
+      badge.style.cssText = "font-size:0.65em; padding:2px 8px; border-radius:3px; white-space:nowrap; margin-top:2px; flex-shrink:0; font-weight:500; background:" + (tip.urgent ? "rgba(231,76,60,0.25); color:#ff6b6b;" : tip.cat === "Next Step" ? "rgba(0,255,255,0.15); color:#33ffdd;" : tip.cat === "Growth" ? "rgba(46,204,113,0.15); color:#5dde9e;" : tip.cat === "Knowledge" ? "rgba(155,89,182,0.2); color:#cc99ff;" : tip.cat === "Quest" ? "rgba(226,183,20,0.2); color:#f0d050;" : "rgba(255,255,255,0.1); color:#a0aab4;");
       badge.textContent = tip.urgent ? "Urgent" : tip.cat;
       row.appendChild(badge);
       const text = document.createElement("span");
-      text.style.cssText = "font-size:0.8em; color:" + (tip.urgent ? "#e74c3c" : "#bdc3c7") + ";";
+      text.style.cssText = "font-size:0.85em; color:" + (tip.urgent ? "#ff6b6b" : "#e0e4e8") + "; line-height:1.4;";
       if (tip.html) {
         text.innerHTML = tip.text;
       } else {
@@ -2703,12 +2703,6 @@
     log.prepend(entry);
     while (log.children.length > 50) {
       log.removeChild(log.lastChild);
-    }
-  }
-  function clearEventLog() {
-    const log = document.getElementById("event-log");
-    if (log) {
-      while (log.firstChild) log.removeChild(log.firstChild);
     }
   }
   function showAchievementToast(achievement) {
@@ -3690,7 +3684,23 @@
     if (!gameState.studyGateProgress || Object.keys(gameState.studyGateProgress).length === 0) {
       return true;
     }
+    refreshStudyGate();
     return Object.values(gameState.studyGateProgress).every((v) => v <= 0);
+  }
+  function refreshStudyGate() {
+    if (!gameState.studyGateProgress || Object.keys(gameState.studyGateProgress).length === 0) return;
+    const config = getConfig();
+    const gateAmount = config.constants.STUDY_GATE_AMOUNT || 5;
+    const scaledAmount = gateAmount * (1 + Math.floor(gameState.knowledge / 10));
+    for (const resource of Object.keys(gameState.studyGateProgress)) {
+      const inStock = gameState.resources[resource] || 0;
+      const remaining = scaledAmount - Math.floor(inStock);
+      gameState.studyGateProgress[resource] = Math.max(0, remaining);
+    }
+    if (Object.values(gameState.studyGateProgress).every((v) => v <= 0)) {
+      gameState.studyGateProgress = {};
+      logEvent("Resources gathered! You can study again.");
+    }
   }
   function setStudyGate() {
     const config = getConfig();
@@ -5592,10 +5602,10 @@
       toggleTechTree();
     });
     window.addEventListener("beforeunload", () => {
-      if (gameState.gameStarted) saveGame();
+      if (gameState.gameStarted && !gameState._restarting) saveGame();
     });
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden && gameState.gameStarted) saveGame();
+      if (document.hidden && gameState.gameStarted && !gameState._restarting) saveGame();
     });
     document.getElementById("mod-file")?.addEventListener("change", async (e) => {
       await handleModFile(e, "mod-status");
@@ -5995,50 +6005,96 @@
     const popup = document.getElementById("welcome-back-popup");
     const content = document.getElementById("welcome-back-content");
     if (!popup || !content) return;
-    const lines = [];
-    lines.push(`You were away for <strong>${summary.daysAdvanced} game days</strong>.`);
-    if (summary.capped) {
-      lines.push(`<em>(capped from ${summary.rawDays} days)</em>`);
-    }
-    lines.push("");
-    lines.push(`<span style="color:#f39c12">Food:</span> ${summary.foodBefore} &rarr; ${summary.foodAfter}`);
-    lines.push(`<span style="color:#3498db">Water:</span> ${summary.waterBefore} &rarr; ${summary.waterAfter}`);
-    if (summary.foodProduced > 0 || summary.waterProduced > 0) {
-      lines.push("");
-      lines.push(`Workers produced: +${summary.foodProduced} food, +${summary.waterProduced} water`);
-    }
-    if (summary.populationBefore !== summary.populationAfter) {
-      lines.push(`<span style="color:#e74c3c">Population:</span> ${summary.populationBefore} &rarr; ${summary.populationAfter}`);
-    }
     content.textContent = "";
-    const div = document.createElement("div");
-    const p1 = document.createElement("p");
-    p1.textContent = `You were away for ${summary.daysAdvanced} game days.`;
+    const wrap = document.createElement("div");
+    const timeRow = document.createElement("div");
+    timeRow.style.cssText = "text-align:center; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid rgba(0,255,255,0.15);";
+    const dayText = document.createElement("div");
+    dayText.style.cssText = "font-size:1.8em; font-weight:700; color:#00ffff;";
+    dayText.textContent = `${summary.daysAdvanced}`;
+    timeRow.appendChild(dayText);
+    const dayLabel = document.createElement("div");
+    dayLabel.style.cssText = "font-size:0.7em; color:#8494a7; text-transform:uppercase; letter-spacing:2px;";
+    dayLabel.textContent = summary.daysAdvanced === 1 ? "day passed" : "days passed";
+    timeRow.appendChild(dayLabel);
     if (summary.capped) {
-      p1.textContent += ` (capped from ${summary.rawDays})`;
+      const capNote = document.createElement("div");
+      capNote.style.cssText = "font-size:0.6em; color:#f39c12; margin-top:4px;";
+      capNote.textContent = `(capped from ${summary.rawDays} days)`;
+      timeRow.appendChild(capNote);
     }
-    div.appendChild(p1);
-    const stats = document.createElement("div");
-    stats.style.cssText = "margin-top:8px; display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:0.9em;";
-    const addStat = (label, before, after, color) => {
+    wrap.appendChild(timeRow);
+    const buildRow = (icon, label, before, after, color) => {
+      const net = after - before;
       const row = document.createElement("div");
-      row.style.cssText = `grid-column: 1 / -1; color:${color};`;
-      row.textContent = `${label}: ${before} \u2192 ${after}`;
-      stats.appendChild(row);
+      row.style.cssText = "display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.04);";
+      const left = document.createElement("div");
+      left.style.cssText = "display:flex; align-items:center; gap:8px;";
+      const iconEl = document.createElement("span");
+      iconEl.style.cssText = `font-size:1em;`;
+      iconEl.textContent = icon;
+      left.appendChild(iconEl);
+      const labelEl = document.createElement("span");
+      labelEl.style.cssText = `font-size:0.85em; color:${color}; font-weight:500;`;
+      labelEl.textContent = label;
+      left.appendChild(labelEl);
+      row.appendChild(left);
+      const right = document.createElement("div");
+      right.style.cssText = "display:flex; align-items:center; gap:8px;";
+      const vals = document.createElement("span");
+      vals.style.cssText = "font-size:0.8em; color:#bdc3c7;";
+      vals.textContent = `${before} \u2192 ${after}`;
+      right.appendChild(vals);
+      const netEl = document.createElement("span");
+      const netColor = net > 0 ? "#2ecc71" : net < 0 ? "#e74c3c" : "#7f8c8d";
+      const netSign = net > 0 ? "+" : "";
+      netEl.style.cssText = `font-size:0.75em; padding:2px 6px; border-radius:4px; font-weight:600; color:${netColor}; background:${net > 0 ? "rgba(46,204,113,0.12)" : net < 0 ? "rgba(231,76,60,0.12)" : "rgba(127,140,141,0.1)"};`;
+      netEl.textContent = `${netSign}${net}`;
+      right.appendChild(netEl);
+      row.appendChild(right);
+      return row;
     };
-    addStat("Food", summary.foodBefore, summary.foodAfter, "#f39c12");
-    addStat("Water", summary.waterBefore, summary.waterAfter, "#3498db");
+    const statsSection = document.createElement("div");
+    statsSection.style.cssText = "margin-bottom:10px;";
+    statsSection.appendChild(buildRow("\u{1F33E}", "Food", summary.foodBefore, summary.foodAfter, "#f39c12"));
+    statsSection.appendChild(buildRow("\u{1F4A7}", "Water", summary.waterBefore, summary.waterAfter, "#3498db"));
     if (summary.populationBefore !== summary.populationAfter) {
-      addStat("Population", summary.populationBefore, summary.populationAfter, "#e74c3c");
+      statsSection.appendChild(buildRow("\u{1F465}", "Population", summary.populationBefore, summary.populationAfter, "#bb86fc"));
     }
+    wrap.appendChild(statsSection);
     if (summary.foodProduced > 0 || summary.waterProduced > 0) {
-      const prod = document.createElement("div");
-      prod.style.cssText = "grid-column: 1 / -1; color:#2ecc71; margin-top:6px;";
-      prod.textContent = `Workers produced: +${summary.foodProduced} food, +${summary.waterProduced} water`;
-      stats.appendChild(prod);
+      const prodSection = document.createElement("div");
+      prodSection.style.cssText = "background:rgba(46,204,113,0.06); border:1px solid rgba(46,204,113,0.15); border-radius:8px; padding:8px 10px; margin-bottom:10px;";
+      const prodTitle = document.createElement("div");
+      prodTitle.style.cssText = "font-size:0.6em; color:#2ecc71; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;";
+      prodTitle.textContent = "Worker Production";
+      prodSection.appendChild(prodTitle);
+      const prodDetails = document.createElement("div");
+      prodDetails.style.cssText = "font-size:0.8em; color:#e0e4e8;";
+      const parts = [];
+      if (summary.foodProduced > 0) parts.push(`+${summary.foodProduced} food`);
+      if (summary.waterProduced > 0) parts.push(`+${summary.waterProduced} water`);
+      prodDetails.textContent = parts.join("  \xB7  ");
+      prodSection.appendChild(prodDetails);
+      wrap.appendChild(prodSection);
     }
-    div.appendChild(stats);
-    content.appendChild(div);
+    if (summary.foodConsumed > 0 || summary.waterConsumed > 0) {
+      const consSection = document.createElement("div");
+      consSection.style.cssText = "background:rgba(231,76,60,0.06); border:1px solid rgba(231,76,60,0.15); border-radius:8px; padding:8px 10px;";
+      const consTitle = document.createElement("div");
+      consTitle.style.cssText = "font-size:0.6em; color:#e74c3c; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;";
+      consTitle.textContent = "Consumed";
+      consSection.appendChild(consTitle);
+      const consDetails = document.createElement("div");
+      consDetails.style.cssText = "font-size:0.8em; color:#e0e4e8;";
+      const parts = [];
+      if (summary.foodConsumed > 0) parts.push(`-${summary.foodConsumed} food`);
+      if (summary.waterConsumed > 0) parts.push(`-${summary.waterConsumed} water`);
+      consDetails.textContent = parts.join("  \xB7  ");
+      consSection.appendChild(consDetails);
+      wrap.appendChild(consSection);
+    }
+    content.appendChild(wrap);
     popup.style.display = "flex";
     document.getElementById("welcome-back-dismiss")?.addEventListener("click", () => {
       popup.style.display = "none";
@@ -6078,8 +6134,7 @@
     }
   }
   function resetGame() {
-    const puzzlePopup = document.getElementById("puzzle-popup");
-    if (puzzlePopup) puzzlePopup.style.display = "none";
+    gameState._restarting = true;
     if (gameLoopInterval) {
       clearInterval(gameLoopInterval);
       gameLoopInterval = null;
@@ -6092,52 +6147,26 @@
     clearCraftingInterval();
     resetGathering();
     resetActiveEvents();
-    resetSettlementState();
-    gameState.knowledge = 0;
-    gameState.maxKnowledge = 0;
-    gameState.unlockedBlueprints = [];
-    gameState.currency = 0;
-    gameState.achievements = [];
-    gameState.completedQuests = [];
-    gameState.totalDaysPlayed = 0;
-    gameState.toolLevels = {
-      cutting: 0,
-      chopping: 0,
-      mining: 0,
-      construction: 0,
-      farming: 0,
-      fishing: 0,
-      hunting: 0
-    };
-    for (const chainId of Object.keys(gameState.tools)) {
-      gameState.tools[chainId] = { level: 0, itemId: null };
-    }
-    gameState.factions = [];
-    gameState.settlements = [];
-    gameState.supplyLines = [];
-    gameState.collectedLore = [];
-    gameState.seenLoreEvents = [];
-    gameState.tabNotifications = {};
-    gameState.isStudying = false;
-    gameState._pendingEventCheck = false;
-    gameState.isGameOver = false;
-    gameState.gameStarted = true;
-    gameState.sandboxMode = false;
-    gameState.availableWorkers = gameState.population;
-    initSettlements();
-    initNetwork();
-    initializePopulationMembers();
-    initializeFactions();
     deleteSave();
-    clearEventLog();
-    computeUnlockedResources();
-    updateGatheringVisibility();
-    preRenderAllTabs();
-    checkQuestAvailability();
-    logEvent("You wake up alone in the wilderness. You have nothing but a worn book.", "story");
-    logEvent("Study the Book to learn how to survive.", "info");
-    startGameLoop();
-    startAutoSave();
+    localStorage.removeItem("postapoc_tutorial_seen");
+    const splash = document.getElementById("splash-screen");
+    if (splash) {
+      splash.style.display = "";
+      splash.classList.remove("dismissed");
+      const statusText = document.getElementById("splash-status-text");
+      if (statusText) statusText.textContent = "Restarting";
+    }
+    document.getElementById("game-container").style.display = "none";
+    document.getElementById("hud").style.display = "none";
+    document.getElementById("bottom-nav").style.display = "none";
+    document.querySelectorAll(".popup").forEach((p) => p.style.display = "none");
+    const gameOverPopup = document.getElementById("game-over-popup");
+    if (gameOverPopup) gameOverPopup.style.display = "none";
+    const restartPopup = document.getElementById("restart-confirm-popup");
+    if (restartPopup) restartPopup.style.display = "none";
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
   }
   initializeGame().catch((err) => {
     console.error("[bootstrap] initializeGame failed:", err);
