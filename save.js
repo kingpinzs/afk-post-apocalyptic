@@ -230,7 +230,7 @@ function recalculateAvailableWorkers() {
  * @returns {{ days: number, foodProduced: number, waterProduced: number,
  *             foodConsumed: number, waterConsumed: number, daysAdvanced: number }}
  */
-function simulateOfflineDays(rawDays) {
+export function simulateOfflineDays(rawDays) {
   const config = getConfig();
   const MAX_OFFLINE_DAYS = 200;
   const days = Math.min(rawDays, MAX_OFFLINE_DAYS);

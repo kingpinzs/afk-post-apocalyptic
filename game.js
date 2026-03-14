@@ -18,7 +18,7 @@ import { getCraftableItems, startCrafting, getUpgradeOptions, clearCraftingInter
 import { runDailyProduction, getProductionSummary, assignWorkerToSingle, assignWorkerToMultiple, unassignAllWorkers } from './automation.js';
 import { checkForEvents, updateActiveEvents, resetActiveEvents, updateWeather, checkMilestoneEvents } from './events.js';
 import { updateDisplay, logEvent, initUI, switchTab, updateHUD, showPuzzlePopup, hidePuzzlePopup, showGameOver, showVictory, showAchievementToast, updateGatheringButtons, updateCraftingQueueDisplay, updateSettlementTab, updateBookTab, updateCraftingTab, updateProductionTab, updateExplorationTab, updateWorldTab, clearEventLog, updateDayNightCycle, updateTimeDisplay, updateTimeEmoji, updateGatheringVisibility, updateTradingSection, updateExplorationSection, updateQuestsSection, updateAchievementsSection, updatePopulationSection, updateFactionsSection, updateStatsSection, getShareableStats, showUnlockPuzzle, showItemUnlockPuzzle, submitUnlockPuzzleAnswer, submitItemUnlockPuzzleAnswer, findNextItemUnlock, updateWorkingSection, updateNetworkTab, showFlashback, startLoreSlideshow, navigateLoreSlideshow, closeLoreSlideshow, preRenderAllTabs, updateWeatherEffects } from './ui.js';
-import { saveGame, loadGame, hasSave, deleteSave, exportSave, importSave } from './save.js';
+import { saveGame, loadGame, hasSave, deleteSave, exportSave, importSave, simulateOfflineDays } from './save.js';
 import { updatePopulation, initializePopulationMembers, addPopulationMember } from './population.js';
 import { initAudio, initMuteState, playClick, playGameOver, playVictory, playGather, playCraft, playUnlock, playWrong, toggleMute, isMuted } from './audio.js';
 import { getEffect } from './effects.js';
@@ -366,7 +366,15 @@ async function initializeGame() {
     if (gameState.gameStarted && !gameState._restarting) saveGame();
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && gameState.gameStarted && !gameState._restarting) saveGame();
+    if (gameState._restarting) return;
+    if (document.hidden && gameState.gameStarted) {
+      // Going away — save and record timestamp
+      gameState._wentAfkAt = Date.now();
+      saveGame();
+    } else if (!document.hidden && gameState.gameStarted && gameState._wentAfkAt) {
+      // Coming back — check how long we were away
+      handleAfkReturn();
+    }
   });
 
   // ── Mod File Handlers ─────────────────────────────────────────────────
@@ -1037,6 +1045,44 @@ function showWelcomeBack(summary) {
   document.getElementById('welcome-back-dismiss')?.addEventListener('click', () => {
     popup.style.display = 'none';
   }, { once: true });
+}
+
+
+// ─── AFK / Tab-Return Handler ─────────────────────────────────────────────────
+
+/**
+ * Called when the player returns to the tab after being away.
+ * Calculates elapsed real time, simulates missed game days, and shows summary.
+ * Minimum 60 seconds away to trigger AFK catch-up (avoids spurious triggers).
+ */
+function handleAfkReturn() {
+  const afkStart = gameState._wentAfkAt;
+  delete gameState._wentAfkAt;
+  if (!afkStart) return;
+
+  const elapsedMs = Date.now() - afkStart;
+  const MIN_AFK_MS = 60 * 1000; // 1 minute minimum to trigger AFK
+  if (elapsedMs < MIN_AFK_MS) return;
+
+  const daySpeed = gameState.settings?.daySpeed || 600;
+  const offlineDays = Math.floor(elapsedMs / (1000 * daySpeed));
+  if (offlineDays <= 0) return;
+
+  const summary = simulateOfflineDays(offlineDays);
+  console.info('[afk] Tab return after %ds (%d game days). Summary:', Math.round(elapsedMs / 1000), offlineDays, summary);
+
+  // Reset the game loop tick counters to sync with new state
+  dayTickCounter = 0;
+  mealsEatenToday = 0;
+
+  // Refresh UI
+  computeUnlockedResources();
+  updateGatheringVisibility();
+  updateDisplay();
+
+  // Show welcome-back popup
+  showWelcomeBack(summary);
+  logEvent(`You were away for ${offlineDays} day${offlineDays > 1 ? 's' : ''}. Check the summary!`);
 }
 
 

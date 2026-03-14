@@ -5833,7 +5833,13 @@
       if (gameState.gameStarted && !gameState._restarting) saveGame();
     });
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden && gameState.gameStarted && !gameState._restarting) saveGame();
+      if (gameState._restarting) return;
+      if (document.hidden && gameState.gameStarted) {
+        gameState._wentAfkAt = Date.now();
+        saveGame();
+      } else if (!document.hidden && gameState.gameStarted && gameState._wentAfkAt) {
+        handleAfkReturn();
+      }
     });
     document.getElementById("mod-file")?.addEventListener("change", async (e) => {
       await handleModFile(e, "mod-status");
@@ -6355,6 +6361,26 @@
     document.getElementById("welcome-back-dismiss")?.addEventListener("click", () => {
       popup.style.display = "none";
     }, { once: true });
+  }
+  function handleAfkReturn() {
+    const afkStart = gameState._wentAfkAt;
+    delete gameState._wentAfkAt;
+    if (!afkStart) return;
+    const elapsedMs = Date.now() - afkStart;
+    const MIN_AFK_MS = 60 * 1e3;
+    if (elapsedMs < MIN_AFK_MS) return;
+    const daySpeed = gameState.settings?.daySpeed || 600;
+    const offlineDays = Math.floor(elapsedMs / (1e3 * daySpeed));
+    if (offlineDays <= 0) return;
+    const summary = simulateOfflineDays(offlineDays);
+    console.info("[afk] Tab return after %ds (%d game days). Summary:", Math.round(elapsedMs / 1e3), offlineDays, summary);
+    dayTickCounter = 0;
+    mealsEatenToday = 0;
+    computeUnlockedResources();
+    updateGatheringVisibility();
+    updateDisplay();
+    showWelcomeBack(summary);
+    logEvent(`You were away for ${offlineDays} day${offlineDays > 1 ? "s" : ""}. Check the summary!`);
   }
   async function handleModFile(e, statusElId) {
     const file = e.target.files[0];
