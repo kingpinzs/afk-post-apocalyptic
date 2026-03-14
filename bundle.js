@@ -2955,7 +2955,7 @@
         const row = Math.floor(p.y / 4);
         const maxBottom = 8;
         const maxSide = 6;
-        const navTop = H - 48;
+        const navTop = H - 64;
         if (p.y >= navTop - (_weather.pileBottom[col] || 0)) {
           if (col >= 0 && col < _weather.pileBottom.length)
             _weather.pileBottom[col] = Math.min(maxBottom, (_weather.pileBottom[col] || 0) + 0.08);
@@ -2993,7 +2993,7 @@
     }
     const hasPile = piles.some((pile) => pile.some((h) => h > 0.3));
     if (hasPile) {
-      const navTop = H - 48;
+      const navTop = H - 64;
       if (_weather.pileBottom.some((h) => h > 0.3)) {
         const grad = ctx.createLinearGradient(0, navTop - 12, 0, navTop);
         grad.addColorStop(0, "rgba(240,248,255,0)");

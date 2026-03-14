@@ -2122,7 +2122,7 @@ function weatherRenderLoop() {
             const row = Math.floor(p.y / 4);
             const maxBottom = 8;   // max drift height on nav bar (pixels)
             const maxSide = 6;     // max on left/right edges
-            const navTop = H - 48; // top of nav bar
+            const navTop = H - 64; // top of nav bar
 
             // Hit nav bar top edge — pile up as a drift
             if (p.y >= navTop - (_weather.pileBottom[col] || 0)) {
@@ -2171,7 +2171,7 @@ function weatherRenderLoop() {
     const hasPile = piles.some(pile => pile.some(h => h > 0.3));
     if (hasPile) {
         // Nav bar top edge — drift sits ON TOP, not filling below
-        const navTop = H - 48;
+        const navTop = H - 64;
 
         // Bottom pile: thin drift strip on top of nav bar
         if (_weather.pileBottom.some(h => h > 0.3)) {
