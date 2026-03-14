@@ -885,6 +885,8 @@
     const instances = gameState.multipleBuildings[stateKey];
     const instance = instances?.find((i) => i.id === instanceId);
     if (!instance) return [];
+    const alreadyQueued = gameState.craftingQueue.some((q) => q.targetInstanceId === instanceId);
+    if (alreadyQueued) return [];
     return config.items.filter((item) => item.chain === chain && item.level === instance.level + 1).filter((item) => gameState.unlockedBlueprints.includes(item.id)).map((item) => ({
       ...item,
       workstationOk: hasWorkstation(item.workstationRequired),
@@ -1659,6 +1661,7 @@
     }
     const gc = document.getElementById("game-container");
     if (gc) gc.scrollTop = 0;
+    updateDisplay();
   }
   function toggleMoreDrawer() {
     const drawer = document.getElementById("more-drawer");
@@ -1906,10 +1909,11 @@
       return;
     }
     const bKey = Object.keys(gameState.buildings).map((k) => k + ":" + (gameState.buildings[k].level || 0) + ":" + (gameState.buildings[k].itemId || "")).join(",");
-    const mKey = Object.keys(gameState.multipleBuildings).map((k) => k + ":" + gameState.multipleBuildings[k].length).join(",");
+    const mKey = Object.keys(gameState.multipleBuildings).map((k) => k + ":" + gameState.multipleBuildings[k].map((i) => i.id + "=" + (i.itemId || "") + "@" + (i.level || 0)).join(";")).join(",");
     const tKey = Object.keys(gameState.tools).map((k) => k + ":" + (gameState.tools[k].level || 0)).join(",");
     const bpKey = (gameState.unlockedBlueprints || []).length;
-    if (_skipIfUnchanged(container, bKey + "|" + mKey + "|" + tKey + "|" + bpKey)) return;
+    const qKey = (gameState.craftingQueue || []).map((q) => (q.targetInstanceId || "") + ":" + q.itemId).join(",");
+    if (_skipIfUnchanged(container, bKey + "|" + mKey + "|" + tKey + "|" + bpKey + "|" + qKey)) return;
     while (container.firstChild) container.removeChild(container.firstChild);
     let hasBuildings = false;
     for (const chainId of Object.keys(gameState.buildings)) {
@@ -2448,6 +2452,29 @@
     }
   }
   function matchCategory(item, category) {
+    let chainCategory = "";
+    try {
+      const cfg = getConfig && getConfig();
+      if (cfg && cfg.chains && item.chain && cfg.chains[item.chain]) {
+        chainCategory = cfg.chains[item.chain].category || "";
+      }
+    } catch {
+    }
+    if (chainCategory) {
+      const normalized = String(chainCategory).toLowerCase();
+      switch (category) {
+        case "tools":
+          return normalized === "tool" || normalized === "tools";
+        case "workstations":
+          return ["workstation", "workstations", "processing"].includes(normalized) && item.chain !== "workbench";
+        case "workbench":
+          return item.chain === "workbench";
+        case "buildings":
+          return !["tool", "tools", "workstation", "workstations", "processing"].includes(normalized) && item.chain !== "workbench";
+        default:
+          return normalized === category;
+      }
+    }
     const type = item.type || item.category || "";
     const chain = item.chain || "";
     const isTools = type === "tool" || chain.includes("tool");
@@ -2467,13 +2494,13 @@
       case "tools":
         return isTools;
       case "workstations":
-        return isWorkstation;
+        return isWorkstation && !isWorkbench;
       case "workbench":
         return isWorkbench;
       case "buildings":
         return !isTools && !isWorkstation && !isWorkbench;
       default:
-        return true;
+        return false;
     }
   }
   function checkCost(cost) {
@@ -5972,12 +5999,12 @@
       }
     });
     document.getElementById("production-assignments")?.addEventListener("click", (e) => {
-      const btn = e.target.closest(".worker-btn") || e.target.closest("button[data-chain-id]");
+      const btn = e.target.closest(".assign-worker-btn");
       if (btn) {
         initAudio();
-        const chainId = btn.dataset.chainId;
-        const instanceId = btn.dataset.instanceId;
-        const delta = parseInt(btn.dataset.delta);
+        const chainId = btn.dataset.chain;
+        const instanceId = btn.dataset.instance;
+        const delta = btn.dataset.action === "add" ? 1 : -1;
         if (instanceId) {
           assignWorkerToMultiple(chainId, instanceId, delta);
         } else {
