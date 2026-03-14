@@ -2953,20 +2953,22 @@
         p.x += p.drift + Math.sin(p.wobble) * 0.3;
         const col = Math.floor(p.x / 4);
         const row = Math.floor(p.y / 4);
-        const maxPile = 12;
-        if (p.y >= H - 50 - (_weather.pileBottom[col] || 0)) {
+        const maxBottom = 8;
+        const maxSide = 6;
+        const navTop = H - 48;
+        if (p.y >= navTop - (_weather.pileBottom[col] || 0)) {
           if (col >= 0 && col < _weather.pileBottom.length)
-            _weather.pileBottom[col] = Math.min(maxPile, (_weather.pileBottom[col] || 0) + 0.12);
+            _weather.pileBottom[col] = Math.min(maxBottom, (_weather.pileBottom[col] || 0) + 0.08);
           return false;
         }
-        if (p.x <= 6 + (_weather.pileLeft[row] || 0)) {
+        if (p.x <= 4 + (_weather.pileLeft[row] || 0)) {
           if (row >= 0 && row < _weather.pileLeft.length)
-            _weather.pileLeft[row] = Math.min(maxPile, (_weather.pileLeft[row] || 0) + 0.08);
+            _weather.pileLeft[row] = Math.min(maxSide, (_weather.pileLeft[row] || 0) + 0.05);
           return false;
         }
-        if (p.x >= W - 6 - (_weather.pileRight[row] || 0)) {
+        if (p.x >= W - 4 - (_weather.pileRight[row] || 0)) {
           if (row >= 0 && row < _weather.pileRight.length)
-            _weather.pileRight[row] = Math.min(maxPile, (_weather.pileRight[row] || 0) + 0.08);
+            _weather.pileRight[row] = Math.min(maxSide, (_weather.pileRight[row] || 0) + 0.05);
           return false;
         }
         ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
@@ -2976,8 +2978,8 @@
         return true;
       });
       for (let i = 0; i < _weather.pileTop.length; i++) {
-        if (Math.random() < 1e-3)
-          _weather.pileTop[i] = Math.min(8, (_weather.pileTop[i] || 0) + 0.05);
+        if (Math.random() < 8e-4)
+          _weather.pileTop[i] = Math.min(4, (_weather.pileTop[i] || 0) + 0.03);
       }
     }
     const meltRate = weather === "snow" ? 0 : 3e-3;
@@ -2991,19 +2993,29 @@
     }
     const hasPile = piles.some((pile) => pile.some((h) => h > 0.3));
     if (hasPile) {
-      const fillColor = weather === "snow" ? "rgba(240,245,255,0.7)" : "rgba(240,245,255,0.5)";
-      ctx.fillStyle = fillColor;
+      const navTop = H - 48;
       if (_weather.pileBottom.some((h) => h > 0.3)) {
+        const grad = ctx.createLinearGradient(0, navTop - 12, 0, navTop);
+        grad.addColorStop(0, "rgba(240,248,255,0)");
+        grad.addColorStop(0.3, weather === "snow" ? "rgba(240,248,255,0.6)" : "rgba(240,248,255,0.4)");
+        grad.addColorStop(1, weather === "snow" ? "rgba(230,240,250,0.8)" : "rgba(230,240,250,0.5)");
+        ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.moveTo(0, H);
+        ctx.moveTo(0, navTop);
         for (let i = 0; i < _weather.pileBottom.length; i++) {
-          ctx.lineTo(i * 4, H - 48 - (_weather.pileBottom[i] || 0));
+          const h = _weather.pileBottom[i] || 0;
+          ctx.lineTo(i * 4, navTop - h);
         }
-        ctx.lineTo(W, H);
+        ctx.lineTo(W, navTop);
         ctx.closePath();
         ctx.fill();
       }
+      const topFill = weather === "snow" ? "rgba(240,245,255,0.5)" : "rgba(240,245,255,0.3)";
       if (_weather.pileTop.some((h) => h > 0.3)) {
+        const grad = ctx.createLinearGradient(0, 0, 0, 10);
+        grad.addColorStop(0, topFill);
+        grad.addColorStop(1, "rgba(240,248,255,0)");
+        ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         for (let i = 0; i < _weather.pileTop.length; i++) {
@@ -3013,7 +3025,12 @@
         ctx.closePath();
         ctx.fill();
       }
+      const sideFill = weather === "snow" ? "rgba(240,245,255,0.45)" : "rgba(240,245,255,0.3)";
       if (_weather.pileLeft.some((h) => h > 0.3)) {
+        const grad = ctx.createLinearGradient(0, 0, 10, 0);
+        grad.addColorStop(0, sideFill);
+        grad.addColorStop(1, "rgba(240,248,255,0)");
+        ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         for (let i = 0; i < _weather.pileLeft.length; i++) {
@@ -3024,6 +3041,10 @@
         ctx.fill();
       }
       if (_weather.pileRight.some((h) => h > 0.3)) {
+        const grad = ctx.createLinearGradient(W, 0, W - 10, 0);
+        grad.addColorStop(0, sideFill);
+        grad.addColorStop(1, "rgba(240,248,255,0)");
+        ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.moveTo(W, 0);
         for (let i = 0; i < _weather.pileRight.length; i++) {

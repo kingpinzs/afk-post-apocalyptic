@@ -2120,24 +2120,26 @@ function weatherRenderLoop() {
             // Accumulate on edges when hitting them
             const col = Math.floor(p.x / 4);
             const row = Math.floor(p.y / 4);
-            const maxPile = 12;
+            const maxBottom = 8;   // max drift height on nav bar (pixels)
+            const maxSide = 6;     // max on left/right edges
+            const navTop = H - 48; // top of nav bar
 
-            // Hit bottom edge
-            if (p.y >= H - 50 - (_weather.pileBottom[col] || 0)) {
+            // Hit nav bar top edge — pile up as a drift
+            if (p.y >= navTop - (_weather.pileBottom[col] || 0)) {
                 if (col >= 0 && col < _weather.pileBottom.length)
-                    _weather.pileBottom[col] = Math.min(maxPile, (_weather.pileBottom[col] || 0) + 0.12);
+                    _weather.pileBottom[col] = Math.min(maxBottom, (_weather.pileBottom[col] || 0) + 0.08);
                 return false;
             }
             // Hit left edge
-            if (p.x <= 6 + (_weather.pileLeft[row] || 0)) {
+            if (p.x <= 4 + (_weather.pileLeft[row] || 0)) {
                 if (row >= 0 && row < _weather.pileLeft.length)
-                    _weather.pileLeft[row] = Math.min(maxPile, (_weather.pileLeft[row] || 0) + 0.08);
+                    _weather.pileLeft[row] = Math.min(maxSide, (_weather.pileLeft[row] || 0) + 0.05);
                 return false;
             }
             // Hit right edge
-            if (p.x >= W - 6 - (_weather.pileRight[row] || 0)) {
+            if (p.x >= W - 4 - (_weather.pileRight[row] || 0)) {
                 if (row >= 0 && row < _weather.pileRight.length)
-                    _weather.pileRight[row] = Math.min(maxPile, (_weather.pileRight[row] || 0) + 0.08);
+                    _weather.pileRight[row] = Math.min(maxSide, (_weather.pileRight[row] || 0) + 0.05);
                 return false;
             }
 
@@ -2150,8 +2152,8 @@ function weatherRenderLoop() {
 
         // Top edge: snow accumulates passively (flakes spawn at top)
         for (let i = 0; i < _weather.pileTop.length; i++) {
-            if (Math.random() < 0.001)
-                _weather.pileTop[i] = Math.min(8, (_weather.pileTop[i] || 0) + 0.05);
+            if (Math.random() < 0.0008)
+                _weather.pileTop[i] = Math.min(4, (_weather.pileTop[i] || 0) + 0.03);
         }
     }
 
@@ -2168,23 +2170,34 @@ function weatherRenderLoop() {
 
     const hasPile = piles.some(pile => pile.some(h => h > 0.3));
     if (hasPile) {
-        const fillColor = weather === 'snow' ? 'rgba(240,245,255,0.7)' : 'rgba(240,245,255,0.5)';
-        ctx.fillStyle = fillColor;
+        // Nav bar top edge — drift sits ON TOP, not filling below
+        const navTop = H - 48;
 
-        // Bottom pile
+        // Bottom pile: thin drift strip on top of nav bar
         if (_weather.pileBottom.some(h => h > 0.3)) {
+            const grad = ctx.createLinearGradient(0, navTop - 12, 0, navTop);
+            grad.addColorStop(0, 'rgba(240,248,255,0)');
+            grad.addColorStop(0.3, weather === 'snow' ? 'rgba(240,248,255,0.6)' : 'rgba(240,248,255,0.4)');
+            grad.addColorStop(1, weather === 'snow' ? 'rgba(230,240,250,0.8)' : 'rgba(230,240,250,0.5)');
+            ctx.fillStyle = grad;
             ctx.beginPath();
-            ctx.moveTo(0, H);
+            ctx.moveTo(0, navTop);
             for (let i = 0; i < _weather.pileBottom.length; i++) {
-                ctx.lineTo(i * 4, H - 48 - (_weather.pileBottom[i] || 0));
+                const h = _weather.pileBottom[i] || 0;
+                ctx.lineTo(i * 4, navTop - h);
             }
-            ctx.lineTo(W, H);
+            ctx.lineTo(W, navTop);
             ctx.closePath();
             ctx.fill();
         }
 
-        // Top pile
+        // Top pile: thin frost along top edge
+        const topFill = weather === 'snow' ? 'rgba(240,245,255,0.5)' : 'rgba(240,245,255,0.3)';
         if (_weather.pileTop.some(h => h > 0.3)) {
+            const grad = ctx.createLinearGradient(0, 0, 0, 10);
+            grad.addColorStop(0, topFill);
+            grad.addColorStop(1, 'rgba(240,248,255,0)');
+            ctx.fillStyle = grad;
             ctx.beginPath();
             ctx.moveTo(0, 0);
             for (let i = 0; i < _weather.pileTop.length; i++) {
@@ -2195,8 +2208,13 @@ function weatherRenderLoop() {
             ctx.fill();
         }
 
-        // Left pile
+        // Left pile: thin strip along left edge
+        const sideFill = weather === 'snow' ? 'rgba(240,245,255,0.45)' : 'rgba(240,245,255,0.3)';
         if (_weather.pileLeft.some(h => h > 0.3)) {
+            const grad = ctx.createLinearGradient(0, 0, 10, 0);
+            grad.addColorStop(0, sideFill);
+            grad.addColorStop(1, 'rgba(240,248,255,0)');
+            ctx.fillStyle = grad;
             ctx.beginPath();
             ctx.moveTo(0, 0);
             for (let i = 0; i < _weather.pileLeft.length; i++) {
@@ -2209,6 +2227,10 @@ function weatherRenderLoop() {
 
         // Right pile
         if (_weather.pileRight.some(h => h > 0.3)) {
+            const grad = ctx.createLinearGradient(W, 0, W - 10, 0);
+            grad.addColorStop(0, sideFill);
+            grad.addColorStop(1, 'rgba(240,248,255,0)');
+            ctx.fillStyle = grad;
             ctx.beginPath();
             ctx.moveTo(W, 0);
             for (let i = 0; i < _weather.pileRight.length; i++) {

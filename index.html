@@ -491,12 +491,16 @@
             display: flex;
             justify-content: space-around;
             padding: 10px 0;
-            transform: translateY(100%);
-            transition: transform 0.3s ease;
+            transform: translateY(calc(100% + 10px));
+            transition: transform 0.3s ease, visibility 0.3s;
+            visibility: hidden;
+            pointer-events: none;
         }
 
         #more-drawer.open {
             transform: translateY(0);
+            visibility: visible;
+            pointer-events: auto;
         }
 
         .drawer-btn {
@@ -1807,7 +1811,8 @@
             #more-drawer {
                 max-width: 600px;
                 left: 50%;
-                transform: translateX(-50%) translateY(100%);
+                right: auto;
+                transform: translateX(-50%) translateY(calc(100% + 10px));
             }
 
             #more-drawer.open {
