@@ -1302,19 +1302,22 @@ function matchCategory(item, category) {
     const type = item.type || item.category || '';
     const chain = item.chain || '';
 
+    const isTools = type === 'tool' || chain.includes('tool');
+    const isWorkstation = type === 'workstation' ||
+           ['kiln', 'forge', 'sawmill', 'loom', 'tannery', 'glassworks',
+            'charcoal_pit', 'herbalist_hut', 'paper_mill'].includes(chain);
+    const isWorkbench = chain === 'workbench' || type === 'workbench';
+
     switch (category) {
         case 'tools':
-            return type === 'tool' || chain.includes('tool');
-        case 'buildings':
-            return type === 'building' || type === 'shelter' || type === 'defense' ||
-                   chain.includes('shelter') || chain.includes('food_') ||
-                   chain.includes('water') || chain.includes('defense');
+            return isTools;
         case 'workstations':
-            return type === 'workstation' ||
-                   ['kiln', 'forge', 'sawmill', 'loom', 'tannery', 'glassworks',
-                    'charcoal_pit', 'herbalist_hut', 'paper_mill'].includes(chain);
+            return isWorkstation;
         case 'workbench':
-            return chain === 'workbench' || type === 'workbench';
+            return isWorkbench;
+        case 'buildings':
+            // Any item that is not a tool, workstation, or workbench belongs here
+            return !isTools && !isWorkstation && !isWorkbench;
         default:
             return true;
     }
