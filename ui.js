@@ -727,13 +727,14 @@ export function updateGatheringButtons() {
         btn.appendChild(left);
         btn.appendChild(right);
 
-        // Progress bars container below the button
+        // Progress bars container inside the button (absolute overlay for in-button progress effect)
         const barsContainer = document.createElement('div');
         barsContainer.id = resource + '-bars';
-        barsContainer.style.cssText = 'width:100%;';
+        barsContainer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:0;border-radius:inherit;';
+
+        btn.insertBefore(barsContainer, btn.firstChild);
 
         gatherAction.appendChild(btn);
-        gatherAction.appendChild(barsContainer);
         container.appendChild(gatherAction);
     }
 }
@@ -858,8 +859,8 @@ function updateChapterNav() {
 }
 
 function updateStudySection() {
-    const progressBar = document.getElementById('study-progress');
-    if (progressBar) progressBar.value = gameState.studyBarProgress || 0;
+    const progressFill = document.getElementById('study-progress-fill');
+    if (progressFill) progressFill.style.width = (gameState.studyBarProgress || 0) + '%';
 
     const gateInfo = document.getElementById('study-gate-info');
     if (gateInfo) {

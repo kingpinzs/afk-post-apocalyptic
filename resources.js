@@ -241,19 +241,14 @@ export function gatherResource(resource) {
   }
   updateDisplay();
 
-  // Create individual progress bar for this worker (stacked / overlapping)
+  // Create individual progress fill for this worker (stacked inside button)
   const color = WORKER_COLORS[workerColorIndex % WORKER_COLORS.length];
   workerColorIndex++;
   const barContainer = document.getElementById(`${resource}-bars`);
   let fill = null;
   if (barContainer) {
-    // Ensure container is set up for stacking
-    if (!barContainer.dataset.stacked) {
-      barContainer.style.cssText += 'position:relative;height:8px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden;';
-      barContainer.dataset.stacked = '1';
-    }
     fill = document.createElement('div');
-    fill.style.cssText = `position:absolute;top:0;left:0;height:100%;width:0%;border-radius:4px;background:${color};opacity:0.7;transition:width 0.1s linear;`;
+    fill.style.cssText = `position:absolute;top:0;left:0;height:100%;width:0%;background:${color};opacity:0.25;transition:width 0.1s linear;`;
     barContainer.appendChild(fill);
   }
 
