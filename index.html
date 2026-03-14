@@ -1680,11 +1680,10 @@
 
         /* Snow: frosty cap on top edge of cards, buttons, and nav */
         .weather-snow .game-card,
-        .weather-snow .gather-btn,
-        .weather-snow #bottom-nav,
-        .weather-snow #hud {
+        .weather-snow .gather-btn {
             position: relative;
         }
+        /* #bottom-nav and #hud are already position:fixed — don't override */
 
         .weather-snow .game-card::before,
         .weather-snow .gather-btn::before,
@@ -1764,10 +1763,7 @@
             z-index: 2;
         }
 
-        .weather-rain #bottom-nav {
-            position: relative;
-        }
-
+        /* #bottom-nav is already position:fixed — don't override */
         .weather-rain #bottom-nav::before {
             content: '';
             position: absolute;
