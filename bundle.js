@@ -2844,6 +2844,13 @@
       _weather.currentWeather = weather;
       _weather.particles = [];
       _weather.leaves = [];
+      const body = document.body;
+      body.classList.remove("weather-snow", "weather-rain", "weather-storm", "weather-fog", "weather-wind");
+      if (weather === "snow") body.classList.add("weather-snow");
+      else if (weather === "rain") body.classList.add("weather-rain");
+      else if (weather === "storm") body.classList.add("weather-storm", "weather-rain");
+      else if (weather === "fog") body.classList.add("weather-fog");
+      else if (weather === "wind") body.classList.add("weather-wind");
     }
     if (!_weather.animRunning) {
       _weather.animRunning = true;
