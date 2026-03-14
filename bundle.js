@@ -2012,22 +2012,14 @@
         if (countEl) countEl.textContent = current + "/" + cap;
         const multEl = existingBtn.querySelector(".gather-btn-mult");
         if (multEl) {
-          if (info.speedMult > 1) {
-            multEl.textContent = "x" + info.speedMult.toFixed(1);
-            multEl.title = info.bonuses.join(", ");
-            multEl.style.display = "";
-          } else {
-            multEl.style.display = "none";
-          }
+          multEl.textContent = "x" + info.speedMult.toFixed(1);
+          multEl.title = info.bonuses.length > 0 ? info.bonuses.join(", ") : "Base speed";
+          multEl.style.display = "";
         }
         const amtEl = existingBtn.querySelector(".gather-btn-amount");
         if (amtEl) {
-          if (info.amount > 1) {
-            amtEl.textContent = "+" + info.amount;
-            amtEl.style.display = "";
-          } else {
-            amtEl.style.display = "none";
-          }
+          amtEl.textContent = "+" + info.amount;
+          amtEl.style.display = "";
         }
         continue;
       }
@@ -2047,22 +2039,14 @@
       left.appendChild(nameSpan);
       const multSpan = document.createElement("span");
       multSpan.className = "gather-btn-mult";
-      if (info.speedMult > 1) {
-        multSpan.textContent = "x" + info.speedMult.toFixed(1);
-        multSpan.title = info.bonuses.join(", ");
-      } else {
-        multSpan.style.display = "none";
-      }
+      multSpan.textContent = "x" + info.speedMult.toFixed(1);
+      multSpan.title = info.bonuses.length > 0 ? info.bonuses.join(", ") : "Base speed";
       left.appendChild(multSpan);
       const right = document.createElement("span");
       right.className = "gather-btn-right";
       const amtSpan = document.createElement("span");
       amtSpan.className = "gather-btn-amount";
-      if (info.amount > 1) {
-        amtSpan.textContent = "+" + info.amount;
-      } else {
-        amtSpan.style.display = "none";
-      }
+      amtSpan.textContent = "+" + info.amount;
       right.appendChild(amtSpan);
       const countSpan = document.createElement("span");
       countSpan.className = "resource-count";
@@ -3363,10 +3347,21 @@
       const nameSpan = document.createElement("span");
       nameSpan.style.cssText = "font-weight:700; color:#00ffff; min-width:60px;";
       nameSpan.textContent = member.name || "Survivor";
+      let healHintText = null;
       if (member.sick) {
+        const medCapacity = getEffect("medicalCapacity");
+        const hasMedicine = (gameState.resources.medicine || 0) > 0;
+        if (medCapacity === 0) {
+          healHintText = "No medical building! Craft a Healer's Tent (Crafting tab) to treat sick members. An Herbalist's Hut or Apothecary can also produce Medicine to speed recovery.";
+        } else if (!hasMedicine) {
+          healHintText = "Under basic care. Build an Herbalist's Hut \u2192 Apothecary to produce Medicine for faster recovery.";
+        } else {
+          healHintText = "Being treated with Medicine \u2014 recovery in progress.";
+        }
         const sickBadge = document.createElement("span");
-        sickBadge.style.cssText = "color:#e74c3c; font-size:0.85em; margin-left:6px;";
+        sickBadge.style.cssText = "color:#e74c3c; font-size:0.85em; margin-left:6px; cursor:help;";
         sickBadge.textContent = "\u{1FA7A} Sick (" + (member.sickDaysRemaining || "?") + "d)";
+        sickBadge.title = healHintText;
         nameSpan.appendChild(sickBadge);
       }
       card.appendChild(nameSpan);
@@ -3397,6 +3392,12 @@
         const skillList = Object.entries(skills).map(([k, v]) => capitalize(k) + ":" + v).join("  ");
         skillSpan.textContent = skillList;
         card.appendChild(skillSpan);
+      }
+      if (member.sick && healHintText) {
+        const hintSpan = document.createElement("span");
+        hintSpan.style.cssText = "color:#e67e22; font-size:0.78em; width:100%; margin-top:2px;";
+        hintSpan.textContent = "\u{1F4A1} " + healHintText;
+        card.appendChild(hintSpan);
       }
       container.appendChild(card);
     }
