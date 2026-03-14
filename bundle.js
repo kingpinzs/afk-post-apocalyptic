@@ -2072,9 +2072,9 @@
       btn.appendChild(right);
       const barsContainer = document.createElement("div");
       barsContainer.id = resource + "-bars";
-      barsContainer.style.cssText = "width:100%;";
+      barsContainer.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:0;border-radius:inherit;";
+      btn.insertBefore(barsContainer, btn.firstChild);
       gatherAction.appendChild(btn);
-      gatherAction.appendChild(barsContainer);
       container.appendChild(gatherAction);
     }
   }
@@ -2146,8 +2146,8 @@
     container.appendChild(memoriesBtn);
   }
   function updateStudySection() {
-    const progressBar = document.getElementById("study-progress");
-    if (progressBar) progressBar.value = gameState.studyBarProgress || 0;
+    const progressFill = document.getElementById("study-progress-fill");
+    if (progressFill) progressFill.style.width = (gameState.studyBarProgress || 0) + "%";
     const gateInfo = document.getElementById("study-gate-info");
     if (gateInfo) {
       if (gameState.pendingPuzzle) {
@@ -3949,12 +3949,8 @@
     const barContainer = document.getElementById(`${resource}-bars`);
     let fill = null;
     if (barContainer) {
-      if (!barContainer.dataset.stacked) {
-        barContainer.style.cssText += "position:relative;height:8px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden;";
-        barContainer.dataset.stacked = "1";
-      }
       fill = document.createElement("div");
-      fill.style.cssText = `position:absolute;top:0;left:0;height:100%;width:0%;border-radius:4px;background:${color};opacity:0.7;transition:width 0.1s linear;`;
+      fill.style.cssText = `position:absolute;top:0;left:0;height:100%;width:0%;background:${color};opacity:0.25;transition:width 0.1s linear;`;
       barContainer.appendChild(fill);
     }
     const tickInterval = 200;
