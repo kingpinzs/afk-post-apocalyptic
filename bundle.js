@@ -702,6 +702,15 @@
     }
     return true;
   }
+  function getResourceBreakdown(requirements) {
+    if (!requirements) return [];
+    return Object.entries(requirements).map(([resource, amount]) => ({
+      resource,
+      required: amount,
+      available: gameState.resources[resource] || 0,
+      met: (gameState.resources[resource] || 0) >= amount
+    }));
+  }
   function isAlreadyBuilt(item) {
     const config = getConfig();
     const chainConfig = config.chains[item.chain];
@@ -868,6 +877,21 @@
     if (roll < masterworkChance + superiorChance) return "superior";
     if (roll < masterworkChance + superiorChance + fineChance) return "fine";
     return "common";
+  }
+  function getUpgradeOptions(chain, instanceId) {
+    const config = getConfig();
+    if (!config) return [];
+    const stateKey = resolveStateKey(chain);
+    const instances = gameState.multipleBuildings[stateKey];
+    const instance = instances?.find((i) => i.id === instanceId);
+    if (!instance) return [];
+    return config.items.filter((item) => item.chain === chain && item.level === instance.level + 1).filter((item) => gameState.unlockedBlueprints.includes(item.id)).map((item) => ({
+      ...item,
+      workstationOk: hasWorkstation(item.workstationRequired),
+      resourcesOk: hasResources(item.requirements),
+      resourceBreakdown: getResourceBreakdown(item.requirements),
+      canCraft: hasWorkstation(item.workstationRequired) && hasResources(item.requirements)
+    }));
   }
   function clearCraftingInterval() {
     if (craftingInterval) {
@@ -1884,7 +1908,8 @@
     const bKey = Object.keys(gameState.buildings).map((k) => k + ":" + (gameState.buildings[k].level || 0) + ":" + (gameState.buildings[k].itemId || "")).join(",");
     const mKey = Object.keys(gameState.multipleBuildings).map((k) => k + ":" + gameState.multipleBuildings[k].length).join(",");
     const tKey = Object.keys(gameState.tools).map((k) => k + ":" + (gameState.tools[k].level || 0)).join(",");
-    if (_skipIfUnchanged(container, bKey + "|" + mKey + "|" + tKey)) return;
+    const bpKey = (gameState.unlockedBlueprints || []).length;
+    if (_skipIfUnchanged(container, bKey + "|" + mKey + "|" + tKey + "|" + bpKey)) return;
     while (container.firstChild) container.removeChild(container.firstChild);
     let hasBuildings = false;
     for (const chainId of Object.keys(gameState.buildings)) {
@@ -1922,6 +1947,18 @@
           infoSpan.textContent = workers > 0 ? workers + " workers" : "";
           card.appendChild(nameSpan);
           card.appendChild(infoSpan);
+          const upgradeOptions = getUpgradeOptions(chainId, instance.id);
+          if (upgradeOptions.length > 0) {
+            const nextUpgrade = upgradeOptions[0];
+            const upgradeBtn = document.createElement("button");
+            upgradeBtn.className = "craft-item-btn upgrade-btn";
+            upgradeBtn.dataset.itemId = nextUpgrade.id;
+            upgradeBtn.dataset.upgradeInstanceId = instance.id;
+            upgradeBtn.dataset.itemName = nextUpgrade.name;
+            upgradeBtn.disabled = !nextUpgrade.canCraft;
+            upgradeBtn.textContent = nextUpgrade.canCraft ? "\u2191 Upgrade to " + nextUpgrade.name : "\u2191 Upgrade (Need Resources)";
+            card.appendChild(upgradeBtn);
+          }
           container.appendChild(card);
         }
       }
@@ -5917,6 +5954,19 @@
           playCraft();
           logEvent(`Started crafting: ${btn.dataset.itemName || btn.dataset.itemId}`, "craft");
           updateCraftingTab();
+          updateCraftingQueueDisplay();
+        }
+      }
+    });
+    document.getElementById("built-buildings")?.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-item-id]");
+      if (btn && btn.dataset.itemId) {
+        initAudio();
+        const upgradeId = btn.dataset.upgradeInstanceId || null;
+        if (startCrafting(btn.dataset.itemId, upgradeId)) {
+          playCraft();
+          logEvent(`Started crafting: ${btn.dataset.itemName || btn.dataset.itemId}`, "craft");
+          updateSettlementTab();
           updateCraftingQueueDisplay();
         }
       }
