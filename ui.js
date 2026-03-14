@@ -1964,6 +1964,8 @@ const _weather = {
     currentWeather: null,
     animRunning: false,
     initialized: false,
+    rainbowAlpha: 0,      // current rainbow opacity (0 = hidden, fades in then out)
+    rainbowActive: false,  // whether rainbow is currently showing
 };
 
 function initWeatherCanvas() {
@@ -1997,9 +1999,21 @@ export function updateWeatherEffects() {
 
     const weather = gameState.currentWeather || 'Clear';
     if (weather !== _weather.currentWeather) {
+        const prev = _weather.currentWeather;
         _weather.currentWeather = weather;
         _weather.particles = [];
         _weather.leaves = [];
+
+        // Trigger rainbow when rain/storm ends and it's now daytime
+        if ((prev === 'rain' || prev === 'storm') && weather !== 'rain' && weather !== 'storm') {
+            const daySpeed = gameState.settings?.daySpeed || 600;
+            const progress = (gameState.time % daySpeed) / daySpeed;
+            if (progress > 0.25 && progress < 0.75) {
+                // Daytime — show rainbow
+                _weather.rainbowAlpha = 0.01;
+                _weather.rainbowActive = true;
+            }
+        }
 
         // Toggle body weather classes for CSS-based UI effects
         const body = document.body;
@@ -2291,10 +2305,53 @@ function weatherRenderLoop() {
         ctx.fillRect(0, 0, W, H);
     }
 
+    // Rainbow — fades in after rain, then slowly fades out
+    if (_weather.rainbowActive) {
+        if (_weather.rainbowAlpha < 0.18) {
+            _weather.rainbowAlpha += 0.002;  // fade in
+        } else {
+            _weather.rainbowAlpha -= 0.0004; // slow fade out
+        }
+
+        if (_weather.rainbowAlpha <= 0) {
+            _weather.rainbowActive = false;
+            _weather.rainbowAlpha = 0;
+        } else {
+            ctx.save();
+            ctx.globalAlpha = _weather.rainbowAlpha;
+
+            // Arc from lower-left to upper-right
+            const cx = W * 0.3;
+            const cy = H * 1.1;
+            const baseR = Math.min(W, H) * 0.8;
+
+            const colors = [
+                'rgba(255,0,0,0.5)',
+                'rgba(255,127,0,0.5)',
+                'rgba(255,255,0,0.45)',
+                'rgba(0,200,0,0.45)',
+                'rgba(0,150,255,0.45)',
+                'rgba(75,0,130,0.4)',
+                'rgba(148,0,211,0.35)',
+            ];
+
+            for (let i = 0; i < colors.length; i++) {
+                const r = baseR + i * 6;
+                ctx.strokeStyle = colors[i];
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, -Math.PI * 0.75, -Math.PI * 0.15);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+    }
+
     // Keep animating while game is active
     if (weather !== 'clear' && weather !== 'heatwave' && weather !== 'drought'
         || _weather.particles.length > 0 || _weather.drops.length > 0
-        || _weather.leaves.length > 0 || hasPile) {
+        || _weather.leaves.length > 0 || hasPile || _weather.rainbowActive) {
         requestAnimationFrame(weatherRenderLoop);
     } else {
         ctx.clearRect(0, 0, W, H);
