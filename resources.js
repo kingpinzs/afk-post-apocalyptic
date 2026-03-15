@@ -672,17 +672,27 @@ export function isStudyGateMet() {
 
 /**
  * Re-check study gate requirements against current resource stock.
- * If the player now has enough of a gated resource (from dev tools, trade, etc.),
+ * Recalculates remaining amounts based on the current study item's recipe.
+ * If the player now has enough (from dev tools, trade, gathering, etc.),
  * mark that requirement as met. Clears the gate entirely if all met.
  */
 export function refreshStudyGate() {
   if (!gameState.studyGateProgress || Object.keys(gameState.studyGateProgress).length === 0) return;
 
   const config = getConfig();
-  const gateAmount = config.constants.STUDY_GATE_AMOUNT || 5;
-  const scaledAmount = gateAmount * (1 + Math.floor(gameState.knowledge / 10));
+
+  // Find the current study item to get its recipe
+  const currentItem = _getCurrentStudyItem(config);
+  const recipe = currentItem ? (currentItem.requirements || {}) : {};
 
   for (const resource of Object.keys(gameState.studyGateProgress)) {
+    const recipeAmount = recipe[resource] || 0;
+    if (recipeAmount === 0) {
+      // Resource no longer in the recipe (stale gate entry) — mark as met
+      gameState.studyGateProgress[resource] = 0;
+      continue;
+    }
+    const scaledAmount = Math.ceil(recipeAmount * (1 + Math.floor(gameState.knowledge / 15)));
     const inStock = gameState.resources[resource] || 0;
     const remaining = scaledAmount - Math.floor(inStock);
     gameState.studyGateProgress[resource] = Math.max(0, remaining);
@@ -695,44 +705,84 @@ export function refreshStudyGate() {
 }
 
 /**
- * Set a new study gate after completing a study session.
- * Requires gathering unlocked non-basic resources before next study.
- * Gate amount scales with knowledge.
+ * Set a recipe-based study gate after an intermediate study session.
+ * Requires gathering the specific ingredients of the item being studied.
+ * Gate only activates at the right study session (around ceil(totalStudies/3)),
+ * creating the learn→gather→learn→puzzle flow.
+ *
+ * @param {object|null} item - The item currently being studied.
+ * @param {object|null} tracking - The per-item study progress tracking object.
  */
-function setStudyGate() {
+function setStudyGate(item, tracking) {
   const config = getConfig();
-  const gateAmount = config.constants.STUDY_GATE_AMOUNT || 5;
 
-  // Only gate on non-basic unlocked resources
-  const gateableResources = (gameState.unlockedResources || [])
-    .filter(r => r !== 'food' && r !== 'water' && r !== 'sticks');
-
-  if (gateableResources.length === 0) {
-    // No gateable resources yet — no gate
+  // No item or tracking — skip
+  if (!item || !tracking) {
     gameState.studyGateProgress = {};
     return;
   }
 
-  // Gate scales with knowledge: more knowledge = more resources needed
-  const scaledAmount = gateAmount * (1 + Math.floor(gameState.knowledge / 10));
+  // Gate triggers after study ceil(totalStudies/3) — an early intermediate session
+  const gateStudy = Math.ceil(tracking.totalStudies / 3);
+  if (tracking.studyCount !== gateStudy) {
+    // Not the gate study — no gate this time
+    return;
+  }
+
+  const recipe = item.requirements || {};
+  if (Object.keys(recipe).length === 0) {
+    gameState.studyGateProgress = {};
+    return;
+  }
+
   const gate = {};
-  gateableResources.forEach(r => {
-    const inStock = gameState.resources[r] || 0;
+  for (const [resource, recipeAmount] of Object.entries(recipe)) {
+    const scaledAmount = Math.ceil(recipeAmount * (1 + Math.floor(gameState.knowledge / 15)));
+    const inStock = gameState.resources[resource] || 0;
     const remaining = scaledAmount - Math.floor(inStock);
     if (remaining > 0) {
-      gate[r] = remaining;
+      gate[resource] = remaining;
     }
-    // If already in stock, skip — no need to gather what you have
-  });
+  }
+
   gameState.studyGateProgress = gate;
 
-  // If everything was already in stock, gate is empty — can study immediately
+  // Unlock any new resources referenced in the recipe
+  computeUnlockedResources();
+
+  // Also unlock resources that appear in the recipe but aren't yet in unlockedResources
+  // (e.g. bone might not be revealed by any blueprint yet, but the recipe needs it)
+  const allRaw = new Set(config.resources?.raw || []);
+  for (const resource of Object.keys(recipe)) {
+    if (allRaw.has(resource) && !gameState.unlockedResources.includes(resource)) {
+      gameState.unlockedResources.push(resource);
+    }
+  }
+
   if (Object.keys(gate).length === 0) return;
 
   const needs = Object.entries(gate)
     .map(([r, v]) => `${v} ${r.charAt(0).toUpperCase() + r.slice(1)}`)
     .join(', ');
-  logEvent(`Gather more resources before studying again: ${needs} needed.`);
+  logEvent(`The Book says: "Gather these materials to continue: ${needs}."`);
+}
+
+/**
+ * Helper: get the current item being studied from itemStudyProgress or getNextStudyItem.
+ * @param {object} config - Game config.
+ * @returns {object|null} The item config object.
+ */
+function _getCurrentStudyItem(config) {
+  // Check itemStudyProgress for an in-progress item
+  for (const itemId of Object.keys(gameState.itemStudyProgress || {})) {
+    const progress = gameState.itemStudyProgress[itemId];
+    if (progress.studyCount > 0 && progress.studyCount < progress.totalStudies) {
+      const item = config.items.find(i => i.id === itemId);
+      if (item && !gameState.unlockedBlueprints.includes(itemId)) return item;
+    }
+  }
+  // Fallback to next study item
+  return getNextStudyItem();
 }
 
 /**
@@ -907,8 +957,8 @@ export function study() {
         logEvent(`Studied ${nextItem.name}... (${tracking.studyCount}/${tracking.totalStudies}) — Puzzle time!`);
       }
 
-      // Set study gate for next study
-      setStudyGate();
+      // Set recipe-based study gate (triggers only at the right intermediate study)
+      setStudyGate(nextItem, tracking);
 
       // Study complete — unblock events
       gameState.isStudying = false;

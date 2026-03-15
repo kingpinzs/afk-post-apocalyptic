@@ -64,6 +64,7 @@
       ore: 0,
       fruit: 0,
       sand: 0,
+      bone: 0,
       // Processed
       boards: 0,
       metal: 0,
@@ -105,7 +106,8 @@
       glassworks: { level: 0, itemId: null },
       charcoal_pit: { level: 0, itemId: null },
       herbalist_hut: { level: 0, itemId: null },
-      paper_mill: { level: 0, itemId: null }
+      paper_mill: { level: 0, itemId: null },
+      bone_crafting: { level: 0, itemId: null }
     },
     // ── Buildings — MULTIPLE chains (many instances allowed) ────────────────
     // key = chain ID, value = array of instances
@@ -4183,9 +4185,15 @@
   function refreshStudyGate() {
     if (!gameState.studyGateProgress || Object.keys(gameState.studyGateProgress).length === 0) return;
     const config = getConfig();
-    const gateAmount = config.constants.STUDY_GATE_AMOUNT || 5;
-    const scaledAmount = gateAmount * (1 + Math.floor(gameState.knowledge / 10));
+    const currentItem = _getCurrentStudyItem(config);
+    const recipe = currentItem ? currentItem.requirements || {} : {};
     for (const resource of Object.keys(gameState.studyGateProgress)) {
+      const recipeAmount = recipe[resource] || 0;
+      if (recipeAmount === 0) {
+        gameState.studyGateProgress[resource] = 0;
+        continue;
+      }
+      const scaledAmount = Math.ceil(recipeAmount * (1 + Math.floor(gameState.knowledge / 15)));
       const inStock = gameState.resources[resource] || 0;
       const remaining = scaledAmount - Math.floor(inStock);
       gameState.studyGateProgress[resource] = Math.max(0, remaining);
@@ -4195,27 +4203,51 @@
       logEvent("Resources gathered! You can study again.");
     }
   }
-  function setStudyGate() {
+  function setStudyGate(item, tracking) {
     const config = getConfig();
-    const gateAmount = config.constants.STUDY_GATE_AMOUNT || 5;
-    const gateableResources = (gameState.unlockedResources || []).filter((r) => r !== "food" && r !== "water" && r !== "sticks");
-    if (gateableResources.length === 0) {
+    if (!item || !tracking) {
       gameState.studyGateProgress = {};
       return;
     }
-    const scaledAmount = gateAmount * (1 + Math.floor(gameState.knowledge / 10));
+    const gateStudy = Math.ceil(tracking.totalStudies / 3);
+    if (tracking.studyCount !== gateStudy) {
+      return;
+    }
+    const recipe = item.requirements || {};
+    if (Object.keys(recipe).length === 0) {
+      gameState.studyGateProgress = {};
+      return;
+    }
     const gate = {};
-    gateableResources.forEach((r) => {
-      const inStock = gameState.resources[r] || 0;
+    for (const [resource, recipeAmount] of Object.entries(recipe)) {
+      const scaledAmount = Math.ceil(recipeAmount * (1 + Math.floor(gameState.knowledge / 15)));
+      const inStock = gameState.resources[resource] || 0;
       const remaining = scaledAmount - Math.floor(inStock);
       if (remaining > 0) {
-        gate[r] = remaining;
+        gate[resource] = remaining;
       }
-    });
+    }
     gameState.studyGateProgress = gate;
+    computeUnlockedResources();
+    const allRaw = new Set(config.resources?.raw || []);
+    for (const resource of Object.keys(recipe)) {
+      if (allRaw.has(resource) && !gameState.unlockedResources.includes(resource)) {
+        gameState.unlockedResources.push(resource);
+      }
+    }
     if (Object.keys(gate).length === 0) return;
     const needs = Object.entries(gate).map(([r, v]) => `${v} ${r.charAt(0).toUpperCase() + r.slice(1)}`).join(", ");
-    logEvent(`Gather more resources before studying again: ${needs} needed.`);
+    logEvent(`The Book says: "Gather these materials to continue: ${needs}."`);
+  }
+  function _getCurrentStudyItem(config) {
+    for (const itemId of Object.keys(gameState.itemStudyProgress || {})) {
+      const progress = gameState.itemStudyProgress[itemId];
+      if (progress.studyCount > 0 && progress.studyCount < progress.totalStudies) {
+        const item = config.items.find((i) => i.id === itemId);
+        if (item && !gameState.unlockedBlueprints.includes(itemId)) return item;
+      }
+    }
+    return getNextStudyItem();
   }
   function study() {
     const config = getConfig();
@@ -4328,7 +4360,7 @@
           showStudyPuzzle(nextItem);
           logEvent(`Studied ${nextItem.name}... (${tracking.studyCount}/${tracking.totalStudies}) \u2014 Puzzle time!`);
         }
-        setStudyGate();
+        setStudyGate(nextItem, tracking);
         gameState.isStudying = false;
         updateDisplay();
       }

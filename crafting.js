@@ -60,7 +60,8 @@ function resolveStateKey(chainId) {
 /** Processing chains that count as workstations in the UI. */
 const PROCESSING_CHAINS = new Set([
   'kiln', 'forge', 'sawmill', 'loom', 'tannery',
-  'glassworks', 'charcoal_pit', 'herbalist_hut', 'paper_mill'
+  'glassworks', 'charcoal_pit', 'herbalist_hut', 'paper_mill',
+  'bone_crafting'
 ]);
 
 /**

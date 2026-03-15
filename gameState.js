@@ -83,6 +83,7 @@ export const gameState = {
     ore: 0,
     fruit: 0,
     sand: 0,
+    bone: 0,
     // Processed
     boards: 0,
     metal: 0,
@@ -126,7 +127,8 @@ export const gameState = {
     glassworks:      { level: 0, itemId: null },
     charcoal_pit:    { level: 0, itemId: null },
     herbalist_hut:   { level: 0, itemId: null },
-    paper_mill:      { level: 0, itemId: null }
+    paper_mill:      { level: 0, itemId: null },
+    bone_crafting:   { level: 0, itemId: null }
   },
 
   // ── Buildings — MULTIPLE chains (many instances allowed) ────────────────

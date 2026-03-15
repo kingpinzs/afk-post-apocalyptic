@@ -11,7 +11,8 @@
       "wood",
       "ore",
       "fruit",
-      "sand"
+      "sand",
+      "bone"
     ],
     "processed": [
       "boards",
@@ -59,7 +60,8 @@
     "wood": 5000,
     "ore": 8000,
     "fruit": 4000,
-    "sand": 6000
+    "sand": 6000,
+    "bone": 6000
   },
   "resourceUnlocks": {
     "sticks": {
@@ -102,6 +104,10 @@
     "sand": {
       "type": "chapter",
       "requires": 3
+    },
+    "bone": {
+      "type": "chapter",
+      "requires": 1
     }
   },
   "resourceCapTiers": {
@@ -341,6 +347,12 @@
       "type": "SINGLE",
       "category": "infrastructure",
       "description": "Storage and logistics buildings that increase resource caps."
+    },
+    "bone_crafting": {
+      "name": "Bone Crafting",
+      "type": "SINGLE",
+      "category": "processing",
+      "description": "Specialized tools and items crafted from scavenged bones and antlers."
     }
   },
   "items": [
@@ -765,7 +777,7 @@
     {
       "id": "crude_knife",
       "name": "Crude Knife",
-      "description": "A rough stone blade lashed to a handle.",
+      "description": "A rough stone blade lashed to a bone handle.",
       "chain": "cutting_tools",
       "chainType": "SINGLE",
       "level": 2,
@@ -773,8 +785,9 @@
       "knowledgeRequired": 4,
       "workstationRequired": "by_hand",
       "requirements": {
-        "sticks": 3,
-        "stone": 3
+        "sticks": 2,
+        "stone": 3,
+        "bone": 1
       },
       "craftingTime": 12000,
       "effect": {
@@ -2452,7 +2465,7 @@
     {
       "id": "sharpened_spear_fishing",
       "name": "Sharpened Spear",
-      "description": "A pointed stick for spearing fish in shallows.",
+      "description": "A pointed stick with a bone tip for spearing fish in shallows.",
       "chain": "fishing_tools",
       "chainType": "SINGLE",
       "level": 1,
@@ -2461,7 +2474,8 @@
       "workstationRequired": "by_hand",
       "requirements": {
         "sticks": 3,
-        "stone": 2
+        "stone": 1,
+        "bone": 1
       },
       "craftingTime": 8000,
       "effect": {
@@ -2511,7 +2525,7 @@
     {
       "id": "fishing_rod",
       "name": "Fishing Rod",
-      "description": "A rod and line for catching fish from shore.",
+      "description": "A rod and line with a bone hook for catching fish from shore.",
       "chain": "fishing_tools",
       "chainType": "SINGLE",
       "level": 2,
@@ -2520,7 +2534,8 @@
       "workstationRequired": "crude_workbench",
       "requirements": {
         "sticks": 4,
-        "fiber": 3
+        "fiber": 3,
+        "bone": 1
       },
       "craftingTime": 15000,
       "effect": {
@@ -2866,7 +2881,7 @@
     {
       "id": "sharpened_spear_hunting",
       "name": "Sharpened Spear",
-      "description": "A pointed stick for hunting small game.",
+      "description": "A pointed stick with a bone tip for hunting small game.",
       "chain": "hunting_tools",
       "chainType": "SINGLE",
       "level": 1,
@@ -2875,7 +2890,8 @@
       "workstationRequired": "by_hand",
       "requirements": {
         "sticks": 4,
-        "stone": 2
+        "stone": 1,
+        "bone": 1
       },
       "craftingTime": 8000,
       "effect": {
@@ -4355,7 +4371,8 @@
       "productionRate": 1,
       "productionInput": null,
       "productionOutput": {
-        "food": 1
+        "food": 1,
+        "bone": 0.3
       },
       "workersRequired": true,
       "puzzle": {
@@ -4417,7 +4434,8 @@
       "productionInput": null,
       "productionOutput": {
         "food": 2,
-        "hides": 0.5
+        "hides": 0.5,
+        "bone": 0.5
       },
       "workersRequired": true,
       "puzzle": {
@@ -4478,7 +4496,8 @@
       "productionInput": null,
       "productionOutput": {
         "food": 4,
-        "hides": 1
+        "hides": 1,
+        "bone": 1
       },
       "workersRequired": true,
       "puzzle": {
@@ -4539,7 +4558,8 @@
       "productionInput": null,
       "productionOutput": {
         "food": 7,
-        "hides": 2
+        "hides": 2,
+        "bone": 1.5
       },
       "workersRequired": true,
       "puzzle": {
@@ -4603,7 +4623,8 @@
       "productionInput": null,
       "productionOutput": {
         "food": 12,
-        "hides": 3
+        "hides": 3,
+        "bone": 2
       },
       "workersRequired": true,
       "puzzle": {
@@ -4665,7 +4686,8 @@
       "productionInput": null,
       "productionOutput": {
         "food": 20,
-        "hides": 5
+        "hides": 5,
+        "bone": 3
       },
       "workersRequired": true,
       "puzzle": {
@@ -11168,6 +11190,126 @@
       "flashback": "You see weathered hands working in dim light. A space-based storage facility with cross-settlement access. The knowledge comes to you instinctively — eight is the key. The memory fades but the understanding remains.",
       "loreFlashback": "Fires burn on the horizon, but the stars above are clearer than anyone alive has ever seen them. Without the light pollution, the Milky Way stretches overhead like a river of diamonds. The sky remembers what the ground forgot.",
       "loreChronologicalOrder": 147
+    },
+    {
+      "id": "bone_needle",
+      "name": "Bone Needle",
+      "description": "A sharp needle carved from bone, essential for sewing hides and cloth.",
+      "chain": "bone_crafting",
+      "chainType": "SINGLE",
+      "level": 1,
+      "chapter": 1,
+      "knowledgeRequired": 7,
+      "workstationRequired": "by_hand",
+      "requirements": {
+        "bone": 2,
+        "stone": 1
+      },
+      "craftingTime": 8000,
+      "effect": {
+        "clothProductionMultiplier": 1.3,
+        "leatherProductionMultiplier": 1.3
+      },
+      "productionRate": null,
+      "productionInput": null,
+      "productionOutput": null,
+      "workersRequired": null,
+      "puzzle": {
+        "question": "Bone needles were among humanity's earliest precision tools. What property of bone makes it ideal for needles?",
+        "correctAnswers": [
+          "collagen",
+          "hydroxyapatite",
+          "composite material",
+          "flexibility"
+        ],
+        "wrongAnswers": [
+          "Calcium",
+          "Marrow",
+          "Keratin",
+          "Calcium carbonate",
+          "Iron content"
+        ],
+        "hints": [
+          {
+            "type": "clue",
+            "text": "Bone is a natural composite of a protein fiber that provides flexibility and a mineral crystal that provides hardness — similar to how fiberglass combines flexible glass fibers with rigid resin."
+          },
+          {
+            "type": "eliminate",
+            "text": "The oldest known bone needles (from Denisova Cave, Siberia) are about 50,000 years old. The protein component makes up about 35% of bone and gives it the ability to bend slightly without snapping."
+          }
+        ],
+        "wrongPenalty": {
+          "type": "resource",
+          "resource": "food",
+          "amount": 2
+        }
+      },
+      "didYouKnow": "The oldest known bone needle, found in Denisova Cave in Siberia, is approximately 50,000 years old and was made by Denisovans — a now-extinct human species. Despite its age, the needle has a perfectly drilled eye hole, suggesting sophisticated tool-making capabilities that rival early Homo sapiens.",
+      "hardness": 1,
+      "knowledgePerStudy": 2,
+      "flashback": "A vision flickers: patient hands shaping a sliver of bone against rough stone. The point narrows, the eye is drilled with a sharp stone awl. Collagen gives the bone its flexibility — it bends but does not snap. The technique was passed down through generations."
+    },
+    {
+      "id": "bone_tools",
+      "name": "Bone Tools",
+      "description": "A set of specialized bone implements for leatherworking and textile production.",
+      "chain": "bone_crafting",
+      "chainType": "SINGLE",
+      "level": 2,
+      "chapter": 2,
+      "knowledgeRequired": 15,
+      "workstationRequired": "crude_workbench",
+      "requirements": {
+        "bone": 4,
+        "sticks": 2,
+        "fiber": 2
+      },
+      "craftingTime": 15000,
+      "effect": {
+        "clothProductionMultiplier": 1.6,
+        "leatherProductionMultiplier": 1.6
+      },
+      "productionRate": null,
+      "productionInput": null,
+      "productionOutput": null,
+      "workersRequired": null,
+      "puzzle": {
+        "question": "Neanderthals used a bone tool called a 'lissoir' for a specific purpose. What did they use it for?",
+        "correctAnswers": [
+          "burnishing",
+          "smoothing leather",
+          "hide working",
+          "polishing hides",
+          "lissoir"
+        ],
+        "wrongAnswers": [
+          "Cutting meat",
+          "Digging roots",
+          "Fishing",
+          "Sewing clothes",
+          "Carving wood"
+        ],
+        "hints": [
+          {
+            "type": "clue",
+            "text": "A lissoir works by applying pressure and friction to animal skin, compressing the fibers and creating a smooth, water-resistant surface. Modern leather workers still use virtually identical tools."
+          },
+          {
+            "type": "eliminate",
+            "text": "The word 'lissoir' comes from the French word 'lisser', meaning to smooth or polish. The tool's rounded tip glides across the hide surface without cutting or tearing it."
+          }
+        ],
+        "wrongPenalty": {
+          "type": "resource",
+          "resource": "food",
+          "amount": 2
+        }
+      },
+      "didYouKnow": "In 2013, archaeologists in southwestern France discovered lissoirs — specialized bone tools for working leather — that were made by Neanderthals approximately 51,000 years ago. This predates the arrival of modern humans in Europe by thousands of years, proving Neanderthals independently invented sophisticated bone tool technology.",
+      "hardness": 2,
+      "knowledgePerStudy": 2,
+      "flashback": "The Book's pages shimmer and you see a Neanderthal workshop. Strong hands press a smooth bone tool — a lissoir — against a stretched hide, burnishing it to a gleaming finish. The technique is elegant, refined. The word 'burnishing' echoes in your mind."
     }
   ],
   "weather": {
