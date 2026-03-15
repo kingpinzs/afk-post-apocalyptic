@@ -429,6 +429,20 @@ async function initializeGame() {
     }
   };
 
+  // ── ESC Key Closes Popups ───────────────────────────────────────────────
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const popupIds = ['puzzle-popup', 'flashback-popup'];
+    for (const id of popupIds) {
+      const popup = document.getElementById(id);
+      if (popup && popup.style.display !== 'none' && popup.style.display !== '') {
+        popup.style.display = 'none';
+        e.preventDefault();
+        return;
+      }
+    }
+  });
+
   // ── Mod File Handlers ─────────────────────────────────────────────────
   document.getElementById('mod-file')?.addEventListener('change', async (e) => {
     await handleModFile(e, 'mod-status');

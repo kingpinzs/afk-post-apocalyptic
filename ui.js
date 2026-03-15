@@ -11,7 +11,7 @@
  * Backward-compatible exports are provided for all functions imported by other modules.
  */
 
-import { gameState, getConfig, getResourceCap, getTotalHousing, computeUnlockedResources, clearTabNotification } from './gameState.js';
+import { gameState, getConfig, getConfigSafe, getResourceCap, getTotalHousing, computeUnlockedResources, clearTabNotification } from './gameState.js';
 import { getEffect, getTotalAssignedWorkers } from './effects.js';
 import { getSettlementList, getCurrentSettlement, isSettlementUnlocked, isSupplyLinesUnlocked, getInfrastructureLevel, getTradeLevel, getTotalPopulation } from './settlements.js';
 import { getSupplyLines } from './network.js';
@@ -252,15 +252,47 @@ export function updateHUD() {
     const foodBar = document.getElementById('food-bar');
     const foodDisplay = document.getElementById('food-display');
     const foodCap = getResourceCap('food');
-    if (foodBar) { foodBar.value = gameState.resources.food; foodBar.max = foodCap; }
-    if (foodDisplay) foodDisplay.textContent = Math.floor(gameState.resources.food) + '/' + foodCap;
+    const foodVal = gameState.resources.food;
+    if (foodBar) { foodBar.value = foodVal; foodBar.max = foodCap; }
+    if (foodDisplay) {
+        foodDisplay.textContent = Math.floor(foodVal) + '/' + foodCap;
+        const foodPct = foodCap > 0 ? foodVal / foodCap : 1;
+        foodDisplay.classList.toggle('hud-danger', foodPct < 0.2);
+        foodDisplay.classList.toggle('hud-warning', foodPct >= 0.2 && foodPct < 0.4);
+    }
 
     // Water bar
     const waterBar = document.getElementById('water-bar');
     const waterDisplay = document.getElementById('water-display');
     const waterCap = getResourceCap('water');
-    if (waterBar) { waterBar.value = gameState.resources.water; waterBar.max = waterCap; }
-    if (waterDisplay) waterDisplay.textContent = Math.floor(gameState.resources.water) + '/' + waterCap;
+    const waterVal = gameState.resources.water;
+    if (waterBar) { waterBar.value = waterVal; waterBar.max = waterCap; }
+    if (waterDisplay) {
+        waterDisplay.textContent = Math.floor(waterVal) + '/' + waterCap;
+        const waterPct = waterCap > 0 ? waterVal / waterCap : 1;
+        waterDisplay.classList.toggle('hud-danger', waterPct < 0.2);
+        waterDisplay.classList.toggle('hud-warning', waterPct >= 0.2 && waterPct < 0.4);
+    }
+
+    // Daily consumption display
+    const consumptionEl = document.getElementById('hud-consumption');
+    if (consumptionEl) {
+        const config = getConfigSafe();
+        if (config) {
+            const pop = gameState.population;
+            const baseFoodPP = config.constants?.BASE_FOOD_PER_PERSON || 2;
+            const baseWaterPP = config.constants?.BASE_WATER_PER_PERSON || 1.5;
+            const shelterMult = getEffect('resourceConsumptionMultiplier', 1.0);
+            const preset = config.difficultyPresets?.[gameState.difficulty];
+            const diffMult = preset?.consumptionMultiplier || 1.0;
+            const season = gameState.currentSeason || 'spring';
+            const seasonMults = { winter: { f: 1.3, w: 1.0 }, summer: { f: 0.9, w: 1.1 }, autumn: { f: 1.0, w: 0.95 }, spring: { f: 1.0, w: 1.0 } };
+            const sm = seasonMults[season] || seasonMults.spring;
+            const foodPerDay = (baseFoodPP * pop * shelterMult * diffMult * sm.f).toFixed(1);
+            const waterPerDay = (baseWaterPP * pop * shelterMult * diffMult * sm.w).toFixed(1);
+            consumptionEl.textContent = '-' + foodPerDay + ' food/day, -' + waterPerDay + ' water/day';
+        }
+    }
 
     // Population
     const popEl = document.getElementById('population-display');
@@ -650,17 +682,32 @@ export function updateGatheringButtons() {
         // Get modifier info for this resource
         const info = getGatherInfo(resource);
 
+        // Compute effective gather time for tooltip
+        let gatherTimeSec = 3;
+        try {
+            const cfg = getConfig();
+            const baseTime = cfg.gatheringTimes?.[resource] || 3000;
+            gatherTimeSec = Math.max(0.5, baseTime / (info.speedMult * 1000));
+        } catch { /* config not ready */ }
+        const timeLabel = '(' + gatherTimeSec.toFixed(1) + 's)';
+
+        // Tooltip text explaining disabled state
+        const disabledTitle = atCap ? 'Storage full (' + current + '/' + cap + ')'
+            : noWorkers ? 'No available workers'
+            : '';
+
         // Check if this button already exists (preserve progress bars during gathers)
         const existingBtn = document.getElementById('gather-' + resource);
         if (existingBtn) {
             existingBtn.disabled = atCap || noWorkers;
+            existingBtn.title = (atCap || noWorkers) ? disabledTitle : '';
             // Update count
             const countEl = existingBtn.querySelector('.resource-count');
             if (countEl) countEl.textContent = current + '/' + cap;
             // Update multiplier badge
             const multEl = existingBtn.querySelector('.gather-btn-mult');
             if (multEl) {
-                multEl.textContent = 'x' + info.speedMult.toFixed(1);
+                multEl.textContent = 'x' + info.speedMult.toFixed(1) + ' ' + timeLabel;
                 multEl.title = info.bonuses.length > 0 ? info.bonuses.join(', ') : 'Base speed';
                 multEl.style.display = '';
             }
@@ -682,8 +729,9 @@ export function updateGatheringButtons() {
         btn.className = 'gather-btn';
         btn.dataset.resource = resource;
         btn.disabled = atCap || noWorkers;
+        if (atCap || noWorkers) btn.title = disabledTitle;
 
-        // Left side: name + speed multiplier
+        // Left side: name + speed multiplier + time
         const left = document.createElement('span');
         left.className = 'gather-btn-left';
 
@@ -694,7 +742,7 @@ export function updateGatheringButtons() {
 
         const multSpan = document.createElement('span');
         multSpan.className = 'gather-btn-mult';
-        multSpan.textContent = 'x' + info.speedMult.toFixed(1);
+        multSpan.textContent = 'x' + info.speedMult.toFixed(1) + ' ' + timeLabel;
         multSpan.title = info.bonuses.length > 0 ? info.bonuses.join(', ') : 'Base speed';
         left.appendChild(multSpan);
 
@@ -850,14 +898,45 @@ function updateStudySection() {
     const progressFill = document.getElementById('study-progress-fill');
     if (progressFill) progressFill.style.width = (gameState.studyBarProgress || 0) + '%';
 
+    // Study gate checklist panel
+    const gatePanel = document.getElementById('study-gate-panel');
+    const gateProgress = gameState.studyGateProgress || {};
+    const gateEntries = Object.entries(gateProgress);
+    const hasGate = gateEntries.some(([, v]) => v > 0);
+
+    if (gatePanel) {
+        if (hasGate) {
+            gatePanel.style.display = '';
+            while (gatePanel.firstChild) gatePanel.removeChild(gatePanel.firstChild);
+
+            const heading = document.createElement('h4');
+            heading.textContent = 'Materials Needed';
+            gatePanel.appendChild(heading);
+
+            for (const [resource, needed] of gateEntries) {
+                const met = needed <= 0;
+                const div = document.createElement('div');
+                div.className = met ? 'gate-item-met' : 'gate-item-unmet';
+                const displayName = resource.charAt(0).toUpperCase() + resource.slice(1);
+                div.textContent = met
+                    ? displayName + ': Done \u2713'
+                    : displayName + ': need ' + needed + ' more';
+                gatePanel.appendChild(div);
+            }
+        } else {
+            gatePanel.style.display = 'none';
+            while (gatePanel.firstChild) gatePanel.removeChild(gatePanel.firstChild);
+        }
+    }
+
     const gateInfo = document.getElementById('study-gate-info');
     if (gateInfo) {
         if (gameState.pendingPuzzle) {
             gateInfo.textContent = 'Puzzle waiting! Answer to unlock a blueprint.';
             gateInfo.style.color = '#e2b714';
-        } else if (gameState.studyGateProgress && Object.values(gameState.studyGateProgress).some(v => v > 0)) {
+        } else if (hasGate) {
             // Study gate not met — show what's needed
-            const remaining = Object.entries(gameState.studyGateProgress)
+            const remaining = gateEntries
                 .filter(([, v]) => v > 0)
                 .map(([r, v]) => `${v} ${r.charAt(0).toUpperCase() + r.slice(1)}`)
                 .join(', ');
@@ -1210,13 +1289,23 @@ export function updateCraftingTab() {
         nameEl.textContent = item.name;
         header.appendChild(nameEl);
 
+        // Determine specific blocker text for disabled craft buttons
+        let blockerText = 'Need Resources';
+        if (!canAfford) {
+            const unmet = Object.entries(cost)
+                .filter(([r, n]) => (gameState.resources[r] || 0) < n)
+                .map(([r, n]) => Math.ceil(n - (gameState.resources[r] || 0)) + ' ' + capitalize(r));
+            if (unmet.length > 0) blockerText = 'Need: ' + unmet.join(', ');
+        }
+
         const btn = document.createElement('button');
         btn.className = 'craft-item-btn';
         btn.dataset.itemId = item.id;
         btn.dataset.itemName = item.name;
         btn.disabled = !canAfford;
         btn.style.cssText = 'padding:4px 12px; font-size:0.8em; white-space:nowrap;';
-        btn.textContent = canAfford ? 'Craft' : 'Need Resources';
+        btn.textContent = canAfford ? 'Craft' : blockerText;
+        btn.title = canAfford ? '' : blockerText;
         header.appendChild(btn);
 
         card.appendChild(header);
@@ -1405,25 +1494,34 @@ export function updateCraftingQueueDisplay() {
     // If queue structure hasn't changed, just update progress values in place
     if (container._queueKey === structKey) {
         const rows = container.querySelectorAll('.queue-item');
+        let totalRemaining = 0;
         for (let idx = 0; idx < gameState.craftingQueue.length && idx < rows.length; idx++) {
             const entry = gameState.craftingQueue[idx];
             const duration = entry.duration || 1;
             const pct = Math.min(100, ((entry.progress || 0) / duration) * 100);
+            const remaining = Math.max(0, (duration - (entry.progress || 0)) / 1000);
+            totalRemaining += remaining;
             const prog = rows[idx].querySelector('progress');
             if (prog) prog.value = pct;
-            const pctSpan = rows[idx].querySelectorAll('span')[1];
-            if (pctSpan) pctSpan.textContent = Math.floor(pct) + '%';
+            const pctSpan = rows[idx].querySelector('.queue-time');
+            if (pctSpan) pctSpan.textContent = Math.ceil(remaining) + 's left';
         }
+        // Update total queue time
+        const totalEl = container.querySelector('.queue-total');
+        if (totalEl) totalEl.textContent = gameState.craftingQueue.length + ' item' + (gameState.craftingQueue.length > 1 ? 's' : '') + ', ~' + Math.ceil(totalRemaining) + 's total';
         return;
     }
     container._queueKey = structKey;
 
     while (container.firstChild) container.removeChild(container.firstChild);
 
+    let totalRemaining = 0;
     for (const entry of gameState.craftingQueue) {
         const item = config.items ? config.items.find(i => i.id === entry.itemId) : null;
         const duration = entry.duration || 1;
         const pct = Math.min(100, ((entry.progress || 0) / duration) * 100);
+        const remaining = Math.max(0, (duration - (entry.progress || 0)) / 1000);
+        totalRemaining += remaining;
 
         const row = document.createElement('div');
         row.className = 'queue-item';
@@ -1435,13 +1533,24 @@ export function updateCraftingQueueDisplay() {
         prog.value = pct;
         prog.max = 100;
 
-        const pctSpan = document.createElement('span');
-        pctSpan.textContent = Math.floor(pct) + '%';
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'queue-time';
+        timeSpan.style.cssText = 'font-size:0.8em; color:#f39c12; min-width:50px; text-align:right;';
+        timeSpan.textContent = Math.ceil(remaining) + 's left';
 
         row.appendChild(nameSpan);
         row.appendChild(prog);
-        row.appendChild(pctSpan);
+        row.appendChild(timeSpan);
         container.appendChild(row);
+    }
+
+    // Total queue summary
+    if (gameState.craftingQueue.length > 0) {
+        const totalEl = document.createElement('div');
+        totalEl.className = 'queue-total';
+        totalEl.style.cssText = 'font-size:0.7em; color:#7f8c8d; text-align:right; margin-top:4px;';
+        totalEl.textContent = gameState.craftingQueue.length + ' item' + (gameState.craftingQueue.length > 1 ? 's' : '') + ', ~' + Math.ceil(totalRemaining) + 's total';
+        container.appendChild(totalEl);
     }
 }
 
@@ -1928,6 +2037,26 @@ export function showMilestoneEvent(event, applyChoiceCallback) {
 export function showGameOver() {
     const popup = document.getElementById('game-over-popup');
     if (popup) popup.style.display = 'flex';
+
+    // Populate game over stats
+    const statsEl = document.getElementById('game-over-stats');
+    if (statsEl) {
+        const stats = gameState.stats || {};
+        const day = gameState.day || 1;
+        while (statsEl.firstChild) statsEl.removeChild(statsEl.firstChild);
+
+        const lines = [
+            'Survived ' + day + ' day' + (day !== 1 ? 's' : ''),
+            'Gathered ' + (stats.totalGathered || 0) + ' resources',
+            'Crafted ' + (stats.totalCrafted || 0) + ' items',
+            'Studied ' + (stats.totalStudied || 0) + ' pages'
+        ];
+        for (const line of lines) {
+            const div = document.createElement('div');
+            div.textContent = line;
+            statsEl.appendChild(div);
+        }
+    }
 }
 
 /**

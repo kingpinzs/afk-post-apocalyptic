@@ -378,6 +378,37 @@
             animation: pulseGlow 1.5s infinite;
         }
 
+        /* HUD resource warnings */
+        .hud-warning { color: #f39c12 !important; }
+        .hud-danger { color: #e74c3c !important; animation: pulse-danger 1s infinite; }
+        @keyframes pulse-danger {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .hud-consumption {
+            font-size: 0.65em;
+            color: #e74c3c;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        /* Study gate checklist */
+        .study-gate-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(243, 156, 18, 0.3);
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            font-size: 0.8em;
+        }
+        .study-gate-panel h4 {
+            margin: 0 0 4px;
+            font-size: 0.85em;
+            color: #f39c12;
+        }
+        .gate-item-met { color: #2ecc71; }
+        .gate-item-unmet { color: #e74c3c; }
+
         /* ================================================================
            GAME CONTAINER (scrollable content area)
            ================================================================ */
@@ -403,6 +434,12 @@
 
         .tab-panel.active {
             display: block;
+            animation: tabFadeIn 0.15s ease-out;
+        }
+
+        @keyframes tabFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         /* ================================================================
@@ -624,9 +661,11 @@
             text-shadow: none;
         }
 
-        button:active {
+        button:active:not(:disabled) {
             background-color: #00aacc;
             border-color: #00ffff;
+            transform: scale(0.97);
+            transition: transform 0.05s;
         }
 
         button:disabled {
@@ -634,7 +673,7 @@
             color: #718096;
             border-color: rgba(74, 85, 104, 0.3);
             cursor: not-allowed;
-            pointer-events: none;
+            pointer-events: auto;
         }
 
         button.locked-item {
@@ -2043,6 +2082,8 @@
                 </div>
             </div>
         </div>
+        <!-- Row 2b: Consumption rate -->
+        <div id="hud-consumption" class="hud-consumption"></div>
         <!-- Row 3: Population / Workers / Settlement -->
         <div class="hud-row">
             <span id="population-display">Pop: 1/1</span>
@@ -2291,6 +2332,7 @@
                     </div>
                     <div id="book-chapter-nav" style="display:flex; gap:4px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;"></div>
                     <div id="study-section" style="margin-top:8px;">
+                        <div id="study-gate-panel" class="study-gate-panel" style="display:none;"></div>
                         <button id="study-btn" class="action-btn" style="width:100%;"><span id="study-progress-fill" class="btn-progress-fill"></span><span class="btn-label">Study the Book</span></button>
                         <div id="study-gate-info" style="font-size:0.75em; margin-top:4px;"></div>
                     </div>
@@ -2481,6 +2523,7 @@
     <div id="game-over-popup" class="popup">
         <h2>Game Over</h2>
         <p>Your population did not survive.</p>
+        <div id="game-over-stats" style="font-size:0.75em; color:#bdc3c7; margin:8px 0; line-height:1.6; text-align:left;"></div>
         <button id="restart-game">Restart Game</button>
     </div>
 
