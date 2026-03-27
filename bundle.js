@@ -1754,7 +1754,36 @@
     }
     const popEl = document.getElementById("population-display");
     const housing = getTotalHousing();
-    if (popEl) popEl.textContent = "Pop: " + gameState.population + "/" + (housing || gameState.population);
+    if (popEl) {
+      popEl.textContent = "Pop: " + gameState.population + "/" + (housing || gameState.population);
+      let growthHint;
+      if (housing === 0) {
+        growthHint = "Build a shelter to increase population capacity.";
+      } else if (gameState.population >= housing) {
+        growthHint = "At capacity \u2014 build more shelters to grow further.";
+      } else {
+        let hudConfig;
+        try {
+          hudConfig = getConfig();
+        } catch {
+          hudConfig = null;
+        }
+        const threshold = hudConfig?.constants?.POPULATION_THRESHOLD || 50;
+        const food = gameState.resources?.food || 0;
+        const water = gameState.resources?.water || 0;
+        const needFood = food < threshold;
+        const needWater = water < threshold;
+        if (needFood || needWater) {
+          const parts = [];
+          if (needFood) parts.push(Math.floor(food) + "/" + threshold + " food");
+          if (needWater) parts.push(Math.floor(water) + "/" + threshold + " water");
+          growthHint = "Needs " + parts.join(" & ") + " to grow population.";
+        } else {
+          growthHint = "Population growing \u2014 keep food & water above " + threshold + ".";
+        }
+      }
+      popEl.title = growthHint;
+    }
     const workersEl = document.getElementById("workers-display");
     if (workersEl) workersEl.textContent = "Workers: " + gameState.availableWorkers;
     const settlementEl = document.getElementById("settlement-display");
@@ -1831,6 +1860,26 @@
         tips.push({ cat: "Next Step", text: "Study to learn how to build shelter for your settlement." });
       }
     }
+    const housing = getTotalHousing();
+    const popThreshold = config.constants?.POPULATION_THRESHOLD || 50;
+    if (housing > pop) {
+      const needFood = food < popThreshold;
+      const needWater = water < popThreshold;
+      if (needFood || needWater) {
+        const parts = [];
+        if (needFood) parts.push(Math.floor(food) + "/" + popThreshold + " food");
+        if (needWater) parts.push(Math.floor(water) + "/" + popThreshold + " water");
+        tips.push({ cat: "Population", text: "Housing has space (" + pop + "/" + housing + "). Stockpile " + parts.join(" and ") + " to attract new settlers." });
+      }
+    } else if (housing > 0 && housing <= pop) {
+      if (!tips.some((t) => t.text && t.text.includes("shelter"))) {
+        tips.push({ cat: "Population", text: "Population is at housing capacity (" + pop + "/" + housing + "). Build more shelters to house more settlers." });
+      }
+    } else if (housing === 0) {
+      if (hasShelter === false && !tips.some((t) => t.text && t.text.includes("shelter"))) {
+        tips.push({ cat: "Population", text: "No housing built. Build a shelter to increase your population capacity beyond 1." });
+      }
+    }
     if (hasWorkbench && hasCuttingTools && hasShelter) {
       const unbuiltBlueprints = blueprints.filter((bId) => {
         const item = config.items?.find((i) => i.id === bId);
@@ -1889,7 +1938,7 @@
       const tip = shown[i];
       const row = document.createElement("div");
       row.style.cssText = "padding:3px 0; font-size:0.78em; line-height:1.35;" + (i < shown.length - 1 ? " border-bottom:1px solid rgba(255,255,255,0.04);" : "");
-      const catColor = tip.urgent ? "#ff6b6b" : tip.cat === "Next Step" ? "#33ffdd" : tip.cat === "Growth" ? "#5dde9e" : tip.cat === "Knowledge" ? "#cc99ff" : tip.cat === "Quest" ? "#f0d050" : "#a0aab4";
+      const catColor = tip.urgent ? "#ff6b6b" : tip.cat === "Next Step" ? "#33ffdd" : tip.cat === "Growth" ? "#5dde9e" : tip.cat === "Knowledge" ? "#cc99ff" : tip.cat === "Quest" ? "#f0d050" : tip.cat === "Population" ? "#f9a825" : "#a0aab4";
       const prefix = document.createElement("span");
       prefix.style.cssText = `color:${catColor}; font-weight:600; font-size:0.85em; margin-right:4px;`;
       prefix.textContent = (tip.urgent ? "\u26A0" : "\u2022") + " ";

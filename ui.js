@@ -297,7 +297,33 @@ export function updateHUD() {
     // Population
     const popEl = document.getElementById('population-display');
     const housing = getTotalHousing();
-    if (popEl) popEl.textContent = 'Pop: ' + gameState.population + '/' + (housing || gameState.population);
+    if (popEl) {
+        popEl.textContent = 'Pop: ' + gameState.population + '/' + (housing || gameState.population);
+        // Show a tooltip hint about how to grow population
+        let growthHint;
+        if (housing === 0) {
+            growthHint = 'Build a shelter to increase population capacity.';
+        } else if (gameState.population >= housing) {
+            growthHint = 'At capacity — build more shelters to grow further.';
+        } else {
+            let hudConfig;
+            try { hudConfig = getConfig(); } catch { hudConfig = null; }
+            const threshold = hudConfig?.constants?.POPULATION_THRESHOLD || 50;
+            const food = gameState.resources?.food || 0;
+            const water = gameState.resources?.water || 0;
+            const needFood = food < threshold;
+            const needWater = water < threshold;
+            if (needFood || needWater) {
+                const parts = [];
+                if (needFood) parts.push(Math.floor(food) + '/' + threshold + ' food');
+                if (needWater) parts.push(Math.floor(water) + '/' + threshold + ' water');
+                growthHint = 'Needs ' + parts.join(' & ') + ' to grow population.';
+            } else {
+                growthHint = 'Population growing — keep food & water above ' + threshold + '.';
+            }
+        }
+        popEl.title = growthHint;
+    }
 
     // Workers
     const workersEl = document.getElementById('workers-display');
@@ -397,6 +423,31 @@ function getAdvisorTips() {
         }
     }
 
+    // ── Population growth hint ──
+    const housing = getTotalHousing();
+    const popThreshold = config.constants?.POPULATION_THRESHOLD || 50;
+    if (housing > pop) {
+        // There is room to grow — tell the player what they need
+        const needFood = food < popThreshold;
+        const needWater = water < popThreshold;
+        if (needFood || needWater) {
+            const parts = [];
+            if (needFood) parts.push(Math.floor(food) + '/' + popThreshold + ' food');
+            if (needWater) parts.push(Math.floor(water) + '/' + popThreshold + ' water');
+            tips.push({ cat: 'Population', text: 'Housing has space (' + pop + '/' + housing + '). Stockpile ' + parts.join(' and ') + ' to attract new settlers.' });
+        }
+    } else if (housing > 0 && housing <= pop) {
+        // No room — tell the player to build more shelters
+        if (!tips.some(t => t.text && t.text.includes('shelter'))) {
+            tips.push({ cat: 'Population', text: 'Population is at housing capacity (' + pop + '/' + housing + '). Build more shelters to house more settlers.' });
+        }
+    } else if (housing === 0) {
+        // No shelters built yet — handled by Next Step section, but add population context
+        if (hasShelter === false && !tips.some(t => t.text && t.text.includes('shelter'))) {
+            tips.push({ cat: 'Population', text: 'No housing built. Build a shelter to increase your population capacity beyond 1.' });
+        }
+    }
+
     // ── Growth suggestions ──
     if (hasWorkbench && hasCuttingTools && hasShelter) {
         // Check for craftable upgrades the player hasn't built yet
@@ -485,6 +536,7 @@ function updateAdvisor() {
             : tip.cat === 'Growth' ? '#5dde9e'
             : tip.cat === 'Knowledge' ? '#cc99ff'
             : tip.cat === 'Quest' ? '#f0d050'
+            : tip.cat === 'Population' ? '#f9a825'
             : '#a0aab4';
 
         // Colored dot + category as inline prefix
